@@ -25,6 +25,19 @@ worker and they run concurrently. `chunk_rows` exists for that as much as for
 the 50,000-row cap. Measure seconds-per-completion during the Stage 2 probe and
 size the chunks from the measurement - do not guess, and do not submit a full
 round as one job.
+
+WHERE the time goes: cost is per TOKEN, not per row, and the slice mix is
+badly skewed. On expected output lengths, `eli5` and `gsm8k` are ~36% of
+queries but ~86% of generated tokens (eli5 asks for an explanation, gsm8k for
+reasoning). `banking77`, `triviaqa` and `squad2` are ~38% of queries and ~5% of
+tokens. So chunk by EXPECTED TOKENS, not by row count: put eli5 and gsm8k in
+their own jobs and the rest is rounding error.
+
+DO NOT shrink max_tokens to buy speed. A degraded model getting more verbose,
+or running to the token limit, is exactly the degradation S1 exists to detect.
+A tight cap truncates healthy and degraded output alike, compresses the length
+distribution, and blinds S1 in one direction - trading a real signal for wall
+clock. Chunk instead.
 """
 
 from __future__ import annotations
