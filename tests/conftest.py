@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-PACKAGE_ROOT = PROJECT_ROOT / "driftwatch"
+PACKAGE_ROOT = PROJECT_ROOT / "src" / "driftwatch"
 
 
 @pytest.fixture(autouse=True)
