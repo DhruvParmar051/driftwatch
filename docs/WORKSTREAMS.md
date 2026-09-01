@@ -1,6 +1,6 @@
 # Workstreams
 
-Four owners, 23 files, 91 stubs. All paths below are relative to `src/`. Ownership is **file-level and exclusive**: every
+Four owners, 24 files, 102 stubs. All paths below are relative to `src/`. Ownership is **file-level and exclusive**: every
 file has exactly one owner, so two people never edit the same file. Read your
 column, then read the dependency rules - they decide the order, not preference.
 
@@ -9,7 +9,7 @@ column, then read the dependency rules - they decide the order, not preference.
 | Owner | Files | Stubs |
 |---|---|---|
 | **Dhruv** — corpus & the evaluation loop | `corpus/build.py`, `corpus/splits.py`, `detect/detectors.py`, `evaluate/replay.py`, `evaluate/metrics.py` | 26 |
-| **Pronnati** — provider & oracle | `provider/client.py`, `provider/catalogue.py`, `provider/expand.py`, `provider/submit.py`, `provider/collect.py`, `oracle/score.py` | 28 |
+| **Pronnati** — provider & oracle | `provider/client.py`, `provider/catalogue.py`, `provider/expand.py`, `provider/submit.py`, `provider/collect.py`, `provider/manifest.py`, `oracle/score.py` | 39 |
 | **Aditya** — synthetic & surface signals | `synthetic/generate.py`, `signals/length.py`, `signals/refusal.py`, `signals/lexical.py`, `signals/fmt.py`, `evaluate/bootstrap.py` | 20 |
 | **Mahak** — windows, semantic signals & calibration | `signals/windows.py`, `signals/consistency.py`, `signals/entropy.py`, `signals/embedding.py`, `detect/calibrate.py`, `detect/freeze.py` | 22 |
 
@@ -60,7 +60,7 @@ they do, five other files are blocked.
 | Owner | Then |
 |---|---|
 | Dhruv | `corpus/build.py`, `corpus/splits.py`, then `evaluate/replay.py` last |
-| Pronnati | `submit.py`, `collect.py`, `catalogue.py`, then `oracle/score.py` |
+| Pronnati | `submit.py`, `collect.py`, `manifest.py`, `catalogue.py`, then `oracle/score.py` |
 | Aditya | `length.py`, `refusal.py`, `lexical.py`, `fmt.py`, then `bootstrap.py` |
 | Mahak | `consistency.py`, `entropy.py`, `embedding.py`, then `calibrate.py` |
 
@@ -130,6 +130,10 @@ they are the failures that do not announce themselves.
   between windows, and the thresholds get set by sampling noise.
 - **Calibrating on anything but `calib` inflates every result invisibly**
   (Mahak). `assert_calib_only` exists for this; call it first, every time.
+- **Never resubmit a chunk left `submitting`** (Pronnati). A crash between
+  creating a batch and recording its id leaves a job that may be running right
+  now. Resubmitting wastes a day of GPU and returns duplicate rows. Match on
+  the stamped idempotency key first — `manifest.recover_orphans`.
 - **A non-detection is not a large latency** (Dhruv). Recording the stream
   length instead of `None` turns a failure into a finite number and hides it in
   the mean.
