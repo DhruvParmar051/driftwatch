@@ -74,6 +74,14 @@ def submit_batch(client: BatchClient, jsonl_path: Path, endpoint: str, round_id:
         Validate the file locally, upload, create the batch, and return a record
         that is written to disk BEFORE this function returns.
 
+    Constraints:
+        Stamp `round_id` and the chunk's idempotency key into the batch metadata.
+        `manifest.recover_orphans` matches on them to tell an already-submitted
+        chunk from one that still needs sending, after a crash in the window
+        between creating a batch and recording its id. Without the stamp that
+        distinction is unrecoverable, and the choice is between wasting a day of
+        GPU or losing a chunk.
+
     Raises:
         BatchAPIError: on upload or creation failure.
         ValueError: if the file violates MAX_ROWS_PER_BATCH / MAX_BATCH_FILE_BYTES.
