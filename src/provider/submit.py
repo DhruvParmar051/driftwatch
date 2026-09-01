@@ -1,4 +1,31 @@
-"""Batch submission and polling. STUB - track T2."""
+"""Batch submission and polling. STUB - track T2.
+
+How the platform actually executes a job (read from the worker daemon source)
+----------------------------------------------------------------------------
+1. POST /v1/files stores the JSONL.
+2. POST /v1/batches creates the batch; a background thread validates every line
+   and the batch goes `validating` -> `validated` or `failed`.
+3. The job waits for a worker. Workers poll the control plane on a jittered
+   interval and claim one job at a time; the backend matches a worker that
+   already serves the requested model, pinned by digest.
+4. The worker downloads the JSONL, pulls the model if absent, then executes
+   **every prompt STRICTLY SEQUENTIALLY** - one at a time, no concurrency
+   anywhere in the daemon.
+5. Results are written and uploaded; the batch goes `completed`.
+
+THROUGHPUT: parallelism comes from JOB COUNT, not job size
+----------------------------------------------------------
+Because a worker runs one prompt at a time, a single job's wall-clock is
+roughly `n_rows x seconds_per_completion`. At a few seconds per completion, a
+20,000-row baseline is close to a full day and a 24,000-row fault round can
+exceed the 24-hour window outright.
+
+The fix is to SPLIT a round across several jobs: each job goes to a different
+worker and they run concurrently. `chunk_rows` exists for that as much as for
+the 50,000-row cap. Measure seconds-per-completion during the Stage 2 probe and
+size the chunks from the measurement - do not guess, and do not submit a full
+round as one job.
+"""
 
 from __future__ import annotations
 
@@ -68,9 +95,20 @@ def chunk_rows(rows: list[dict], max_rows: int) -> list[list[dict]]:
     """Split rows into submittable chunks.
 
     Constraints:
-        Never split the k samples of one query across chunks. Losing one chunk
-        would then leave a query with an incomplete sample set, and S3 - which
-        compares the k samples of a single query - would compute a
-        self-consistency score over an unknown, silently reduced k.
+        Never split the k samples of one query across chunks. Two reasons, and
+        the second is the stronger one:
+
+        1. Losing one chunk would leave a query with an incomplete sample set,
+           and S3 would compute self-consistency over a silently reduced k.
+
+        2. Different chunks run on DIFFERENT WORKERS, and therefore potentially
+           different GPUs. Identical seeds are not guaranteed to reproduce
+           identical text across different hardware, so splitting a query's k
+           samples across workers confounds sampling variation with hardware
+           variation - inside the very signal that measures sampling
+           variation. Keep each query's k samples in one job.
+
+        Chunk size is a throughput decision (see module docstring): more chunks
+        means more workers running concurrently.
     """
     raise NotImplementedError

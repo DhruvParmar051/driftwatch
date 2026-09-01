@@ -1,6 +1,11 @@
 """Result retrieval, parsing and reconciliation. STUB - track T2.
 
-C10 lives here. A partially returned batch breaks every per-cell sample size in
+C10 lives here, and it is not a theoretical precaution: the worker daemon
+SKIPS malformed input lines with a warning and simply does not execute them, so
+a bad row vanishes from the output rather than returning an error. Submitted
+and returned counts genuinely can differ.
+
+A partially returned batch breaks every per-cell sample size in
 the experiment, and does so invisibly: the analysis still runs, the numbers
 still look plausible, and every window is quietly built on fewer rows than it
 claims. Reconciliation must therefore FAIL LOUDLY, never warn.
