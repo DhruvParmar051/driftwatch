@@ -253,6 +253,38 @@ def load_refusal_patterns() -> dict:
 
 
 @lru_cache(maxsize=1)
+def load_prompts() -> dict:
+    """Return {'version': str, 'system_prompts': {...}, 'slice_templates': {...}}.
+
+    The ONLY sanctioned source of prompt text. Never inline a prompt in source:
+    the calibrated thresholds describe model behaviour on THESE prompts, and an
+    inline edit would silently redefine the experiment.
+    """
+    with (CONFIG_DIR / "prompts.yaml").open() as fh:
+        return yaml.safe_load(fh)
+
+
+def system_prompt_for_condition(condition: str) -> str:
+    """System prompt for an experimental condition.
+
+    F3 is the only condition that changes it - that substitution IS fault F3.
+    Every other condition runs the healthy baseline prompt; F1/F2/F5 change the
+    model and F4 changes the query mixture.
+    """
+    prompts = load_prompts()["system_prompts"]
+    key = "f3_corrupted" if condition == "F3" else "healthy"
+    return prompts[key]
+
+
+def slice_template(slice_name: str) -> str:
+    """Prompt template for a corpus slice."""
+    templates = load_prompts()["slice_templates"]
+    if slice_name not in templates:
+        raise KeyError(f"No prompt template for slice {slice_name!r}")
+    return templates[slice_name]
+
+
+@lru_cache(maxsize=1)
 def load_jsonx_schema() -> dict:
     """Return the JSON Schema that S5 validates `jsonx` completions against."""
     with (CONFIG_DIR / "jsonx_schema.json").open() as fh:

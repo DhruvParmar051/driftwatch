@@ -145,6 +145,11 @@ class Thresholds(BaseModel):
         description="From refusal_patterns.yaml. If the patterns change after freeze, the frozen "
         "refusal threshold no longer means what it meant and evaluate/ must refuse to run."
     )
+    prompts_version: str = Field(
+        description="From prompts.yaml. Thresholds describe model behaviour on a "
+        "specific set of prompts; if a template changes after freeze, the frozen "
+        "numbers describe a different experiment and evaluate/ must refuse to run."
+    )
     thresholds: dict[str, float]
 
     @model_validator(mode="after")

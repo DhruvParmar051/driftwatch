@@ -71,6 +71,16 @@ blocks nobody.
 
 ## Rules
 
+**0. Prompts live in `config/prompts.yaml`, never in source.** Slice templates
+and both system prompts (healthy, and the corrupted one that *is* fault F3) are
+there, versioned. The version is recorded at freeze time and checked by
+`freeze.verify()`, because thresholds describe model behaviour on those exact
+prompts. `tests/test_prompts.py` fails the build on an inlined prompt.
+
+The F3 prompt must be **pre-registered** - fixed before the fault round is
+submitted, never adjusted after seeing detection results. Tuning it to make F3
+more detectable is the same error as tuning a threshold after the freeze.
+
 **1. Shared contracts are frozen.** `settings.py`, `corpus/schemas.py`,
 `signals/base.py` and `signals/registry.py` are what stop four people drifting
 apart. Changing a field breaks all four tracks at once. Propose the change to

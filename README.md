@@ -103,7 +103,7 @@ files.
 src/settings.py   configuration + all corpus/window arithmetic
 src/cli.py        typer app
 src/log.py        structured logging  (NOT logging.py — that shadows the stdlib)
-src/config/       models.yaml, refusal_patterns.yaml, jsonx_schema.json
+src/config/       models.yaml, prompts.yaml, refusal_patterns.yaml, jsonx_schema.json
 src/corpus/       query construction and splits  (code; data lives in data/)
 src/provider/     batch client, expand, submit, collect
 src/signals/      windows + S1..S7

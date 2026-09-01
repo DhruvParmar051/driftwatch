@@ -1,0 +1,107 @@
+# ---------------------------------------------------------------------------
+# Prompt templates and system prompts. Versioned here, NEVER inline in source.
+#
+# Bump `version` on every edit. The version is written into thresholds.json at
+# freeze time, and evaluate/ refuses to run if it no longer matches: the
+# calibrated thresholds describe model behaviour ON THESE PROMPTS. Change a
+# template afterwards and the frozen numbers silently describe a different
+# experiment.
+#
+# This is the same rule as refusal_patterns.yaml, for the same reason.
+# ---------------------------------------------------------------------------
+
+version: "1.0.0"
+
+# ── System prompts ─────────────────────────────────────────────────────────
+#
+# `healthy` is the deployment baseline. Everything is calibrated against it.
+#
+# `f3_corrupted` IS fault F3 - the experimental substance of that condition,
+# not a config detail. F3 runs the HEALTHY model (see settings.CONDITION_ROLES);
+# only this string changes. It must therefore be PRE-REGISTERED: fixed before
+# the fault round is submitted and never adjusted after seeing detection
+# results. Tuning it to make a fault more detectable is the same class of error
+# as tuning a threshold after the freeze (C4).
+#
+# Design intent for f3_corrupted: F3 is the SUBTLE rung of the severity ladder
+# (F1 severe, F2 moderate, F3 subtle). It must look like a plausible edit a
+# careless operator would actually ship - not obvious sabotage. A wildly broken
+# prompt would be trivially detectable and would tell us nothing about the
+# subtle end of the curve, which is the interesting part.
+#
+# The two edits below are deliberate and each targets a different signal:
+#   - a terseness instruction that conflicts with the task            -> S1, S4
+#   - over-cautious hedging language                                  -> S2
+# Neither mentions JSON or self-consistency, so S3 and S5 should move LESS than
+# S1/S2/S4. That predicted pattern is itself a result worth reporting.
+
+system_prompts:
+  healthy: |
+    You are a helpful assistant. Answer the user's question directly and
+    accurately. Follow any formatting instructions in the question exactly.
+
+  f3_corrupted: |
+    You are a helpful assistant. Answer the user's question directly and
+    accurately. Follow any formatting instructions in the question exactly.
+    Keep every response under two sentences and avoid unnecessary detail.
+    If a question could possibly be interpreted as sensitive, uncertain, or
+    outside your knowledge, say so rather than answering.
+
+# ── Per-slice prompt templates ─────────────────────────────────────────────
+#
+# `{...}` fields are filled by corpus.build.load_slice. Keep them minimal and
+# neutral: heavy prompt engineering raises healthy performance, compresses the
+# gap between healthy and degraded, and costs detection power on every signal.
+#
+# The `jsonx` template states the schema in PROSE on purpose. Those rows are
+# submitted with no response_format, so that malformed output comes back as
+# text for S5 to score client-side. If the platform validated the schema
+# server-side, it would fail the row and S5 would have nothing to measure.
+
+slice_templates:
+  gsm8k: |
+    Solve this problem. Show your reasoning, then give the final numeric
+    answer on its own last line.
+
+    {question}
+
+  triviaqa: |
+    Answer the following question with the shortest correct answer.
+
+    {question}
+
+  squad2: |
+    Answer the question using only the passage below. If the passage does not
+    contain the answer, reply exactly: unanswerable
+
+    Passage: {context}
+
+    Question: {question}
+
+  banking77: |
+    Classify this customer message into exactly one of the intent labels
+    listed. Reply with the label only, copied exactly as written.
+
+    Labels: {label_space}
+
+    Message: {question}
+
+  xsum: |
+    Summarise the article below in a single sentence.
+
+    {context}
+
+  eli5: |
+    Explain the following in plain language that a general audience would
+    understand.
+
+    {question}
+
+  jsonx: |
+    Return a single JSON object describing the item below. It must have
+    exactly these fields: "title" (string), "category" (one of: finance,
+    health, technology, travel, education), "priority" (integer 1 to 5),
+    "tags" (array of 1 to 5 strings), "published" (boolean). Include no other
+    fields and no text outside the JSON object.
+
+    Item: {question}
