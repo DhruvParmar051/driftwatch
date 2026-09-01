@@ -81,7 +81,8 @@ def verify(path: Path, calib_completions: list[Completion]) -> Thresholds:
         Read the record, recompute `calib_rows_hash` from `calib_completions`,
         and compare. Also check that the current refusal-patterns version
         matches the frozen one - if the patterns changed, the frozen refusal
-        threshold is expressed in units that no longer exist.
+        threshold is expressed in units that no longer exist. Same for the
+        prompts version: thresholds describe behaviour on specific prompts.
 
     Raises:
         FrozenIntegrityError: on any mismatch. `evaluate/` calls this and

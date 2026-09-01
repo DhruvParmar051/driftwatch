@@ -97,8 +97,9 @@ def build_chat_row(query: Query, sample_idx: int, model_id: str, condition: str,
         not design a signal that needs it.
 
     Args:
-        system_prompt: None for healthy. F3 passes a deliberately corrupted
-            prompt here - that IS fault F3; the model is unchanged.
+        system_prompt: resolve with `settings.system_prompt_for_condition`.
+            F3 passes the corrupted prompt from config/prompts.yaml - that
+            substitution IS fault F3; the model is unchanged.
     """
     raise NotImplementedError
 

@@ -149,6 +149,7 @@ def test_thresholds_rejects_signal_count_mismatch():
             calib_rows_hash="sha256:x", k=4, window_size=200, window_stride=50,
             family_wise_budget=0.001, per_signal_alpha=0.000143, n_signals=7,
             bootstrap_windows=20000, calibration_seed=1, refusal_patterns_version="1.0.0",
+            prompts_version="1.0.0",
             thresholds={"length_ks": 0.1},  # only 1, but n_signals says 7
         )
 

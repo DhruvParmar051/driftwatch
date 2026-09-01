@@ -31,7 +31,8 @@ def load_slice(slice_name: str, n: int, seed: int) -> list[Query]:
     Behaviour:
         Pull the slice's source via `datasets.load_dataset`, take a deterministic
         sample of size `n` under `seed`, and map each record to a `Query`:
-        build the prompt, extract `ground_truth` for verifiable slices, and
+        build the prompt from `settings.slice_template(slice_name)` - never
+        inline prompt text here - extract `ground_truth` for verifiable slices, and
         attach `label_space` for banking77. `split` is left as a placeholder -
         `splits.assign_splits` fills it.
 
