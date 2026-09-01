@@ -1,6 +1,6 @@
 # Workstreams
 
-Four owners, 24 files, 102 stubs. All paths below are relative to `src/`. Ownership is **file-level and exclusive**: every
+Four owners, 25 files, 116 stubs. All paths below are relative to `src/`. Ownership is **file-level and exclusive**: every
 file has exactly one owner, so two people never edit the same file. Read your
 column, then read the dependency rules - they decide the order, not preference.
 
@@ -8,29 +8,35 @@ column, then read the dependency rules - they decide the order, not preference.
 
 | Owner | Files | Stubs |
 |---|---|---|
-| **Dhruv** — corpus & the evaluation loop | `corpus/build.py`, `corpus/splits.py`, `detect/detectors.py`, `evaluate/replay.py`, `evaluate/metrics.py` | 26 |
-| **Pronnati** — provider & oracle | `provider/client.py`, `provider/catalogue.py`, `provider/expand.py`, `provider/submit.py`, `provider/collect.py`, `provider/manifest.py`, `oracle/score.py` | 39 |
-| **Aditya** — synthetic & surface signals | `synthetic/generate.py`, `signals/length.py`, `signals/refusal.py`, `signals/lexical.py`, `signals/fmt.py`, `evaluate/bootstrap.py` | 20 |
-| **Mahak** — windows, semantic signals & calibration | `signals/windows.py`, `signals/consistency.py`, `signals/entropy.py`, `signals/embedding.py`, `detect/calibrate.py`, `detect/freeze.py` | 22 |
+| **Dhruv** — corpus, evaluation & orchestration | `corpus/build.py`, `corpus/splits.py`, `evaluate/replay.py`, `evaluate/metrics.py`, `evaluate/bootstrap.py`, `oracle/score.py`, `cli.py` | **35** |
+| **Pronnati** — provider | `provider/client.py`, `provider/catalogue.py`, `provider/expand.py`, `provider/submit.py`, `provider/collect.py`, `provider/manifest.py` | 34 |
+| **Mahak** — windows, semantic signals & detection | `signals/windows.py`, `signals/consistency.py`, `signals/entropy.py`, `signals/embedding.py`, `detect/calibrate.py`, `detect/freeze.py`, `detect/detectors.py` | 30 |
+| **Aditya** — synthetic & surface signals | `synthetic/generate.py`, `signals/length.py`, `signals/refusal.py`, `signals/lexical.py`, `signals/fmt.py` | 17 |
 
 Nobody owns `settings.py`, `corpus/schemas.py`, `signals/base.py`,
-`signals/registry.py`, `log.py`, `cli.py`, the config YAML/JSON, or anything
-under `tests/`. Those are **frozen shared contracts** - see Rules below.
+`signals/registry.py`, `log.py`, `parallel.py`, `version.py`, the config
+YAML/JSON, or anything under `tests/`. Those are **frozen shared contracts** —
+see Rules below.
 
 ### Why the split falls this way
 
-- **Pronnati owns `oracle/`, and Mahak owns `detect/`.** C3 forbids `detect/`
-  from importing `oracle/`, and putting them under different owners makes that
-  boundary a people boundary too. The person most tempted to reach for the
-  oracle's answer-normaliser does not have it open in their editor.
-- **Aditya carries the fewest stubs on purpose.** He owns the critical path;
-  two other people are waiting on him. Loading him to parity would slow
-  everyone down.
-- **Mahak pairs `calibrate` with `freeze`.** They are one act - estimate, then
-  make it immutable - and splitting them invites a threshold that gets tuned
-  between the two steps.
-- **Dhruv pairs `detectors` with `replay` and `metrics`.** That is the
-  detection loop end to end: alarm rule, replayed stream, latency.
+- **Dhruv owns `cli.py` alone.** Every command is thin wiring over someone
+  else's module, so it is the one file all four people would otherwise touch —
+  and the project's only real merge-conflict risk. One owner removes it. Write
+  each command once its underlying module lands.
+- **Dhruv owns `oracle/` and Mahak owns all of `detect/`.** C3 forbids
+  `detect/` from importing `oracle/`, and keeping them under different owners
+  makes that a people boundary as well as a CI gate. `evaluate/` *is* allowed to
+  use the oracle — that is exactly what validates label-free detection against
+  ground truth — so oracle sits naturally with whoever owns evaluation.
+- **Mahak pairs `detectors` with `calibrate` and `freeze`.** Thresholds feed
+  the alarm rules directly; splitting them invites a threshold tuned between
+  estimating it and using it.
+- **Pronnati keeps `submit` and `manifest` together.** `submit_batch` stamps
+  the idempotency key that `recover_orphans` matches on. Separate owners for
+  those two is how that contract quietly breaks.
+- **Aditya carries the fewest stubs deliberately.** He owns the critical path
+  and two other people wait on him. Loading him to parity slows everyone down.
 
 ## Dependency order
 
@@ -50,24 +56,24 @@ they do, five other files are blocked.
 
 | Owner | Start with | Why it is unblocked |
 |---|---|---|
-| Dhruv | `evaluate/metrics.py`, `detect/detectors.py` | Pure functions over floats and dicts |
+| Dhruv | `evaluate/metrics.py`, `evaluate/bootstrap.py` | Pure functions over floats, dicts and arrays |
 | Pronnati | `provider/expand.py`, `provider/client.py` | Mocked `httpx` transport; no network, no credentials |
 | Aditya | **`synthetic/generate.py`** | Needs only `Query` objects, which you can hand-build |
-| Mahak | **`signals/windows.py`**, `detect/freeze.py` | Windows need only `Query`/`Completion`; freeze needs only `Completion` |
+| Mahak | **`signals/windows.py`**, `detect/freeze.py`, `detect/detectors.py` | Windows need only `Query`/`Completion`; freeze needs only `Completion`; detectors are pure numerics |
 
 ### After the critical path lands
 
 | Owner | Then |
 |---|---|
-| Dhruv | `corpus/build.py`, `corpus/splits.py`, then `evaluate/replay.py` last |
+| Dhruv | `corpus/build.py`, `corpus/splits.py`, `oracle/score.py`, then `evaluate/replay.py` and `cli.py` last |
 | Pronnati | `submit.py`, `collect.py`, `manifest.py`, `catalogue.py`, then `oracle/score.py` |
-| Aditya | `length.py`, `refusal.py`, `lexical.py`, `fmt.py`, then `bootstrap.py` |
-| Mahak | `consistency.py`, `entropy.py`, `embedding.py`, then `calibrate.py` |
+| Aditya | `length.py`, `refusal.py`, `lexical.py`, `fmt.py` |
+| Mahak | `consistency.py`, `entropy.py`, `embedding.py`, then `calibrate.py` last |
 
-`evaluate/replay.py` is genuinely last: it needs windows, synthetic data,
-signals and frozen thresholds. Dhruv fills that wait with `corpus/build.py`,
-which is the largest single file in the project (six datasets to normalise) and
-blocks nobody.
+`evaluate/replay.py` and `cli.py` are genuinely last: replay needs windows,
+synthetic data, signals and frozen thresholds, and each CLI command needs its
+module. Dhruv fills that wait with `corpus/build.py` — the largest single file
+in the project, six datasets to normalise — which blocks nobody.
 
 ## Rules
 
