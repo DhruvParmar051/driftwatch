@@ -26,8 +26,9 @@ def make_round(corpus, knob_values: dict, settings, condition="healthy"):
     """Generate synthetic completions at a given per-dimension knob setting."""
     from synthetic.generate import DegradationKnob, generate_completions
 
-    return generate_completions(corpus, DegradationKnob(**knob_values), settings.k,
-                                condition, settings.seed_base)
+    return generate_completions(
+        corpus, DegradationKnob(**knob_values), settings.k, condition, settings.seed_base
+    )
 
 
 # ── windows ────────────────────────────────────────────────────────────────
@@ -41,6 +42,7 @@ def test_window_has_the_exact_slice_composition(corpus, settings):
     assert len(window.query_ids) == settings.window_size
 
     from collections import Counter
+
     by_id = {q.query_id: q.slice for q in corpus}
     assert Counter(by_id[qid] for qid in window.query_ids) == WINDOW_STRATA
 
@@ -70,6 +72,7 @@ def test_bootstrap_windows_keep_each_querys_k_samples_together(corpus, settings)
     completions = make_round(corpus, {}, settings)
     window = next(bootstrap_windows(corpus, completions, n_windows=1, seed=1))
     from collections import Counter
+
     counts = Counter(c.query_id for c in window.completions)
     assert all(n % settings.k == 0 for n in counts.values())
 
@@ -202,7 +205,16 @@ def test_format_validity_would_break_if_strict_mode_were_requested(settings):
     from provider.expand import build_chat_row
 
     q = Query(query_id="jsonx_00001", slice="jsonx", prompt="p", ground_truth="{}", split="calib")
-    row = build_chat_row(q, 0, "m", "healthy", "r1", None, settings.seed_base,
-                         settings.temperature, settings.max_tokens)
+    row = build_chat_row(
+        q,
+        0,
+        "m",
+        "healthy",
+        "r1",
+        None,
+        settings.seed_base,
+        settings.temperature,
+        settings.max_tokens,
+    )
     fmt = row["body"].get("response_format")
     assert fmt is None or fmt.get("type") != "json_schema"

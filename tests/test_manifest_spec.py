@@ -14,9 +14,15 @@ pytestmark = pytest.mark.spec
 
 @pytest.fixture
 def rows():
-    return [{"custom_id": f"q{i}|0|healthy|r1", "method": "POST",
-             "url": "/v1/chat/completions", "body": {"model": "m", "messages": []}}
-            for i in range(10)]
+    return [
+        {
+            "custom_id": f"q{i}|0|healthy|r1",
+            "method": "POST",
+            "url": "/v1/chat/completions",
+            "body": {"model": "m", "messages": []},
+        }
+        for i in range(10)
+    ]
 
 
 def test_idempotency_key_depends_only_on_rows(rows):
@@ -47,8 +53,9 @@ def test_key_is_stable_across_processes(rows):
     )
     outs = []
     for _ in range(2):
-        proc = subprocess.run([sys.executable, "-c", code], input=json.dumps(rows),
-                              capture_output=True, text=True)
+        proc = subprocess.run(
+            [sys.executable, "-c", code], input=json.dumps(rows), capture_output=True, text=True
+        )
         assert proc.returncode == 0, proc.stderr
         outs.append(proc.stdout.strip())
     assert outs[0] == outs[1]
@@ -72,10 +79,20 @@ def test_resume_only_sends_pending_chunks(tmp_path, rows):
 
     path = tmp_path / "round.json"
     manifest.create(path, "r001", "healthy", "model-x", "d" * 64, [rows[:5], rows[5:]])
-    manifest.record_submitted(path, 0, SubmittedBatch(
-        batch_id="b0", input_file_id="f0", endpoint="/v1/chat/completions", n_rows=5,
-        round_id="r001", condition="healthy", submitted_at="2026-09-01T00:00:00Z",
-        row_digest="sha256:x"))
+    manifest.record_submitted(
+        path,
+        0,
+        SubmittedBatch(
+            batch_id="b0",
+            input_file_id="f0",
+            endpoint="/v1/chat/completions",
+            n_rows=5,
+            round_id="r001",
+            condition="healthy",
+            submitted_at="2026-09-01T00:00:00Z",
+            row_digest="sha256:x",
+        ),
+    )
 
     m = manifest.read(path)
     assert [c.chunk_idx for c in m.pending_chunks()] == [1]
@@ -89,10 +106,20 @@ def test_collected_chunk_is_not_resubmitted(tmp_path, rows):
 
     path = tmp_path / "round.json"
     manifest.create(path, "r001", "healthy", "model-x", "d" * 64, [rows])
-    manifest.record_submitted(path, 0, SubmittedBatch(
-        batch_id="b0", input_file_id="f0", endpoint="/v1/chat/completions", n_rows=10,
-        round_id="r001", condition="healthy", submitted_at="2026-09-01T00:00:00Z",
-        row_digest="sha256:x"))
+    manifest.record_submitted(
+        path,
+        0,
+        SubmittedBatch(
+            batch_id="b0",
+            input_file_id="f0",
+            endpoint="/v1/chat/completions",
+            n_rows=10,
+            round_id="r001",
+            condition="healthy",
+            submitted_at="2026-09-01T00:00:00Z",
+            row_digest="sha256:x",
+        ),
+    )
     manifest.record_collected(path, 0, n_collected=10)
 
     m = manifest.read(path)
@@ -126,10 +153,20 @@ def test_orphaned_chunk_is_adopted_not_resubmitted(tmp_path, rows):
     m.chunks[0].status = "submitting"
     key = m.chunks[0].idempotency_key
 
-    transport = httpx.MockTransport(lambda request: httpx.Response(200, json={
-        "data": [{"id": "b-orphan", "status": "in_progress",
-                  "metadata": {"round_id": "r001", "idempotency_key": key}}]
-    }))
+    transport = httpx.MockTransport(
+        lambda request: httpx.Response(
+            200,
+            json={
+                "data": [
+                    {
+                        "id": "b-orphan",
+                        "status": "in_progress",
+                        "metadata": {"round_id": "r001", "idempotency_key": key},
+                    }
+                ]
+            },
+        )
+    )
     client = BatchClient("http://test.invalid/v1", "k", transport=transport)
 
     recovered = manifest.recover_orphans(path, client)

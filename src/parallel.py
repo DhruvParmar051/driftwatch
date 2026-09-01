@@ -28,7 +28,7 @@ with 4 workers and a run with 18 produce identical numbers.
 from __future__ import annotations
 
 import os
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Callable, Sequence
 from concurrent.futures import ProcessPoolExecutor
 from typing import TypeVar
 
@@ -63,6 +63,7 @@ def resolve_workers(requested: int = 0) -> int:
 
     Returns:
         At least 1.
+
     """
     cores = available_cores()
     if requested == 0:
@@ -86,8 +87,9 @@ def derive_worker_seeds(master_seed: int, n_items: int) -> list[int]:
     return [int(s.generate_state(1)[0]) for s in np.random.SeedSequence(master_seed).spawn(n_items)]
 
 
-def parallel_map(fn: Callable[[T], R], items: Sequence[T], workers: int = 0,
-                 chunk_size: int | None = None) -> list[R]:
+def parallel_map(
+    fn: Callable[[T], R], items: Sequence[T], workers: int = 0, chunk_size: int | None = None
+) -> list[R]:
     """Map `fn` over `items` across processes, preserving INPUT order.
 
     Falls back to a serial map when only one worker is resolved or the input is
@@ -103,6 +105,7 @@ def parallel_map(fn: Callable[[T], R], items: Sequence[T], workers: int = 0,
         Results in the same order as `items`, ALWAYS - never completion order.
         Evaluation output has to be byte-identical across runs, and ordering by
         completion is the usual way that quietly stops being true.
+
     """
     n_workers = resolve_workers(workers)
     if n_workers == 1 or len(items) < 2 * n_workers:

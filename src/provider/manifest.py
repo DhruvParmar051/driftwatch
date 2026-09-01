@@ -82,8 +82,9 @@ def chunk_idempotency_key(rows: list[dict]) -> str:
     raise NotImplementedError
 
 
-def create(path: Path, round_id: str, condition: str, model_id: str, digest: str,
-           chunks: list[list[dict]]) -> RoundManifest:
+def create(
+    path: Path, round_id: str, condition: str, model_id: str, digest: str, chunks: list[list[dict]]
+) -> RoundManifest:
     """Create and persist a manifest for a round, before anything is submitted.
 
     Constraints:

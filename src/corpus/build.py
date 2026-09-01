@@ -61,6 +61,7 @@ def load_slice(slice_name: str, n: int, seed: int) -> list[Query]:
         - triviaqa answers have aliases. Pick one canonical form for
           `ground_truth` and let the ORACLE handle alias matching - the corpus
           must not encode scoring policy.
+
     """
     raise NotImplementedError
 
@@ -95,6 +96,7 @@ def build_corpus(seed: int) -> list[Query]:
     Raises:
         ValueError: if the total is not 5,000, or the verifiable slices do not
             sum to exactly 2,800. Assert both - they are the Stage 1 gate.
+
     """
     raise NotImplementedError
 

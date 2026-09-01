@@ -14,6 +14,7 @@ claims. Reconciliation must therefore FAIL LOUDLY, never warn.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
 
 from corpus.schemas import Completion
@@ -29,7 +30,7 @@ class ReconciliationReport:
 
     n_submitted: int = 0
     n_returned: int = 0
-    missing: list[str] = field(default_factory=list)     # submitted, never came back
+    missing: list[str] = field(default_factory=list)  # submitted, never came back
     unexpected: list[str] = field(default_factory=list)  # returned, never submitted
     duplicated: list[str] = field(default_factory=list)  # returned more than once
     n_parse_failures: int = 0
@@ -71,12 +72,19 @@ def parse_result_line(line: str) -> tuple[str, str, str, bool]:
         ValueError: only if `custom_id` itself is unrecoverable - that is a
             reconciliation problem (the row cannot be matched to a query), not
             a parse failure.
+
     """
     raise NotImplementedError
 
 
-def collect_results(output_path: Path, submitted_custom_ids: set[str], model_id: str,
-                    digest: str, digest_source: str, submitted_at) -> tuple[list[Completion], ReconciliationReport]:
+def collect_results(
+    output_path: Path,
+    submitted_custom_ids: set[str],
+    model_id: str,
+    digest: str,
+    digest_source: str,
+    submitted_at: datetime,
+) -> tuple[list[Completion], ReconciliationReport]:
     """Parse a downloaded output file into Completions and reconcile it.
 
     Behaviour:
@@ -96,6 +104,7 @@ def collect_results(output_path: Path, submitted_custom_ids: set[str], model_id:
         C10 - the report is a set comparison, not a count comparison. Equal
               counts with one duplicate and one missing row is a real failure
               mode and a length check would pass it.
+
     """
     raise NotImplementedError
 

@@ -14,8 +14,12 @@ import structlog
 
 def configure_logging(level: str = "INFO", json_output: bool = True) -> None:
     """Configure structlog for the process. Idempotent; call once at CLI entry."""
-    logging.basicConfig(format="%(message)s", stream=sys.stdout, level=getattr(logging, level.upper()))
-    renderer = structlog.processors.JSONRenderer() if json_output else structlog.dev.ConsoleRenderer()
+    logging.basicConfig(
+        format="%(message)s", stream=sys.stdout, level=getattr(logging, level.upper())
+    )
+    renderer = (
+        structlog.processors.JSONRenderer() if json_output else structlog.dev.ConsoleRenderer()
+    )
     structlog.configure(
         processors=[
             structlog.contextvars.merge_contextvars,

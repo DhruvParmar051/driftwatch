@@ -35,7 +35,7 @@ def test_verifiable_slices_total_2800():
 
 def test_every_slice_is_known():
     assert set(SLICE_SIZES) == set(SLICES)
-    assert VERIFIABLE_SLICES <= set(SLICES)
+    assert set(SLICES) >= VERIFIABLE_SLICES
 
 
 def test_split_sizes_sum_to_slice_sizes():

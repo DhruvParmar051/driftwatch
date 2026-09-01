@@ -7,6 +7,8 @@ only in config, and the schemas enforce their invariants.
 
 from __future__ import annotations
 
+from datetime import UTC
+
 import pytest
 
 from tests.conftest import PACKAGE_ROOT, python_files
@@ -26,7 +28,9 @@ def test_every_signal_class_declares_its_registered_name():
     from signals.registry import SIGNAL_CLASSES
 
     for registered_name, cls in SIGNAL_CLASSES.items():
-        assert cls.name == registered_name, f"{cls.__name__}.name is {cls.name!r}, registered as {registered_name!r}"
+        assert cls.name == registered_name, (
+            f"{cls.__name__}.name is {cls.name!r}, registered as {registered_name!r}"
+        )
 
 
 def test_every_signal_declares_fit_and_score():
@@ -45,8 +49,20 @@ def test_cli_app_builds_and_lists_every_stage():
 
     result = CliRunner().invoke(app, ["--help"])
     assert result.exit_code == 0, result.output
-    for command in ("corpus", "synth", "probe", "expand", "submit", "collect",
-                    "calibrate", "freeze", "verify", "oracle", "evaluate", "report"):
+    for command in (
+        "corpus",
+        "synth",
+        "probe",
+        "expand",
+        "submit",
+        "collect",
+        "calibrate",
+        "freeze",
+        "verify",
+        "oracle",
+        "evaluate",
+        "report",
+    ):
         assert command in result.output, f"CLI is missing `{command}`"
 
 
@@ -137,7 +153,7 @@ def test_query_rejects_label_space_outside_banking77():
 
 def test_thresholds_rejects_signal_count_mismatch():
     """The Sidak level is computed for a specific m; a mismatch invalidates it."""
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     from pydantic import ValidationError
 
@@ -145,10 +161,18 @@ def test_thresholds_rejects_signal_count_mismatch():
 
     with pytest.raises(ValidationError):
         Thresholds(
-            frozen_at=datetime.now(timezone.utc), git_commit="abc1234",
-            calib_rows_hash="sha256:x", k=4, window_size=200, window_stride=50,
-            family_wise_budget=0.001, per_signal_alpha=0.000143, n_signals=7,
-            bootstrap_windows=20000, calibration_seed=1, refusal_patterns_version="1.0.0",
+            frozen_at=datetime.now(UTC),
+            git_commit="abc1234",
+            calib_rows_hash="sha256:x",
+            k=4,
+            window_size=200,
+            window_stride=50,
+            family_wise_budget=0.001,
+            per_signal_alpha=0.000143,
+            n_signals=7,
+            bootstrap_windows=20000,
+            calibration_seed=1,
+            refusal_patterns_version="1.0.0",
             prompts_version="1.0.0",
             thresholds={"length_ks": 0.1},  # only 1, but n_signals says 7
         )
@@ -156,13 +180,21 @@ def test_thresholds_rejects_signal_count_mismatch():
 
 def test_completion_allows_empty_text_but_records_parse_failure():
     """C6 - an unparseable completion is data, not something to drop."""
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     from corpus.schemas import Completion
 
     c = Completion(
-        query_id="q1", sample_idx=0, seed=1, condition="F1", model_id="m", digest="d",
-        digest_source="backend", text="", finish_reason="length", parse_ok=False,
-        submitted_at=datetime.now(timezone.utc),
+        query_id="q1",
+        sample_idx=0,
+        seed=1,
+        condition="F1",
+        model_id="m",
+        digest="d",
+        digest_source="backend",
+        text="",
+        finish_reason="length",
+        parse_ok=False,
+        submitted_at=datetime.now(UTC),
     )
     assert c.parse_ok is False and c.text == ""

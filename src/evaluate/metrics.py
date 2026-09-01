@@ -16,6 +16,7 @@ def detection_latency(detection_records: list[dict], condition: str) -> np.ndarr
         NEVER report latency as a single number. Report the full distribution:
         median, IQR, and the tail. A mean latency over a bimodal distribution -
         detected fast or not at all - describes neither mode.
+
     """
     raise NotImplementedError
 
@@ -25,8 +26,9 @@ def non_detection_rate(detection_records: list[dict], condition: str) -> float:
     raise NotImplementedError
 
 
-def roc_at_budget(healthy_scores: np.ndarray, fault_scores: np.ndarray,
-                  budget: float) -> tuple[float, float]:
+def roc_at_budget(
+    healthy_scores: np.ndarray, fault_scores: np.ndarray, budget: float
+) -> tuple[float, float]:
     """(TPR, threshold) at a fixed false-alarm budget.
 
     Constraints:
@@ -58,11 +60,12 @@ def discrimination(f123_records: list[dict], f4_records: list[dict]) -> dict[str
         Report per signal. Some signals (embedding shift, length) should respond
         to F4; others (self-consistency, format validity) should not. That
         PATTERN is the discriminative evidence - a pooled score destroys it.
+
     """
     raise NotImplementedError
 
 
-def summarise(detection_records: list[dict]) -> "object":
+def summarise(detection_records: list[dict]) -> object:
     """Build the per-condition results table.
 
     Constraints:

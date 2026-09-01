@@ -19,6 +19,7 @@ field per dimension, and `knob=0.4` as shorthand for "all four at 0.4".
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 
 from corpus.schemas import Completion, Query
 
@@ -36,7 +37,7 @@ class DegradationKnob:
     consistency: float = 0.0
 
     @classmethod
-    def uniform(cls, value: float) -> "DegradationKnob":
+    def uniform(cls, value: float) -> DegradationKnob:
         """All four dimensions at `value`. The plain 'knob 0.8' of the Stage 0 gate."""
         raise NotImplementedError
 
@@ -97,6 +98,7 @@ def generate_completions(
         - k < 2: raise ValueError - S3 is undefined on a single sample.
         - A `jsonx` query at high `repetition` must still sometimes emit VALID
           JSON, or S5 saturates at 1.0 and shows no gradient.
+
     """
     raise NotImplementedError
 
@@ -125,6 +127,7 @@ def generate_embeddings(
     Edge cases:
         - Vectors must be L2-normalised if S7 uses cosine distance. Decide once,
           here and in signals/embedding.py, and document which.
+
     """
     raise NotImplementedError
 
@@ -135,7 +138,7 @@ def write_synthetic_round(
     k: int,
     condition: str,
     seed: int,
-    out_path,
+    out_path: Path,
 ) -> int:
     """Generate a round and write it to `out_path` as completions.parquet.
 
@@ -145,5 +148,6 @@ def write_synthetic_round(
     Constraints:
         Output must round-trip: reading the parquet back and re-validating every
         row as a `Completion` must succeed. That round-trip IS the Stage 0 gate.
+
     """
     raise NotImplementedError
