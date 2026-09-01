@@ -28,8 +28,9 @@ class StrataError(ValueError):
     """The query pool cannot satisfy settings.WINDOW_STRATA."""
 
 
-def build_window(queries: list[Query], completions: list[Completion], window_idx: int,
-                 condition: str) -> Window:
+def build_window(
+    queries: list[Query], completions: list[Completion], window_idx: int, condition: str
+) -> Window:
     """Assemble one window from a pre-selected set of queries.
 
     Raises:
@@ -40,12 +41,16 @@ def build_window(queries: list[Query], completions: list[Completion], window_idx
     Constraints:
         C6 - parse_ok=False completions are INCLUDED. They are part of the
         window's evidence, and Window.parse_fail_rate reports them.
+
     """
     raise NotImplementedError
 
 
-def stream_windows(queries: list[Query], completions: list[Completion], seed: int,
-                   ) -> Iterator[Window]:
+def stream_windows(
+    queries: list[Query],
+    completions: list[Completion],
+    seed: int,
+) -> Iterator[Window]:
     """Yield overlapping stratified windows in stream order.
 
     Behaviour:
@@ -61,12 +66,14 @@ def stream_windows(queries: list[Query], completions: list[Completion], seed: in
         - Fewer than W queries: yield nothing rather than a short window. A
           short window has the wrong strata and its scores are not comparable.
         - The tail: stop when a full window cannot be formed. Never pad.
+
     """
     raise NotImplementedError
 
 
-def bootstrap_windows(queries: list[Query], completions: list[Completion], n_windows: int,
-                      seed: int) -> Iterator[Window]:
+def bootstrap_windows(
+    queries: list[Query], completions: list[Completion], n_windows: int, seed: int
+) -> Iterator[Window]:
     """Yield `n_windows` stratified windows resampled WITH REPLACEMENT.
 
     Why this exists:

@@ -41,13 +41,23 @@ def current_git_commit() -> str:
         FrozenIntegrityError: if the tree is DIRTY. Freezing from uncommitted
             code produces a record pointing at a commit that never contained the
             calibration logic actually used.
+
     """
     raise NotImplementedError
 
 
-def write(path: Path, thresholds: dict[str, float], calib_completions: list[Completion],
-          family_wise_budget: float, per_signal_alpha: float, k: int, window_size: int,
-          window_stride: int, bootstrap_windows: int, calibration_seed: int) -> Thresholds:
+def write(
+    path: Path,
+    thresholds: dict[str, float],
+    calib_completions: list[Completion],
+    family_wise_budget: float,
+    per_signal_alpha: float,
+    k: int,
+    window_size: int,
+    window_stride: int,
+    bootstrap_windows: int,
+    calibration_seed: int,
+) -> Thresholds:
     """Write thresholds.json. THE POINT OF NO RETURN.
 
     Behaviour:
@@ -65,6 +75,7 @@ def write(path: Path, thresholds: dict[str, float], calib_completions: list[Comp
         C4 - after this returns, nothing may change a threshold. Not to make a
         gate pass, not to fix an obviously-wrong number. Fix the method and
         refreeze from scratch under a new commit.
+
     """
     raise NotImplementedError
 
@@ -91,5 +102,6 @@ def verify(path: Path, calib_completions: list[Completion]) -> Thresholds:
     Constraints:
         This is what makes C4 and C5 checkable rather than merely stated. A
         mutated calibration set MUST fail here - that is the Stage 5 gate.
+
     """
     raise NotImplementedError

@@ -51,6 +51,7 @@ class Signal(Protocol):
             C6 - rows with parse_ok=False are part of the reference, not filtered
                  out. The healthy parse-failure rate is a real property of the
                  baseline and excluding it biases every later comparison.
+
         """
         ...
 
@@ -65,5 +66,6 @@ class Signal(Protocol):
 
         Raises:
             NotFittedError: if `fit()` has not been called.
+
         """
         ...

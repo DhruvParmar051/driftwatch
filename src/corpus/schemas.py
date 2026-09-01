@@ -7,7 +7,6 @@ change for all four workstreams, so agree edits before making them.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -22,20 +21,24 @@ class Query(BaseModel):
     query_id: str = Field(description="Stable id, '<slice>_<5-digit index>', e.g. 'gsm8k_00042'.")
     slice: str
     prompt: str
-    ground_truth: Optional[str] = Field(
+    ground_truth: str | None = Field(
         default=None, description="Non-null exactly on the verifiable slices."
     )
-    label_space: Optional[list[str]] = Field(
+    label_space: list[str] | None = Field(
         default=None, description="Non-null only for banking77 (its 77 intent labels)."
     )
     split: str
 
     @model_validator(mode="after")
-    def _check_slice_invariants(self) -> "Query":
+    def _check_slice_invariants(self) -> Query:
         if self.slice in VERIFIABLE_SLICES and self.ground_truth is None:
-            raise ValueError(f"{self.query_id}: slice {self.slice!r} is verifiable but ground_truth is None")
+            raise ValueError(
+                f"{self.query_id}: slice {self.slice!r} is verifiable but ground_truth is None"
+            )
         if self.slice not in VERIFIABLE_SLICES and self.ground_truth is not None:
-            raise ValueError(f"{self.query_id}: slice {self.slice!r} is not verifiable but has ground_truth")
+            raise ValueError(
+                f"{self.query_id}: slice {self.slice!r} is not verifiable but has ground_truth"
+            )
         if (self.slice == "banking77") != (self.label_space is not None):
             raise ValueError(f"{self.query_id}: label_space must be set iff slice is banking77")
         return self
@@ -71,7 +74,7 @@ class Completion(BaseModel):
         "degradation signal. Every signal reports the rate alongside its score."
     )
     submitted_at: datetime
-    returned_at: Optional[datetime] = None
+    returned_at: datetime | None = None
 
     @property
     def group_key(self) -> tuple[str, str]:
@@ -89,13 +92,16 @@ class Window(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    window_idx: int = Field(ge=0, description="Position in the replay stream; latency counts these.")
+    window_idx: int = Field(
+        ge=0, description="Position in the replay stream; latency counts these."
+    )
     query_ids: list[str] = Field(description="Exactly settings.window_size ids, stratified.")
     completions: list[Completion]
     condition: str = Field(description="Dominant condition; a post-onset window may be mixed.")
 
     @property
     def parse_fail_rate(self) -> float:
+        """Fraction of this window's completions that failed to parse (C6)."""
         if not self.completions:
             return 0.0
         return sum(1 for c in self.completions if not c.parse_ok) / len(self.completions)
@@ -109,7 +115,9 @@ class SignalScore(BaseModel):
     name: str = Field(description="One of settings.SIGNAL_NAMES.")
     value: float = Field(description="Higher = more degraded, for EVERY signal. See note below.")
     parse_fail_rate: float = Field(
-        ge=0.0, le=1.0, description="Parse-failure rate of the rows this score was computed on (C6)."
+        ge=0.0,
+        le=1.0,
+        description="Parse-failure rate of the rows this score was computed on (C6).",
     )
     n_rows: int = Field(ge=0, description="Rows contributing, INCLUDING parse failures.")
 
@@ -153,7 +161,7 @@ class Thresholds(BaseModel):
     thresholds: dict[str, float]
 
     @model_validator(mode="after")
-    def _check_signal_count(self) -> "Thresholds":
+    def _check_signal_count(self) -> Thresholds:
         if self.n_signals != len(self.thresholds):
             raise ValueError(
                 f"n_signals={self.n_signals} but {len(self.thresholds)} thresholds present; "

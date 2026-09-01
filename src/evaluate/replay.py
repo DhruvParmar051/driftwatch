@@ -24,8 +24,14 @@ class ReplayRun:
     seed: int
 
 
-def make_replay(healthy: list[Completion], faulty: list[Completion], queries: list[Query],
-                onset_window_idx: int, n_windows: int, seed: int) -> Iterator[Window]:
+def make_replay(
+    healthy: list[Completion],
+    faulty: list[Completion],
+    queries: list[Query],
+    onset_window_idx: int,
+    n_windows: int,
+    seed: int,
+) -> Iterator[Window]:
     """Yield a stream of windows that switches to `faulty` at the onset.
 
     Behaviour:
@@ -58,9 +64,14 @@ def randomised_onsets(n_runs: int, n_windows: int, min_prefix: int, seed: int) -
     raise NotImplementedError
 
 
-def run_replay(runs: list[ReplayRun], healthy: list[Completion],
-               faulty_by_condition: dict[str, list[Completion]], queries: list[Query],
-               signals: dict, thresholds: dict[str, float]) -> list[dict]:
+def run_replay(
+    runs: list[ReplayRun],
+    healthy: list[Completion],
+    faulty_by_condition: dict[str, list[Completion]],
+    queries: list[Query],
+    signals: dict,
+    thresholds: dict[str, float],
+) -> list[dict]:
     """Execute all replay runs and return per-run detection records.
 
     Returns:
@@ -72,5 +83,6 @@ def run_replay(runs: list[ReplayRun], healthy: list[Completion],
         Substituting the stream length turns a non-detection into a large finite
         latency, which silently biases the mean and hides the failure. Report
         the non-detection RATE separately from the latency distribution.
+
     """
     raise NotImplementedError

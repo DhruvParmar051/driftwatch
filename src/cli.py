@@ -8,12 +8,11 @@ that a test would want to reach directly.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 
 import typer
 
-from version import __version__
 from log import configure_logging, get_logger
+from version import __version__
 
 app = typer.Typer(
     name="driftwatch",
@@ -25,8 +24,10 @@ log = get_logger(__name__)
 
 
 @app.callback()
-def main(verbose: bool = typer.Option(False, "--verbose", "-v"),
-         plain: bool = typer.Option(False, "--plain", help="Human-readable logs instead of JSON.")) -> None:
+def main(
+    verbose: bool = typer.Option(False, "--verbose", "-v"),
+    plain: bool = typer.Option(False, "--plain", help="Human-readable logs instead of JSON."),
+) -> None:
     """Configure logging for every subcommand."""
     configure_logging(level="DEBUG" if verbose else "INFO", json_output=not plain)
 
@@ -46,7 +47,7 @@ app.add_typer(corpus_app, name="corpus")
 @corpus_app.command("build")
 def corpus_build(
     out: Path = typer.Option(None, help="Output queries.jsonl. Defaults to settings.queries_path."),
-    seed: Optional[int] = typer.Option(None, help="Corpus seed. Defaults to settings.corpus_seed."),
+    seed: int | None = typer.Option(None, help="Corpus seed. Defaults to settings.corpus_seed."),
 ) -> None:
     """Assemble the 5,000-query corpus and assign splits.
 
@@ -69,7 +70,7 @@ def corpus_build(
 @app.command()
 def synth(
     knob: list[float] = typer.Option([0.0], help="Degradation level(s), 0.0-1.0. Repeatable."),
-    k: Optional[int] = typer.Option(None, help="Samples per query."),
+    k: int | None = typer.Option(None, help="Samples per query."),
     condition: str = typer.Option("healthy", help="Condition label for the generated rows."),
     out_dir: Path = typer.Option(None, help="Output directory."),
 ) -> None:
@@ -97,7 +98,9 @@ def synth(
 
 
 @app.command()
-def probe(rows: int = typer.Option(20, help="Total probe rows (10 distinct + 10 identical seeds).")) -> None:
+def probe(
+    rows: int = typer.Option(20, help="Total probe rows (10 distinct + 10 identical seeds)."),
+) -> None:
     """Stage 2 seed-determinism probe. RUN THIS BEFORE ANY LARGE ROUND.
 
     Submits one prompt x 10 distinct seeds and the same prompt x 10 identical
@@ -133,8 +136,11 @@ def expand(
 
 
 @app.command()
-def submit(jsonl: Path = typer.Argument(..., help="JSONL file to submit."),
-           condition: str = typer.Option(...), round_id: str = typer.Option(...)) -> None:
+def submit(
+    jsonl: Path = typer.Argument(..., help="JSONL file to submit."),
+    condition: str = typer.Option(...),
+    round_id: str = typer.Option(...),
+) -> None:
     """Upload and submit a batch, then persist the submission record (Stage 3)."""
     raise NotImplementedError("submit: wire provider.submit.submit_batch")
 
@@ -203,8 +209,12 @@ def oracle(completions: Path = typer.Option(...), condition: str = typer.Option(
 @app.command()
 def evaluate(
     completions: Path = typer.Option(..., help="Healthy + fault completions."),
-    thresholds: Path = typer.Option(None, help="Frozen thresholds. Defaults to settings.thresholds_path."),
-    synthetic: bool = typer.Option(False, "--synthetic", help="Evaluate against synthetic data (Stage 7 gate)."),
+    thresholds: Path = typer.Option(
+        None, help="Frozen thresholds. Defaults to settings.thresholds_path."
+    ),
+    synthetic: bool = typer.Option(
+        False, "--synthetic", help="Evaluate against synthetic data (Stage 7 gate)."
+    ),
     n_runs: int = typer.Option(200, help="Randomised-onset replay runs per condition."),
 ) -> None:
     """Replay, detection latency, ROC and bootstrap CIs (Stage 7).

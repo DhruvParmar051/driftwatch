@@ -30,8 +30,9 @@ def test_knob_rejects_out_of_range(knob_cls):
 def test_generates_exactly_k_samples_per_query(sample_query, knob_cls):
     from synthetic.generate import generate_completions
 
-    out = generate_completions([sample_query], knob_cls.uniform(0.0), k=4,
-                               condition="healthy", seed=1)
+    out = generate_completions(
+        [sample_query], knob_cls.uniform(0.0), k=4, condition="healthy", seed=1
+    )
     assert len(out) == 4
     assert sorted(c.sample_idx for c in out) == [0, 1, 2, 3]
 
@@ -40,8 +41,9 @@ def test_seeds_are_distinct_within_a_query(sample_query, knob_cls):
     """C2 - identical seeds collapse S3 to a constant 1.0."""
     from synthetic.generate import generate_completions
 
-    out = generate_completions([sample_query], knob_cls.uniform(0.0), k=4,
-                               condition="healthy", seed=1)
+    out = generate_completions(
+        [sample_query], knob_cls.uniform(0.0), k=4, condition="healthy", seed=1
+    )
     seeds = [c.seed for c in out]
     assert len(set(seeds)) == len(seeds)
 
@@ -60,8 +62,9 @@ def test_k_below_two_raises(sample_query, knob_cls):
     from synthetic.generate import generate_completions
 
     with pytest.raises(ValueError):
-        generate_completions([sample_query], knob_cls.uniform(0.0), k=1,
-                             condition="healthy", seed=1)
+        generate_completions(
+            [sample_query], knob_cls.uniform(0.0), k=1, condition="healthy", seed=1
+        )
 
 
 def test_empty_query_list_returns_empty(knob_cls):

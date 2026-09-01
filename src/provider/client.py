@@ -24,7 +24,9 @@ class BatchAPIError(RuntimeError):
     happened.
     """
 
-    def __init__(self, message: str, status_code: int | None = None, body: str | None = None) -> None:
+    def __init__(
+        self, message: str, status_code: int | None = None, body: str | None = None
+    ) -> None:
         super().__init__(message)
         self.status_code = status_code
         self.body = body
@@ -37,8 +39,13 @@ class BatchClient:
     module be tested against a mocked httpx transport with no network.
     """
 
-    def __init__(self, base_url: str, api_key: str, timeout_s: float = 60.0,
-                 transport: httpx.BaseTransport | None = None) -> None:
+    def __init__(
+        self,
+        base_url: str,
+        api_key: str,
+        timeout_s: float = 60.0,
+        transport: httpx.BaseTransport | None = None,
+    ) -> None:
         """Build the client.
 
         Args:
@@ -46,6 +53,7 @@ class BatchClient:
                 `httpx.MockTransport` to exercise every path offline. This
                 parameter is the reason the whole provider layer is testable
                 without credentials - keep it.
+
         """
         raise NotImplementedError
 
@@ -58,6 +66,7 @@ class BatchClient:
 
         Raises:
             BatchAPIError: on any non-2xx response.
+
         """
         raise NotImplementedError
 
@@ -71,12 +80,15 @@ class BatchClient:
         """
         raise NotImplementedError
 
-    def create_batch(self, input_file_id: str, endpoint: str, metadata: dict[str, str] | None = None) -> str:
+    def create_batch(
+        self, input_file_id: str, endpoint: str, metadata: dict[str, str] | None = None
+    ) -> str:
         """POST /v1/batches. Returns the batch id.
 
         Args:
             endpoint: settings.CHAT_URL or settings.EMBEDDINGS_URL. These are
                 the only two the platform accepts.
+
         """
         raise NotImplementedError
 

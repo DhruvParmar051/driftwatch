@@ -68,12 +68,14 @@ def score_completion(completion: Completion, query: Query) -> bool | None:
     Constraints:
         C6 - a parse failure scores False, never None. None means "cannot be
         scored in principle"; False means "was scored and was wrong".
+
     """
     raise NotImplementedError
 
 
-def score_condition(completions: list[Completion], queries: list[Query],
-                    condition: str) -> list[OracleResult]:
+def score_condition(
+    completions: list[Completion], queries: list[Query], condition: str
+) -> list[OracleResult]:
     """Score one condition across the verifiable slices.
 
     Returns:
@@ -83,5 +85,6 @@ def score_condition(completions: list[Completion], queries: list[Query],
         Report per slice. Pooling slices hides that a fault may hit reasoning
         hard and retrieval barely at all, which is the shape of the degradation
         the monitor is supposed to be detecting.
+
     """
     raise NotImplementedError

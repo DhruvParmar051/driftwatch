@@ -10,7 +10,8 @@ pytestmark = pytest.mark.spec
 def test_parse_failure_scores_incorrect_not_excluded(sample_query, sample_completion):
     """C6 - excluding parse failures flatters a degraded model exactly where it
     fails hardest, and would understate the quality drop the detectors are
-    validated against."""
+    validated against.
+    """
     from oracle.score import score_completion
 
     failed = sample_completion.model_copy(update={"text": "", "parse_ok": False})

@@ -21,9 +21,16 @@ from tests.conftest import PACKAGE_ROOT, python_files
 pytestmark = pytest.mark.gate
 
 FORBIDDEN_MODULES = {
-    "torch", "torchvision", "torchaudio",
-    "transformers", "sentence_transformers",
-    "accelerate", "onnxruntime", "llama_cpp", "vllm", "ctransformers",
+    "torch",
+    "torchvision",
+    "torchaudio",
+    "transformers",
+    "sentence_transformers",
+    "accelerate",
+    "onnxruntime",
+    "llama_cpp",
+    "vllm",
+    "ctransformers",
 }
 
 
@@ -78,7 +85,6 @@ def test_datasets_is_allowed_but_only_in_corpus():
     """`datasets` builds the corpus; it must never be a route to pulling a model."""
     offenders = []
     for path in python_files(PACKAGE_ROOT):
-        if "datasets" in imported_top_level_modules(path):
-            if path.parent.name != "corpus":
-                offenders.append(str(path.relative_to(PACKAGE_ROOT.parent)))
+        if "datasets" in imported_top_level_modules(path) and path.parent.name != "corpus":
+            offenders.append(str(path.relative_to(PACKAGE_ROOT.parent)))
     assert not offenders, f"`datasets` imported outside corpus/: {offenders}"

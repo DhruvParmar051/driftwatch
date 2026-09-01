@@ -51,7 +51,7 @@ def test_banking77_template_injects_the_label_space():
 
 
 def test_jsonx_template_states_the_schema_in_prose():
-    """jsonx rows carry no response_format, so the schema must be in the prompt.
+    """Jsonx rows carry no response_format, so the schema must be in the prompt.
 
     If it were passed as a strict json_schema instead, the platform would
     validate server-side and fail malformed rows - and S5 would have nothing
@@ -64,7 +64,8 @@ def test_jsonx_template_states_the_schema_in_prose():
 
 def test_jsonx_template_matches_the_schema_it_is_validated_against():
     """Prompt and validator must describe the same object, or S5 measures a
-    mismatch between two configs rather than model degradation."""
+    mismatch between two configs rather than model degradation.
+    """
     from settings import load_jsonx_schema
 
     template = slice_template("jsonx")
@@ -102,8 +103,12 @@ def test_no_prompt_text_is_inlined_in_source():
     An inline prompt bypasses the version that verify() checks, so it can drift
     after a freeze without anything noticing.
     """
-    fragments = ["You are a helpful assistant", "Answer the user's question",
-                 "Summarise the article", "Solve this problem"]
+    fragments = [
+        "You are a helpful assistant",
+        "Answer the user's question",
+        "Summarise the article",
+        "Solve this problem",
+    ]
     offenders = []
     for path in python_files(PACKAGE_ROOT):
         text = path.read_text()

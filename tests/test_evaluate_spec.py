@@ -34,11 +34,13 @@ def test_zero_magnitude_fault_is_not_detected():
 
 def test_non_detection_is_never_recorded_as_a_finite_latency():
     """Substituting the stream length turns a failure into a large finite number,
-    which biases the mean and hides the non-detection entirely."""
+    which biases the mean and hides the non-detection entirely.
+    """
     from evaluate.metrics import detection_latency, non_detection_rate
 
-    records = ([{"condition": "F2", "onset": 5, "latency": 3}] * 8
-               + [{"condition": "F2", "onset": 5, "latency": None}] * 2)
+    records = [{"condition": "F2", "onset": 5, "latency": 3}] * 8 + [
+        {"condition": "F2", "onset": 5, "latency": None}
+    ] * 2
     assert len(detection_latency(records, "F2")) == 8
     assert non_detection_rate(records, "F2") == pytest.approx(0.2)
 

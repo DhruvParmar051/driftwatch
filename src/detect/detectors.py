@@ -78,7 +78,9 @@ class PageHinkleyDetector:
         raise NotImplementedError
 
     def update(self, window_idx: int, value: float) -> Alarm | None:
+        """Update the test statistic; return an Alarm if it crosses the threshold."""
         raise NotImplementedError
 
     def reset(self) -> None:
+        """Clear accumulated state."""
         raise NotImplementedError

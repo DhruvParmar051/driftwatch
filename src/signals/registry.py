@@ -42,6 +42,7 @@ def build_signals(enabled: list[str] | None = None) -> dict[str, Signal]:
 
     Raises:
         KeyError: on an unknown signal name.
+
     """
     names = list(SIGNAL_CLASSES) if enabled is None else list(enabled)
     unknown = set(names) - set(SIGNAL_CLASSES)

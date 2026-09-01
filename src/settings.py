@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Literal
 
 import yaml
-from pydantic import Field, field_validator
+from pydantic import Field, ValidationInfo, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # ── Package paths ──────────────────────────────────────────────────────────
@@ -128,9 +128,7 @@ class Settings(BaseSettings):
     URL in the source tree is exactly what this project forbids.
     """
 
-    model_config = SettingsConfigDict(
-        env_prefix="DRIFTWATCH_", env_file=".env", extra="forbid"
-    )
+    model_config = SettingsConfigDict(env_prefix="DRIFTWATCH_", env_file=".env", extra="forbid")
 
     # ── Backend ────────────────────────────────────────────────────────────
     base_url: str = Field(description="OpenAI-compatible batch endpoint root, e.g. https://host/v1")
@@ -140,7 +138,9 @@ class Settings(BaseSettings):
     poll_timeout_s: float = 24 * 3600.0
 
     # ── Sampling ───────────────────────────────────────────────────────────
-    k: int = Field(default=4, ge=2, description="Samples per query. C1: k SEPARATE rows, never n>k.")
+    k: int = Field(
+        default=4, ge=2, description="Samples per query. C1: k SEPARATE rows, never n>k."
+    )
     temperature: float = 0.7
     max_tokens: int = 512
     seed_base: int = 20260901
@@ -166,7 +166,9 @@ class Settings(BaseSettings):
         "observations) - detect.calibrate falls back to a peaks-over-threshold "
         "tail fit, which is the correct method here. See its docstring.",
     )
-    bootstrap_resamples: int = Field(default=2_000, ge=2_000, description="Resamples for evaluation CIs.")
+    bootstrap_resamples: int = Field(
+        default=2_000, ge=2_000, description="Resamples for evaluation CIs."
+    )
     calibration_seed: int = 11071987
     n_workers: int = Field(
         default=0,
@@ -188,7 +190,7 @@ class Settings(BaseSettings):
 
     @field_validator("window_stride")
     @classmethod
-    def _stride_fits(cls, v: int, info) -> int:
+    def _stride_fits(cls, v: int, info: ValidationInfo) -> int:
         w = info.data.get("window_size")
         if w is not None and v > w:
             raise ValueError(f"window_stride ({v}) must not exceed window_size ({w})")
@@ -197,14 +199,17 @@ class Settings(BaseSettings):
     # ── Derived paths ──────────────────────────────────────────────────────
     @property
     def queries_path(self) -> Path:
+        """Path to queries.jsonl."""
         return self.data_dir / "queries.jsonl"
 
     @property
     def completions_path(self) -> Path:
+        """Path to completions.parquet."""
         return self.data_dir / "completions.parquet"
 
     @property
     def thresholds_path(self) -> Path:
+        """Path to the frozen thresholds.json."""
         return self.data_dir / "thresholds.json"
 
 

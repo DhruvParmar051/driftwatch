@@ -7,8 +7,13 @@ from collections.abc import Callable
 import numpy as np
 
 
-def bootstrap_ci(data: np.ndarray, statistic: Callable[[np.ndarray], float],
-                 n_resamples: int, seed: int, alpha: float = 0.05) -> tuple[float, float, float]:
+def bootstrap_ci(
+    data: np.ndarray,
+    statistic: Callable[[np.ndarray], float],
+    n_resamples: int,
+    seed: int,
+    alpha: float = 0.05,
+) -> tuple[float, float, float]:
     """(point estimate, lower, upper) via percentile bootstrap.
 
     Args:
@@ -27,13 +32,19 @@ def bootstrap_ci(data: np.ndarray, statistic: Callable[[np.ndarray], float],
     Edge cases:
         - Fewer than 2 observations: raise rather than returning a degenerate
           zero-width interval, which reads as high precision.
+
     """
     raise NotImplementedError
 
 
-def stratified_bootstrap_ci(data: np.ndarray, strata: np.ndarray,
-                            statistic: Callable[[np.ndarray], float], n_resamples: int,
-                            seed: int, alpha: float = 0.05) -> tuple[float, float, float]:
+def stratified_bootstrap_ci(
+    data: np.ndarray,
+    strata: np.ndarray,
+    statistic: Callable[[np.ndarray], float],
+    n_resamples: int,
+    seed: int,
+    alpha: float = 0.05,
+) -> tuple[float, float, float]:
     """Bootstrap CI resampling WITHIN strata.
 
     Constraints:
@@ -44,8 +55,9 @@ def stratified_bootstrap_ci(data: np.ndarray, strata: np.ndarray,
     raise NotImplementedError
 
 
-def paired_bootstrap_ci(a: np.ndarray, b: np.ndarray, n_resamples: int, seed: int,
-                        alpha: float = 0.05) -> tuple[float, float, float]:
+def paired_bootstrap_ci(
+    a: np.ndarray, b: np.ndarray, n_resamples: int, seed: int, alpha: float = 0.05
+) -> tuple[float, float, float]:
     """CI for the difference between paired measurements.
 
     Constraints:

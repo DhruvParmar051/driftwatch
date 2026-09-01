@@ -52,6 +52,7 @@ def resolve_roles(client: BatchClient, roles: list[str] | None = None) -> dict[s
         - The digest for a role changing between rounds means the deployment
           moved under you. Detecting exactly that is why C9 exists: log it
           loudly and treat cross-round comparisons as suspect.
+
     """
     raise NotImplementedError
 

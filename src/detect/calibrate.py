@@ -44,6 +44,7 @@ def sidak_alpha(family_wise_budget: float, n_signals: int) -> float:
 
     Raises:
         ValueError: on a budget outside (0, 1) or n_signals < 1.
+
     """
     if not 0.0 < family_wise_budget < 1.0:
         raise ValueError(f"family_wise_budget must be in (0, 1), got {family_wise_budget}")
@@ -63,19 +64,27 @@ def assert_calib_only(queries: list[Query]) -> None:
     raise NotImplementedError
 
 
-def fit_signals(signals: dict[str, Signal], queries: list[Query],
-                completions: list[Completion]) -> dict[str, Signal]:
+def fit_signals(
+    signals: dict[str, Signal], queries: list[Query], completions: list[Completion]
+) -> dict[str, Signal]:
     """Fit every signal's reference distribution on calibration data.
 
     Raises:
         LeakageError: if any query is not `calib`.
         InsufficientReferenceError: propagated from a signal.
+
     """
     raise NotImplementedError
 
 
-def calibrate(signals: dict[str, Signal], queries: list[Query], completions: list[Completion],
-              family_wise_budget: float, n_bootstrap: int, seed: int) -> dict[str, float]:
+def calibrate(
+    signals: dict[str, Signal],
+    queries: list[Query],
+    completions: list[Completion],
+    family_wise_budget: float,
+    n_bootstrap: int,
+    seed: int,
+) -> dict[str, float]:
     """Estimate a threshold per signal at the Sidak-corrected level.
 
     Behaviour:
@@ -133,12 +142,17 @@ def calibrate(signals: dict[str, Signal], queries: list[Query], completions: lis
     Edge cases:
         - A signal flat across all windows (zero variance) has no meaningful
           quantile. Raise; a degenerate signal must not be frozen silently.
+
     """
     raise NotImplementedError
 
 
-def measure_false_alarm_rate(signals: dict[str, Signal], thresholds: dict[str, float],
-                             queries: list[Query], completions: list[Completion]) -> dict[str, float]:
+def measure_false_alarm_rate(
+    signals: dict[str, Signal],
+    thresholds: dict[str, float],
+    queries: list[Query],
+    completions: list[Completion],
+) -> dict[str, float]:
     """Measure the realised false-alarm rate on HELDOUT healthy windows.
 
     Behaviour:
@@ -158,5 +172,6 @@ def measure_false_alarm_rate(signals: dict[str, Signal], thresholds: dict[str, f
         This runs AFTER thresholds are frozen. If the rate misses the 2x gate,
         the correct response is to fix the METHOD and refreeze from scratch with
         a new commit - never to nudge a threshold to make the gate pass.
+
     """
     raise NotImplementedError

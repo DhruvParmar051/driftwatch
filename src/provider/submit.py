@@ -66,8 +66,9 @@ class SubmittedBatch:
     row_digest: str  # sha256 over the input file - proves what was actually sent
 
 
-def submit_batch(client: BatchClient, jsonl_path: Path, endpoint: str, round_id: str,
-                 condition: str) -> SubmittedBatch:
+def submit_batch(
+    client: BatchClient, jsonl_path: Path, endpoint: str, round_id: str, condition: str
+) -> SubmittedBatch:
     """Upload a JSONL file and create a batch.
 
     Behaviour:
@@ -85,12 +86,14 @@ def submit_batch(client: BatchClient, jsonl_path: Path, endpoint: str, round_id:
     Raises:
         BatchAPIError: on upload or creation failure.
         ValueError: if the file violates MAX_ROWS_PER_BATCH / MAX_BATCH_FILE_BYTES.
+
     """
     raise NotImplementedError
 
 
-def poll_until_complete(client: BatchClient, batch_id: str, interval_s: float,
-                        timeout_s: float) -> dict:
+def poll_until_complete(
+    client: BatchClient, batch_id: str, interval_s: float, timeout_s: float
+) -> dict:
     """Poll a batch until it reaches a terminal state.
 
     Returns:
@@ -108,6 +111,7 @@ def poll_until_complete(client: BatchClient, batch_id: str, interval_s: float,
 
         Log every status transition. When a round takes 18 hours, the status
         history is the only evidence of what the queue actually did.
+
     """
     raise NotImplementedError
 

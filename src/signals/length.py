@@ -30,6 +30,7 @@ class LengthKSSignal:
 
         Constraints:
             C6 - parse failures contribute length 0, they are not filtered.
+
         """
         raise NotImplementedError
 
@@ -48,5 +49,6 @@ class LengthKSSignal:
         Edge cases:
             - All-empty window: return 1.0. Do not divide by zero.
             - Already oriented higher = worse; no inversion needed.
+
         """
         raise NotImplementedError

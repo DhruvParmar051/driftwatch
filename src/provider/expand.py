@@ -13,6 +13,7 @@ not preference, is why `encode_custom_id` exists.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 from corpus.schemas import Query
@@ -36,6 +37,7 @@ def encode_custom_id(query_id: str, sample_idx: int, condition: str, round_id: s
 
     Raises:
         ValueError: if any component contains CUSTOM_ID_SEP.
+
     """
     raise NotImplementedError
 
@@ -48,6 +50,7 @@ def decode_custom_id(custom_id: str) -> tuple[str, int, str, str]:
             sentinel - an unparseable custom_id means a row cannot be matched
             to its query, which is a reconciliation failure (C10), not a
             row to quietly discard (C6).
+
     """
     raise NotImplementedError
 
@@ -67,13 +70,22 @@ def derive_seed(query_id: str, sample_idx: int, seed_base: int) -> int:
 
     Returns:
         A non-negative int within the backend's accepted seed range.
+
     """
     raise NotImplementedError
 
 
-def build_chat_row(query: Query, sample_idx: int, model_id: str, condition: str,
-                   round_id: str, system_prompt: str | None, seed_base: int,
-                   temperature: float, max_tokens: int) -> dict[str, Any]:
+def build_chat_row(
+    query: Query,
+    sample_idx: int,
+    model_id: str,
+    condition: str,
+    round_id: str,
+    system_prompt: str | None,
+    seed_base: int,
+    temperature: float,
+    max_tokens: int,
+) -> dict[str, Any]:
     """Build ONE /v1/chat/completions JSONL row.
 
     Returns:
@@ -100,6 +112,7 @@ def build_chat_row(query: Query, sample_idx: int, model_id: str, condition: str,
         system_prompt: resolve with `settings.system_prompt_for_condition`.
             F3 passes the corrupted prompt from config/prompts.yaml - that
             substitution IS fault F3; the model is unchanged.
+
     """
     raise NotImplementedError
 
@@ -120,9 +133,17 @@ def build_embedding_row(text: str, custom_id: str, model_id: str) -> dict[str, A
     raise NotImplementedError
 
 
-def expand_queries(queries: list[Query], k: int, model_id: str, condition: str,
-                   round_id: str, system_prompt: str | None, seed_base: int,
-                   temperature: float, max_tokens: int) -> list[dict[str, Any]]:
+def expand_queries(
+    queries: list[Query],
+    k: int,
+    model_id: str,
+    condition: str,
+    round_id: str,
+    system_prompt: str | None,
+    seed_base: int,
+    temperature: float,
+    max_tokens: int,
+) -> list[dict[str, Any]]:
     """Expand queries into k rows each.
 
     Returns:
@@ -135,11 +156,12 @@ def expand_queries(queries: list[Query], k: int, model_id: str, condition: str,
     Constraints:
         C1 and C2 both live or die in this function. Assert before returning:
         no row carries `n`, and seeds are distinct within every query_id.
+
     """
     raise NotImplementedError
 
 
-def write_jsonl(rows: list[dict[str, Any]], path) -> int:
+def write_jsonl(rows: list[dict[str, Any]], path: Path) -> int:
     """Write rows as JSONL. Returns rows written.
 
     Constraints:

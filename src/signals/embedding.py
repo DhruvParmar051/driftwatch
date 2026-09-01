@@ -36,6 +36,7 @@ class EmbeddingShiftSignal:
             A HuggingFace cache holding bge / all-MiniLM may be present on the
             machine; using it is a C7 violation no matter how convenient, and
             tests/test_no_local_models.py fails the build for it.
+
         """
         raise NotImplementedError
 
@@ -51,6 +52,7 @@ class EmbeddingShiftSignal:
             KeyError: if a completion has no embedding - a missing vector is a
                 reconciliation failure in the embedding round (C10), not a row
                 to skip.
+
         """
         raise NotImplementedError
 

@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import os
-from datetime import datetime, timezone
+from collections.abc import Iterator
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -13,7 +13,7 @@ PACKAGE_ROOT = PROJECT_ROOT / "src"
 
 
 @pytest.fixture(autouse=True)
-def _fake_backend_env(monkeypatch):
+def _fake_backend_env(monkeypatch) -> Iterator[None]:
     """Settings has no default base_url/api_key by design, so tests supply fakes.
 
     Deliberately not a real URL: nothing in the test suite may touch a network.
@@ -63,8 +63,8 @@ def sample_completion():
         text="She has 8 apples.",
         finish_reason="stop",
         parse_ok=True,
-        submitted_at=datetime(2026, 9, 1, tzinfo=timezone.utc),
-        returned_at=datetime(2026, 9, 1, 12, tzinfo=timezone.utc),
+        submitted_at=datetime(2026, 9, 1, tzinfo=UTC),
+        returned_at=datetime(2026, 9, 1, 12, tzinfo=UTC),
     )
 
 

@@ -34,6 +34,7 @@ def assign_splits(queries: list[Query], seed: int) -> list[Query]:
         - Assign per slice, not globally. A global shuffle gives the right
           TOTALS but wrong per-slice counts, which silently breaks the window
           strata - and the totals will look correct in every log.
+
     """
     raise NotImplementedError
 
@@ -48,6 +49,7 @@ def fault_subset(queries: list[Query]) -> list[Query]:
 
     Raises:
         ValueError: if the count is not 1,500.
+
     """
     raise NotImplementedError
 
@@ -75,6 +77,7 @@ def f4_subset(queries: list[Query], seed: int) -> list[Query]:
     Constraints:
         Record `seed` in the run log. The Stage 1 gate requires this draw be
         reproducible.
+
     """
     raise NotImplementedError
 
