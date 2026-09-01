@@ -168,6 +168,14 @@ class Settings(BaseSettings):
     )
     bootstrap_resamples: int = Field(default=2_000, ge=2_000, description="Resamples for evaluation CIs.")
     calibration_seed: int = 11071987
+    n_workers: int = Field(
+        default=0,
+        description="CPU workers for the calibration bootstrap and evaluation "
+        "resampling. 0 auto-detects (all cores but one); negative means 'all but "
+        "N'. There is no device/GPU option: no model runs locally (C7), so the "
+        "work is numpy/scipy and parallelises across cores, not accelerators. "
+        "Changing this must NEVER change the numbers - see parallel.py.",
+    )
     corpus_seed: int = 31415926
 
     # ── Paths ──────────────────────────────────────────────────────────────

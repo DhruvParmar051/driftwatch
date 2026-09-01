@@ -111,11 +111,30 @@ src/detect/       calibrate, detectors, freeze
 src/oracle/       ground-truth scoring (never imported by detect/)
 src/evaluate/     replay, metrics, bootstrap
 src/synthetic/    offline completion generator
+src/parallel.py   CPU worker resolution (no GPU — see below)
 tests/            37 gate tests + 112 specification tests
 docs/             WORKSTREAMS.md — who owns which file
 ```
 
 Import with the top-level name: `from corpus.schemas import Query`.
+
+## Performance and hardware
+
+Runs on any machine — Apple silicon, x86, cluster node — with no device
+configuration. `DRIFTWATCH_N_WORKERS` sets the worker count; `0` (the default)
+auto-detects and leaves one core free.
+
+**There is no CUDA/MPS/CPU switch, and that is deliberate.** No model runs
+locally: chat completions and embeddings both come from the batch endpoint
+(C7). What executes here is numpy/scipy over text statistics, which does not
+use a GPU. Reaching for one would mean adding `torch`, which trips the C7 gate.
+
+The one heavy local computation is the calibration bootstrap — 20,000 windows
+x 7 signals — which is embarrassingly parallel across cores. `parallel.py`
+handles it, and `tests/test_parallel.py` pins the property that matters:
+**the numbers are identical at any worker count.** Results come back in input
+order, and each work item carries its own seed derived via `SeedSequence`, so
+parallelism cannot perturb the byte-identical determinism requirement.
 
 ## Configuration
 
