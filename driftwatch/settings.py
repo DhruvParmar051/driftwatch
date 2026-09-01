@@ -1,0 +1,251 @@
+"""Central configuration. FULLY IMPLEMENTED - do not stub anything here.
+
+Named `settings.py`, NOT `config.py`: a `config.py` module cannot sit beside
+the `config/` package directory in the same parent (import collision, and it
+will not lay down cleanly on a case-insensitive filesystem).
+
+Everything backend-specific lives here or in `config/*.yaml`. No module in this
+project may hardcode a base URL, an API key, a provider name, or a model id.
+"""
+
+from __future__ import annotations
+
+import json
+from functools import lru_cache
+from pathlib import Path
+from typing import Literal
+
+import yaml
+from pydantic import Field, field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# ── Package paths ──────────────────────────────────────────────────────────
+
+PACKAGE_ROOT: Path = Path(__file__).parent
+CONFIG_DIR: Path = PACKAGE_ROOT / "config"
+PROJECT_ROOT: Path = PACKAGE_ROOT.parent
+DATA_DIR: Path = PROJECT_ROOT / "data"
+
+# ── Domain vocabulary ──────────────────────────────────────────────────────
+
+Slice = Literal["gsm8k", "triviaqa", "squad2", "banking77", "xsum", "eli5", "jsonx"]
+Split = Literal["calib", "heldout", "fault"]
+Condition = Literal["healthy", "F1", "F2", "F3", "F4", "F5"]
+
+SLICES: tuple[str, ...] = ("gsm8k", "triviaqa", "squad2", "banking77", "xsum", "eli5", "jsonx")
+
+#: Slices where `ground_truth` is non-null and the oracle can score correctness.
+VERIFIABLE_SLICES: frozenset[str] = frozenset({"gsm8k", "triviaqa", "squad2", "banking77", "jsonx"})
+
+#: Corpus composition. Sums to 5,000; the verifiable slices sum to exactly
+#: 2,800, which is what the Stage 1 gate checks.
+SLICE_SIZES: dict[str, int] = {
+    "gsm8k": 700,
+    "triviaqa": 700,
+    "squad2": 700,
+    "banking77": 500,
+    "jsonx": 200,
+    "xsum": 1100,
+    "eli5": 1100,
+}
+
+#: Split proportions. Chosen so every slice divides with NO remainder - see
+#: SPLIT_SIZES below. Do not change one without re-checking the other.
+SPLIT_FRACTIONS: dict[str, float] = {"calib": 0.50, "heldout": 0.20, "fault": 0.30}
+
+#: Exact per-slice, per-split counts. Stage 1's gate compares against this.
+SPLIT_SIZES: dict[str, dict[str, int]] = {
+    "gsm8k": {"calib": 350, "heldout": 140, "fault": 210},
+    "triviaqa": {"calib": 350, "heldout": 140, "fault": 210},
+    "squad2": {"calib": 350, "heldout": 140, "fault": 210},
+    "banking77": {"calib": 250, "heldout": 100, "fault": 150},
+    "jsonx": {"calib": 100, "heldout": 40, "fault": 60},
+    "xsum": {"calib": 550, "heldout": 220, "fault": 330},
+    "eli5": {"calib": 550, "heldout": 220, "fault": 330},
+}
+
+#: Slice composition of ONE window. Sums to WINDOW_SIZE (200) and is
+#: proportional to SLICE_SIZES.
+#:
+#: Stratification is load-bearing, not cosmetic. Sampled without it, a window
+#: would carry ~8 jsonx and ~20 banking77 rows only ON AVERAGE - many windows
+#: would hold far fewer, and S5 (format validity) and S6 (label entropy) would
+#: be computed on a handful of rows and become noise. Every window gets the
+#: same composition so those two signals are comparable across windows.
+WINDOW_STRATA: dict[str, int] = {
+    "gsm8k": 28,
+    "triviaqa": 28,
+    "squad2": 28,
+    "banking77": 20,
+    "jsonx": 8,
+    "xsum": 44,
+    "eli5": 44,
+}
+
+#: Slice mixture for F4 (query-distribution shift). Deliberately different from
+#: SLICE_SIZES: long-form heavy, reasoning/structured light. F4 is a DERIVED
+#: VIEW over `calib | fault`, not a fourth split - the `fault` split is fully
+#: consumed by the shared F1/F2/F3 subset (C8) and `heldout` is ring-fenced by
+#: C5, so there is nowhere else for F4's queries to come from. Prompt overlap
+#: with calib is correct here: it isolates mixture change as the only variable.
+F4_MIXTURE: dict[str, int] = {
+    "gsm8k": 75,
+    "triviaqa": 150,
+    "squad2": 150,
+    "banking77": 75,
+    "jsonx": 0,
+    "xsum": 525,
+    "eli5": 525,
+}
+
+#: Canonical signal names. The registry keys, the threshold keys in
+#: thresholds.json, and the SignalScore.name values are all drawn from here.
+SIGNAL_NAMES: tuple[str, ...] = (
+    "length_ks",
+    "refusal_rate",
+    "self_consistency",
+    "lexical_ttr",
+    "format_validity",
+    "label_entropy",
+    "embedding_shift",
+)
+
+#: Batch endpoint row limits, read from the platform's batch validator
+#: (backend/services/batch_validator.py). A submission exceeding either is
+#: rejected wholesale, so submit.py must chunk against these.
+MAX_ROWS_PER_BATCH: int = 50_000
+MAX_BATCH_FILE_BYTES: int = 100 * 1024 * 1024
+
+#: The only two batch URLs the platform accepts.
+CHAT_URL: str = "/v1/chat/completions"
+EMBEDDINGS_URL: str = "/v1/embeddings"
+
+
+class Settings(BaseSettings):
+    """Runtime configuration, sourced from environment or a local .env file.
+
+    `base_url` and `api_key` have NO defaults on purpose: a default backend
+    URL in the source tree is exactly what this project forbids.
+    """
+
+    model_config = SettingsConfigDict(
+        env_prefix="DRIFTWATCH_", env_file=".env", extra="forbid"
+    )
+
+    # ── Backend ────────────────────────────────────────────────────────────
+    base_url: str = Field(description="OpenAI-compatible batch endpoint root, e.g. https://host/v1")
+    api_key: str = Field(description="Bearer token for the batch endpoint.")
+    request_timeout_s: float = 60.0
+    poll_interval_s: float = 60.0
+    poll_timeout_s: float = 24 * 3600.0
+
+    # ── Sampling ───────────────────────────────────────────────────────────
+    k: int = Field(default=4, ge=2, description="Samples per query. C1: k SEPARATE rows, never n>k.")
+    temperature: float = 0.7
+    max_tokens: int = 512
+    seed_base: int = 20260901
+
+    # ── Windows (see WINDOW_STRATA) ────────────────────────────────────────
+    window_size: int = Field(default=200, description="Queries per window (W).")
+    window_stride: int = Field(default=50, description="Fresh queries between window starts (S).")
+
+    # ── Calibration ────────────────────────────────────────────────────────
+    false_alarm_budget: float = Field(
+        default=0.001,
+        description="FAMILY-WISE budget: P(any signal fires on a healthy window). "
+        "Per-signal levels are Sidak-corrected down from this - see "
+        "detect.calibrate.sidak_alpha. Calibrating each signal AT this level "
+        "would give a true family-wise rate of ~7x the budget.",
+    )
+    bootstrap_windows: int = Field(
+        default=20_000,
+        description="Resampled windows for threshold estimation. The calib split "
+        "yields only ~46 real windows at W=200/S=50, and a 99.9th percentile "
+        "cannot be read off 46 observations. Note this is still not enough for a "
+        "raw empirical quantile at the Sidak-corrected level (~3 tail "
+        "observations) - detect.calibrate falls back to a peaks-over-threshold "
+        "tail fit, which is the correct method here. See its docstring.",
+    )
+    bootstrap_resamples: int = Field(default=2_000, ge=2_000, description="Resamples for evaluation CIs.")
+    calibration_seed: int = 11071987
+    corpus_seed: int = 31415926
+
+    # ── Paths ──────────────────────────────────────────────────────────────
+    data_dir: Path = DATA_DIR
+
+    @field_validator("base_url")
+    @classmethod
+    def _strip_trailing_slash(cls, v: str) -> str:
+        return v.rstrip("/")
+
+    @field_validator("window_stride")
+    @classmethod
+    def _stride_fits(cls, v: int, info) -> int:
+        w = info.data.get("window_size")
+        if w is not None and v > w:
+            raise ValueError(f"window_stride ({v}) must not exceed window_size ({w})")
+        return v
+
+    # ── Derived paths ──────────────────────────────────────────────────────
+    @property
+    def queries_path(self) -> Path:
+        return self.data_dir / "queries.jsonl"
+
+    @property
+    def completions_path(self) -> Path:
+        return self.data_dir / "completions.parquet"
+
+    @property
+    def thresholds_path(self) -> Path:
+        return self.data_dir / "thresholds.json"
+
+
+@lru_cache(maxsize=1)
+def get_settings() -> Settings:
+    """Process-wide Settings singleton. Call `get_settings.cache_clear()` in tests."""
+    return Settings()  # type: ignore[call-arg]
+
+
+@lru_cache(maxsize=1)
+def load_model_roles() -> dict[str, dict]:
+    """Return the role -> catalogue-entry mapping from config/models.yaml.
+
+    The ONLY sanctioned way to obtain a model id. Never inline one.
+    """
+    with (CONFIG_DIR / "models.yaml").open() as fh:
+        return yaml.safe_load(fh)["roles"]
+
+
+def model_id_for_role(role: str) -> str:
+    """Resolve a role name ('healthy', 'weak', 'embedding', ...) to a model id."""
+    roles = load_model_roles()
+    if role not in roles:
+        raise KeyError(f"Unknown role {role!r}. Known roles: {sorted(roles)}")
+    return roles[role]["id"]
+
+
+#: Which model role serves each experimental condition. F3 and F4 run on the
+#: healthy model - they perturb the system prompt and the query mixture
+#: respectively, not the weights.
+CONDITION_ROLES: dict[str, str] = {
+    "healthy": "healthy",
+    "F1": "weak",
+    "F2": "sibling",
+    "F3": "healthy",
+    "F4": "healthy",
+    "F5": "cross_family",
+}
+
+
+@lru_cache(maxsize=1)
+def load_refusal_patterns() -> dict:
+    """Return {'version': str, 'patterns': list[str], 'empty_is_refusal': bool}."""
+    with (CONFIG_DIR / "refusal_patterns.yaml").open() as fh:
+        return yaml.safe_load(fh)
+
+
+@lru_cache(maxsize=1)
+def load_jsonx_schema() -> dict:
+    """Return the JSON Schema that S5 validates `jsonx` completions against."""
+    with (CONFIG_DIR / "jsonx_schema.json").open() as fh:
+        return json.load(fh)

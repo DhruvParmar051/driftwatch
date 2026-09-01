@@ -1,0 +1,29 @@
+# ---------------------------------------------------------------------------
+# S2 (refusal signal) patterns. Versioned here, NEVER inline in source.
+#
+# Bump `version` on every edit. The version string is written into
+# thresholds.json at freeze time: if these patterns change after a freeze, the
+# frozen refusal threshold no longer means what it meant, and evaluate/ must
+# refuse to run. That check is the reason this file carries a version at all.
+#
+# Patterns are case-insensitive regexes matched against the FULL completion
+# text. Prefer anchored, high-precision patterns: a false positive here
+# inflates the refusal rate on healthy data and pushes the calibrated
+# threshold up, which silently costs detection power later.
+# ---------------------------------------------------------------------------
+
+version: "1.0.0"
+
+patterns:
+  - "^\\s*i\\s+(?:can(?:'|no)?t|cannot|am\\s+unable\\s+to)\\s+(?:help|assist|answer|provide|comply)"
+  - "^\\s*i'?m\\s+sorry[,.]?\\s+(?:but\\s+)?i\\s+(?:can(?:'|no)?t|cannot)"
+  - "^\\s*(?:sorry|unfortunately)[,.]?\\s+i\\s+(?:can(?:'|no)?t|cannot|am\\s+unable)"
+  - "\\bas\\s+an\\s+ai\\s+(?:language\\s+)?model\\b"
+  - "\\bi\\s+(?:don'?t|do\\s+not)\\s+have\\s+(?:access\\s+to|the\\s+ability)\\b"
+  - "\\bi\\s+must\\s+decline\\b"
+  - "\\bthis\\s+request\\s+(?:violates|goes\\s+against)\\b"
+
+# Matched separately and reported alongside the refusal rate. An empty or
+# whitespace-only completion is NOT a refusal - it is a parse failure (C6) and
+# must be counted as such, not folded into this signal.
+empty_is_refusal: false

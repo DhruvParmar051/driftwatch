@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "jsonx slice target schema",
+  "description": "S5 validates completions on the `jsonx` slice against this schema CLIENT-SIDE. Rows for this slice are submitted with NO response_format: strict json_schema mode makes the platform validate and fail the row server-side, which would leave S5 with nothing to measure. See plan V8.",
+  "type": "object",
+  "properties": {
+    "title":     { "type": "string", "minLength": 1 },
+    "category":  { "type": "string", "enum": ["finance", "health", "technology", "travel", "education"] },
+    "priority":  { "type": "integer", "minimum": 1, "maximum": 5 },
+    "tags":      { "type": "array", "items": { "type": "string" }, "minItems": 1, "maxItems": 5 },
+    "published": { "type": "boolean" }
+  },
+  "required": ["title", "category", "priority", "tags", "published"],
+  "additionalProperties": false
+}

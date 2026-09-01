@@ -1,0 +1,47 @@
+# ---------------------------------------------------------------------------
+# Role -> model id mapping.
+#
+# THIS FILE IS THE ONLY PLACE MODEL IDS MAY APPEAR IN THE PROJECT.
+# Never hardcode a model id, a backend URL, or a provider name in the source
+# tree. tests/test_no_hardcoded_ids.py enforces this.
+#
+# Ids below were verified against the platform catalogue
+# (backend/catalog/models.yaml, branch `develop`). Every chat entry in that
+# catalogue is quantised Q4_K_M - there is NO full-precision variant of
+# anything - which is why F2 is a smaller sibling model rather than a
+# "full vs quantized" pair. That comparison is not executable on this platform.
+#
+# Any three-rung ladder from one model family on any OpenAI-compatible batch
+# backend substitutes directly. Swap the ids here and nothing else changes.
+# ---------------------------------------------------------------------------
+
+roles:
+  # Condition: healthy. Also used for F3 (corrupted system prompt) and
+  # F4 (shifted query mixture) - both change the *input*, not the model.
+  healthy:
+    id: gemma4-26b-ollama
+    parameter_size: 25.8B
+    note: baseline. If Stage 2 shows this role queues too slowly, shift the
+      whole ladder down one rung and RECORD the change in the run log.
+
+  # Condition: F2 (moderate degradation) - a smaller sibling, same family.
+  sibling:
+    id: gemma4-12b-ollama
+    parameter_size: 11.9B
+
+  # Condition: F1 (severe degradation) - smallest rung, same family.
+  weak:
+    id: gemma4-latest-ollama
+    parameter_size: 8.0B
+
+  # Condition: F5 (optional extension) - comparable size, DIFFERENT family.
+  # Only run if reserve budget is unspent.
+  cross_family:
+    id: gemma3-12b-ollama
+    parameter_size: 12.2B
+
+  # Signal S7. Reached via POST /v1/embeddings as ordinary JSONL batch rows -
+  # the same pipeline as chat, not a separate synchronous API.
+  embedding:
+    id: nomic-embed-text-ollama
+    task_type: embedding

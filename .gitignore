@@ -1,0 +1,19 @@
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
+.DS_Store
+
+# Data artefacts - regenerate, never commit
+data/*.jsonl
+data/*.parquet
+data/raw/
+data/rounds/
+
+# NEVER ignore the frozen thresholds: they are the experimental record (C4).
+!data/thresholds*.json
+
+.env

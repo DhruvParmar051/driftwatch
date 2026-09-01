@@ -1,0 +1,53 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  # ── BLOCKING. These fail the build. ──────────────────────────────────────
+  #
+  # Architectural gates only - they check structure, not implementation, so
+  # they pass from day one and stay green throughout. A red gate means a
+  # constraint has been violated, not that work is unfinished.
+  gates:
+    name: constraint gates (blocking)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
+      - name: C3/C7 + structural invariants
+        run: uv run pytest -m gate -q
+      # Each gate is also run alone, so a failure names the constraint it broke
+      # rather than pointing at a 36-test summary.
+      - name: "C3 - detect/ must never import oracle/"
+        if: always()
+        run: uv run pytest tests/test_no_oracle_import.py -q
+      - name: "C7 - no local model inference"
+        if: always()
+        run: uv run pytest tests/test_no_local_models.py -q
+      - name: "config arithmetic (corpus, windows, Sidak)"
+        if: always()
+        run: uv run pytest tests/test_config_invariants.py -q
+
+  # ── NON-BLOCKING. Reports remaining work. ───────────────────────────────
+  #
+  # Every unimplemented function raises NotImplementedError, so this job is red
+  # until the project is finished. That is the point: the failure count is the
+  # burndown number. It must never be made blocking, or the team will be
+  # tempted to weaken the specification tests to get a green tick.
+  burndown:
+    name: implementation burndown (informational)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
+      - name: remaining specification tests
+        run: uv run pytest -m spec -q --tb=no
