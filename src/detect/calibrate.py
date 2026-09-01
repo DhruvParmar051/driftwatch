@@ -93,6 +93,17 @@ def calibrate(signals: dict[str, Signal], queries: list[Query], completions: lis
         whole procedure is the Stage 5 gate: the false-alarm rate measured on
         the real, un-resampled `heldout` windows must land within 2x of target.
 
+    Performance:
+        20,000 windows x 7 signals x 800 completions is the heaviest local
+        computation in the project - minutes to tens of minutes serially. Scoring
+        one window is independent of every other, so map it with
+        `parallel.parallel_map(..., workers=settings.n_workers)`.
+
+        The result must not depend on the worker count. Use
+        `parallel.derive_worker_seeds` for per-window seeds and rely on
+        parallel_map returning results in INPUT order; never accumulate in
+        completion order.
+
     Returns:
         signal name -> threshold. Alarm condition is `value > threshold`
         uniformly; every signal is oriented higher = worse at source.

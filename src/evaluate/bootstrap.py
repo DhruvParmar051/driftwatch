@@ -17,6 +17,13 @@ def bootstrap_ci(data: np.ndarray, statistic: Callable[[np.ndarray], float],
             runs, so a global RNG is not acceptable - thread a seeded
             np.random.Generator through.
 
+    Performance:
+        Resamples are independent; parallelise with `parallel.parallel_map`
+        when n_resamples is large. The interval must come out identical at any
+        worker count - derive per-resample seeds with
+        `parallel.derive_worker_seeds`, never by splitting one RNG across
+        processes.
+
     Edge cases:
         - Fewer than 2 observations: raise rather than returning a degenerate
           zero-width interval, which reads as high precision.
