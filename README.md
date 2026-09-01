@@ -92,9 +92,22 @@ Three that are easy to break by accident:
   would validate server-side and fail the row, so malformed JSON would never
   come back as text and S5 would silently read zero forever.
 
+## Layout
+
+`src/` layout: the package is installed, not imported from the working
+directory. That is deliberate — under a flat layout `import driftwatch` resolves
+against loose source files even when the package is not installed, so tests can
+pass while packaging is broken.
+
+```
+src/driftwatch/   package
+tests/            36 gate tests + 112 specification tests
+docs/             WORKSTREAMS.md — who owns which file
+```
+
 ## Configuration
 
 `base_url` and `api_key` have no defaults - set `DRIFTWATCH_BASE_URL` and
 `DRIFTWATCH_API_KEY`, or use a `.env`. Model ids live only in
-`driftwatch/config/models.yaml`; any three-rung ladder from one family on any
+`src/driftwatch/config/models.yaml`; any three-rung ladder from one family on any
 OpenAI-compatible batch backend substitutes directly.
