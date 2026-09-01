@@ -1,6 +1,6 @@
 # Workstreams
 
-Four owners, 23 files, 91 stubs. Ownership is **file-level and exclusive**: every
+Four owners, 23 files, 91 stubs. All paths below are relative to `src/`. Ownership is **file-level and exclusive**: every
 file has exactly one owner, so two people never edit the same file. Read your
 column, then read the dependency rules - they decide the order, not preference.
 
@@ -14,7 +14,7 @@ column, then read the dependency rules - they decide the order, not preference.
 | **Mahak** — windows, semantic signals & calibration | `signals/windows.py`, `signals/consistency.py`, `signals/entropy.py`, `signals/embedding.py`, `detect/calibrate.py`, `detect/freeze.py` | 22 |
 
 Nobody owns `settings.py`, `corpus/schemas.py`, `signals/base.py`,
-`signals/registry.py`, `logging.py`, `cli.py`, the config YAML/JSON, or anything
+`signals/registry.py`, `log.py`, `cli.py`, the config YAML/JSON, or anything
 under `tests/`. Those are **frozen shared contracts** - see Rules below.
 
 ### Why the split falls this way

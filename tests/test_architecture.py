@@ -15,22 +15,22 @@ pytestmark = pytest.mark.gate
 
 
 def test_registry_matches_signal_names():
-    from driftwatch.settings import SIGNAL_NAMES
-    from driftwatch.signals.registry import SIGNAL_CLASSES
+    from settings import SIGNAL_NAMES
+    from signals.registry import SIGNAL_CLASSES
 
     assert tuple(SIGNAL_CLASSES) == SIGNAL_NAMES
 
 
 def test_every_signal_class_declares_its_registered_name():
     """A mismatch would put a score under the wrong threshold key at detection time."""
-    from driftwatch.signals.registry import SIGNAL_CLASSES
+    from signals.registry import SIGNAL_CLASSES
 
     for registered_name, cls in SIGNAL_CLASSES.items():
         assert cls.name == registered_name, f"{cls.__name__}.name is {cls.name!r}, registered as {registered_name!r}"
 
 
 def test_every_signal_declares_fit_and_score():
-    from driftwatch.signals.registry import SIGNAL_CLASSES
+    from signals.registry import SIGNAL_CLASSES
 
     for cls in SIGNAL_CLASSES.values():
         assert callable(getattr(cls, "fit", None)), f"{cls.__name__} has no fit()"
@@ -41,7 +41,7 @@ def test_cli_app_builds_and_lists_every_stage():
     """`driftwatch --help` must work before anything is implemented."""
     from typer.testing import CliRunner
 
-    from driftwatch.cli import app
+    from cli import app
 
     result = CliRunner().invoke(app, ["--help"])
     assert result.exit_code == 0, result.output
@@ -52,7 +52,7 @@ def test_cli_app_builds_and_lists_every_stage():
 
 def test_model_ids_appear_only_in_config():
     """No model id, backend URL or provider name in the source tree."""
-    from driftwatch.settings import load_model_roles
+    from settings import load_model_roles
 
     ids = {entry["id"] for entry in load_model_roles().values()}
     assert ids, "no roles configured"
@@ -71,14 +71,14 @@ def test_model_ids_appear_only_in_config():
 
 def test_settings_has_no_default_backend_url():
     """A default base_url in the source tree is exactly what this project forbids."""
-    from driftwatch.settings import Settings
+    from settings import Settings
 
     assert Settings.model_fields["base_url"].is_required()
     assert Settings.model_fields["api_key"].is_required()
 
 
 def test_config_files_load():
-    from driftwatch.settings import load_jsonx_schema, load_model_roles, load_refusal_patterns
+    from settings import load_jsonx_schema, load_model_roles, load_refusal_patterns
 
     roles = load_model_roles()
     for required in ("healthy", "sibling", "weak", "embedding"):
@@ -95,14 +95,14 @@ def test_config_files_load():
 def test_refusal_patterns_compile():
     import re
 
-    from driftwatch.settings import load_refusal_patterns
+    from settings import load_refusal_patterns
 
     for pattern in load_refusal_patterns()["patterns"]:
         re.compile(pattern, re.IGNORECASE)
 
 
 def test_condition_roles_cover_every_condition():
-    from driftwatch.settings import CONDITION_ROLES, load_model_roles
+    from settings import CONDITION_ROLES, load_model_roles
 
     roles = load_model_roles()
     for condition, role in CONDITION_ROLES.items():
@@ -111,7 +111,7 @@ def test_condition_roles_cover_every_condition():
 
 def test_f3_and_f4_run_on_the_healthy_model():
     """F3 corrupts the system prompt and F4 shifts queries - neither changes weights."""
-    from driftwatch.settings import CONDITION_ROLES
+    from settings import CONDITION_ROLES
 
     assert CONDITION_ROLES["F3"] == "healthy"
     assert CONDITION_ROLES["F4"] == "healthy"
@@ -120,7 +120,7 @@ def test_f3_and_f4_run_on_the_healthy_model():
 def test_query_rejects_missing_ground_truth_on_verifiable_slice():
     from pydantic import ValidationError
 
-    from driftwatch.corpus.schemas import Query
+    from corpus.schemas import Query
 
     with pytest.raises(ValidationError):
         Query(query_id="gsm8k_1", slice="gsm8k", prompt="p", ground_truth=None, split="calib")
@@ -129,7 +129,7 @@ def test_query_rejects_missing_ground_truth_on_verifiable_slice():
 def test_query_rejects_label_space_outside_banking77():
     from pydantic import ValidationError
 
-    from driftwatch.corpus.schemas import Query
+    from corpus.schemas import Query
 
     with pytest.raises(ValidationError):
         Query(query_id="xsum_1", slice="xsum", prompt="p", label_space=["a"], split="calib")
@@ -141,7 +141,7 @@ def test_thresholds_rejects_signal_count_mismatch():
 
     from pydantic import ValidationError
 
-    from driftwatch.corpus.schemas import Thresholds
+    from corpus.schemas import Thresholds
 
     with pytest.raises(ValidationError):
         Thresholds(
@@ -157,7 +157,7 @@ def test_completion_allows_empty_text_but_records_parse_failure():
     """C6 - an unparseable completion is data, not something to drop."""
     from datetime import datetime, timezone
 
-    from driftwatch.corpus.schemas import Completion
+    from corpus.schemas import Completion
 
     c = Completion(
         query_id="q1", sample_idx=0, seed=1, condition="F1", model_id="m", digest="d",

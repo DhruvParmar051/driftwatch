@@ -10,8 +10,8 @@ from __future__ import annotations
 
 import pytest
 
-from driftwatch.detect.calibrate import sidak_alpha
-from driftwatch.settings import (
+from detect.calibrate import sidak_alpha
+from settings import (
     F4_MIXTURE,
     SIGNAL_NAMES,
     SLICE_SIZES,

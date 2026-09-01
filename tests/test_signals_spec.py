@@ -9,22 +9,22 @@ from __future__ import annotations
 
 import pytest
 
-from driftwatch.settings import SIGNAL_NAMES, WINDOW_STRATA
+from settings import SIGNAL_NAMES, WINDOW_STRATA
 
 pytestmark = pytest.mark.spec
 
 
 @pytest.fixture
 def corpus(settings):
-    from driftwatch.corpus.build import build_corpus
-    from driftwatch.corpus.splits import assign_splits
+    from corpus.build import build_corpus
+    from corpus.splits import assign_splits
 
     return assign_splits(build_corpus(settings.corpus_seed), settings.corpus_seed)
 
 
 def make_round(corpus, knob_values: dict, settings, condition="healthy"):
     """Generate synthetic completions at a given per-dimension knob setting."""
-    from driftwatch.synthetic.generate import DegradationKnob, generate_completions
+    from synthetic.generate import DegradationKnob, generate_completions
 
     return generate_completions(corpus, DegradationKnob(**knob_values), settings.k,
                                 condition, settings.seed_base)
@@ -34,7 +34,7 @@ def make_round(corpus, knob_values: dict, settings, condition="healthy"):
 
 
 def test_window_has_the_exact_slice_composition(corpus, settings):
-    from driftwatch.signals.windows import stream_windows
+    from signals.windows import stream_windows
 
     completions = make_round(corpus, {}, settings)
     window = next(stream_windows(corpus, completions, seed=1))
@@ -46,7 +46,7 @@ def test_window_has_the_exact_slice_composition(corpus, settings):
 
 
 def test_windows_advance_by_the_stride(corpus, settings):
-    from driftwatch.signals.windows import stream_windows
+    from signals.windows import stream_windows
 
     completions = make_round(corpus, {}, settings)
     windows = list(stream_windows(corpus, completions, seed=1))[:3]
@@ -57,7 +57,7 @@ def test_windows_advance_by_the_stride(corpus, settings):
 
 def test_short_pool_yields_no_window_rather_than_a_short_one(corpus, settings):
     """A short window has the wrong strata and its scores are not comparable."""
-    from driftwatch.signals.windows import stream_windows
+    from signals.windows import stream_windows
 
     few = corpus[:10]
     assert list(stream_windows(few, make_round(few, {}, settings), seed=1)) == []
@@ -65,7 +65,7 @@ def test_short_pool_yields_no_window_rather_than_a_short_one(corpus, settings):
 
 def test_bootstrap_windows_keep_each_querys_k_samples_together(corpus, settings):
     """Resampling individual completions would break S3."""
-    from driftwatch.signals.windows import bootstrap_windows
+    from signals.windows import bootstrap_windows
 
     completions = make_round(corpus, {}, settings)
     window = next(bootstrap_windows(corpus, completions, n_windows=1, seed=1))
@@ -80,8 +80,8 @@ def test_bootstrap_windows_keep_each_querys_k_samples_together(corpus, settings)
 @pytest.mark.parametrize("signal_name", SIGNAL_NAMES)
 def test_signal_is_flat_on_healthy_data(signal_name, corpus, settings):
     """Two independent healthy draws must score near-identically."""
-    from driftwatch.signals.registry import build_signals
-    from driftwatch.signals.windows import stream_windows
+    from signals.registry import build_signals
+    from signals.windows import stream_windows
 
     signal = build_signals([signal_name])[signal_name]
     reference = make_round(corpus, {}, settings)
@@ -105,8 +105,8 @@ SIGNAL_TARGET_DIMENSION = {
 
 @pytest.mark.parametrize("signal_name,dimension", sorted(SIGNAL_TARGET_DIMENSION.items()))
 def test_signal_is_monotone_in_its_own_dimension(signal_name, dimension, corpus, settings):
-    from driftwatch.signals.registry import build_signals
-    from driftwatch.signals.windows import stream_windows
+    from signals.registry import build_signals
+    from signals.windows import stream_windows
 
     signal = build_signals([signal_name])[signal_name]
     signal.fit(make_round(corpus, {}, settings))
@@ -128,8 +128,8 @@ def test_self_consistency_reacts_to_a_consistency_only_perturbation(corpus, sett
     does not move here, it is not measuring self-consistency; and if the OTHER
     signals move, the synthetic generator's dimensions are not independent.
     """
-    from driftwatch.signals.registry import build_signals
-    from driftwatch.signals.windows import stream_windows
+    from signals.registry import build_signals
+    from signals.windows import stream_windows
 
     signals = build_signals()
     reference = make_round(corpus, {}, settings)
@@ -156,9 +156,9 @@ def test_self_consistency_reacts_to_a_consistency_only_perturbation(corpus, sett
 
 @pytest.mark.parametrize("signal_name", SIGNAL_NAMES)
 def test_scoring_before_fitting_raises(signal_name, corpus, settings):
-    from driftwatch.signals.base import NotFittedError
-    from driftwatch.signals.registry import build_signals
-    from driftwatch.signals.windows import stream_windows
+    from signals.base import NotFittedError
+    from signals.registry import build_signals
+    from signals.windows import stream_windows
 
     signal = build_signals([signal_name])[signal_name]
     window = next(stream_windows(corpus, make_round(corpus, {}, settings), seed=1))
@@ -168,8 +168,8 @@ def test_scoring_before_fitting_raises(signal_name, corpus, settings):
 
 @pytest.mark.parametrize("signal_name", SIGNAL_NAMES)
 def test_tiny_reference_raises_rather_than_returning_noise(signal_name, sample_completion):
-    from driftwatch.signals.base import InsufficientReferenceError
-    from driftwatch.signals.registry import build_signals
+    from signals.base import InsufficientReferenceError
+    from signals.registry import build_signals
 
     signal = build_signals([signal_name])[signal_name]
     with pytest.raises(InsufficientReferenceError):
@@ -179,8 +179,8 @@ def test_tiny_reference_raises_rather_than_returning_noise(signal_name, sample_c
 @pytest.mark.parametrize("signal_name", SIGNAL_NAMES)
 def test_score_reports_the_parse_failure_rate(signal_name, corpus, settings):
     """C6 - parse failures are counted and reported, never silently dropped."""
-    from driftwatch.signals.registry import build_signals
-    from driftwatch.signals.windows import stream_windows
+    from signals.registry import build_signals
+    from signals.windows import stream_windows
 
     signal = build_signals([signal_name])[signal_name]
     reference = make_round(corpus, {}, settings)
@@ -198,8 +198,8 @@ def test_format_validity_would_break_if_strict_mode_were_requested(settings):
     validates server-side and fails the row, S5's input disappears, and S5
     silently reads zero forever. This test is the tripwire.
     """
-    from driftwatch.corpus.schemas import Query
-    from driftwatch.provider.expand import build_chat_row
+    from corpus.schemas import Query
+    from provider.expand import build_chat_row
 
     q = Query(query_id="jsonx_00001", slice="jsonx", prompt="p", ground_truth="{}", split="calib")
     row = build_chat_row(q, 0, "m", "healthy", "r1", None, settings.seed_base,

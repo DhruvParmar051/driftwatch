@@ -94,20 +94,32 @@ Three that are easy to break by accident:
 
 ## Layout
 
-`src/` layout: the package is installed, not imported from the working
-directory. That is deliberate — under a flat layout `import driftwatch` resolves
-against loose source files even when the package is not installed, so tests can
-pass while packaging is broken.
+Modules live directly under `src/`, which is mapped to the install root. The
+package is installed rather than imported from the working directory, so a
+broken install fails loudly instead of silently resolving against loose source
+files.
 
 ```
-src/driftwatch/   package
-tests/            36 gate tests + 112 specification tests
+src/settings.py   configuration + all corpus/window arithmetic
+src/cli.py        typer app
+src/log.py        structured logging  (NOT logging.py — that shadows the stdlib)
+src/config/       models.yaml, refusal_patterns.yaml, jsonx_schema.json
+src/corpus/       query construction and splits  (code; data lives in data/)
+src/provider/     batch client, expand, submit, collect
+src/signals/      windows + S1..S7
+src/detect/       calibrate, detectors, freeze
+src/oracle/       ground-truth scoring (never imported by detect/)
+src/evaluate/     replay, metrics, bootstrap
+src/synthetic/    offline completion generator
+tests/            37 gate tests + 112 specification tests
 docs/             WORKSTREAMS.md — who owns which file
 ```
+
+Import with the top-level name: `from corpus.schemas import Query`.
 
 ## Configuration
 
 `base_url` and `api_key` have no defaults - set `DRIFTWATCH_BASE_URL` and
 `DRIFTWATCH_API_KEY`, or use a `.env`. Model ids live only in
-`src/driftwatch/config/models.yaml`; any three-rung ladder from one family on any
+`src/config/models.yaml`; any three-rung ladder from one family on any
 OpenAI-compatible batch backend substitutes directly.

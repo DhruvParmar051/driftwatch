@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-PACKAGE_ROOT = PROJECT_ROOT / "src" / "driftwatch"
+PACKAGE_ROOT = PROJECT_ROOT / "src"
 
 
 @pytest.fixture(autouse=True)
@@ -20,7 +20,7 @@ def _fake_backend_env(monkeypatch):
     """
     monkeypatch.setenv("DRIFTWATCH_BASE_URL", "http://test.invalid/v1")
     monkeypatch.setenv("DRIFTWATCH_API_KEY", "test-key-not-real")
-    from driftwatch.settings import get_settings
+    from settings import get_settings
 
     get_settings.cache_clear()
     yield
@@ -29,14 +29,14 @@ def _fake_backend_env(monkeypatch):
 
 @pytest.fixture
 def settings():
-    from driftwatch.settings import get_settings
+    from settings import get_settings
 
     return get_settings()
 
 
 @pytest.fixture
 def sample_query():
-    from driftwatch.corpus.schemas import Query
+    from corpus.schemas import Query
 
     return Query(
         query_id="gsm8k_00042",
@@ -50,7 +50,7 @@ def sample_query():
 
 @pytest.fixture
 def sample_completion():
-    from driftwatch.corpus.schemas import Completion
+    from corpus.schemas import Completion
 
     return Completion(
         query_id="gsm8k_00042",

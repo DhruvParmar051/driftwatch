@@ -4,15 +4,15 @@ from __future__ import annotations
 
 import pytest
 
-from driftwatch.settings import SLICE_SIZES, SPLIT_SIZES, VERIFIABLE_SLICES
+from settings import SLICE_SIZES, SPLIT_SIZES, VERIFIABLE_SLICES
 
 pytestmark = pytest.mark.spec
 
 
 @pytest.fixture
 def corpus(settings):
-    from driftwatch.corpus.build import build_corpus
-    from driftwatch.corpus.splits import assign_splits
+    from corpus.build import build_corpus
+    from corpus.splits import assign_splits
 
     return assign_splits(build_corpus(settings.corpus_seed), settings.corpus_seed)
 
@@ -51,15 +51,15 @@ def test_only_banking77_has_a_label_space(corpus):
 
 
 def test_splits_are_disjoint(corpus):
-    from driftwatch.corpus.splits import assert_no_leakage
+    from corpus.splits import assert_no_leakage
 
     by_split = {s: [q for q in corpus if q.split == s] for s in ("calib", "heldout", "fault")}
     assert_no_leakage(by_split["calib"], by_split["heldout"], by_split["fault"])
 
 
 def test_corpus_is_reproducible_from_its_seed(settings):
-    from driftwatch.corpus.build import build_corpus
-    from driftwatch.corpus.splits import assign_splits
+    from corpus.build import build_corpus
+    from corpus.splits import assign_splits
 
     a = assign_splits(build_corpus(settings.corpus_seed), settings.corpus_seed)
     b = assign_splits(build_corpus(settings.corpus_seed), settings.corpus_seed)
@@ -67,14 +67,14 @@ def test_corpus_is_reproducible_from_its_seed(settings):
 
 
 def test_fault_subset_is_exactly_1500(corpus):
-    from driftwatch.corpus.splits import fault_subset
+    from corpus.splits import fault_subset
 
     assert len(fault_subset(corpus)) == 1500
 
 
 def test_f1_f2_f3_share_one_query_subset(corpus):
     """C8 - resampling per condition would confound query variance with fault effect."""
-    from driftwatch.corpus.splits import fault_subset
+    from corpus.splits import fault_subset
 
     assert [q.query_id for q in fault_subset(corpus)] == [q.query_id for q in fault_subset(corpus)]
 
@@ -82,7 +82,7 @@ def test_f1_f2_f3_share_one_query_subset(corpus):
 def test_f4_uses_a_different_mixture(corpus, settings):
     from collections import Counter
 
-    from driftwatch.corpus.splits import f4_subset, fault_subset
+    from corpus.splits import f4_subset, fault_subset
 
     f4 = f4_subset(corpus, settings.corpus_seed)
     assert len(f4) == 1500
@@ -91,13 +91,13 @@ def test_f4_uses_a_different_mixture(corpus, settings):
 
 def test_f4_never_touches_heldout(corpus, settings):
     """C5 - heldout exists only to measure the false-alarm rate."""
-    from driftwatch.corpus.splits import f4_subset
+    from corpus.splits import f4_subset
 
     assert all(q.split != "heldout" for q in f4_subset(corpus, settings.corpus_seed))
 
 
 def test_queries_round_trip_through_jsonl(tmp_path, corpus):
-    from driftwatch.corpus.build import read_queries, write_queries
+    from corpus.build import read_queries, write_queries
 
     path = tmp_path / "queries.jsonl"
     assert write_queries(corpus, path) == 5000
