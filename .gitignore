@@ -17,3 +17,7 @@ data/rounds/
 !data/thresholds*.json
 
 .env
+
+# Project brief (local only, not tracked)
+docs/PROJECT_BRIEF.md
+docs/PROJECT_BRIEF.pdf
