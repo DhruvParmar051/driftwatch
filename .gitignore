@@ -12,6 +12,8 @@ data/*.jsonl
 data/*.parquet
 data/raw/
 data/rounds/
+data/results/
+data/report*/
 
 # NEVER ignore the frozen thresholds: they are the experimental record (C4).
 !data/thresholds*.json
