@@ -12,6 +12,7 @@ data/*.jsonl
 data/*.parquet
 data/raw/
 data/rounds/
+data/batches/
 data/results/
 data/report*/
 
