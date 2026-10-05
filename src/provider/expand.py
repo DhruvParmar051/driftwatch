@@ -26,7 +26,11 @@ from settings import CHAT_URL, EMBEDDINGS_URL, MAX_BATCH_FILE_BYTES, MAX_ROWS_PE
 ALLOWED_ROW_KEYS: frozenset[str] = frozenset({"custom_id", "method", "url", "body"})
 
 #: Body keys that must never be sent. `n` fails at the worker (C1); `stream` is
-#: rejected for batch execution; `logprobs` is silently dropped by the runtime.
+#: rejected for batch execution. `logprobs` / `top_logprobs` are honoured by
+#: Ollama >= 0.12.11, but requesting them makes the scheduler offer the batch
+#: ONLY to runtimes that advertise the capability (and fails validation with
+#: `unsupported_capability` if none online do) - a smaller worker pool, or a
+#: stalled round, for a field no signal uses.
 FORBIDDEN_BODY_KEYS: frozenset[str] = frozenset({"n", "stream", "logprobs", "top_logprobs"})
 
 #: Seeds are kept in the signed 31-bit range: every runtime in the stack
@@ -137,8 +141,11 @@ def build_chat_row(
              text and S5 would have nothing to measure. S5 validates
              client-side against config/jsonx_schema.json instead.
 
-        `logprobs` is warn-and-dropped on this runtime - do not set it, and do
-        not design a signal that needs it.
+        Do not set `logprobs`. Ollama >= 0.12.11 does return them, but a row
+        that asks for them restricts the batch to workers advertising the
+        capability (see FORBIDDEN_BODY_KEYS), and no signal uses them. A
+        signal that needed them would have to accept that constraint
+        explicitly, not inherit it by accident.
 
     Args:
         system_prompt: resolve with `settings.system_prompt_for_condition`.
