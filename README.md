@@ -10,15 +10,44 @@ false-alarm rate.
 
 ## Status
 
-**Scaffold.** Architecture is complete; the research work is stubbed. Every
-unimplemented function raises `NotImplementedError` and has a docstring
-specifying its behaviour, constraints and edge cases.
+**Implemented.** Every function is written to the contract in its docstring,
+and the full suite passes offline - no network, no credentials:
 
 ```bash
 uv sync
-uv run pytest -m gate    # 36 architectural gates - must always pass
-uv run pytest -m spec    # remaining work; the failure count is the burndown
+uv run pytest -m gate    # 61 architectural gates - must always pass
+uv run pytest -m spec    # 139 behavioural specs, incl. the Stage 0-7 gates
 ```
+
+The four freeze tests require a **clean git tree**: a freeze stamps the current
+commit and refuses to point at code that was never committed. Commit, then run.
+
+What has NOT been run is a real round on the backend. Everything below Stage 2
+is exercised against synthetic data and an in-memory batch backend
+(`tests/fake_backend.py`); the numbers mean the pipeline works, nothing yet
+about real models.
+
+## Running a round
+
+```bash
+uv run driftwatch corpus build                       # 5,000 queries + splits (HuggingFace)
+uv run driftwatch probe --rows 20                    # STOP if this fails - see below
+uv run driftwatch expand --condition healthy --round-id r001 --out data/r001.jsonl
+uv run driftwatch submit data/r001.jsonl --condition healthy --round-id r001 --chunks 4
+uv run driftwatch resume r001                        # rerun freely after any crash
+uv run driftwatch embed --condition healthy --round-id e001 && uv run driftwatch resume e001
+# ... same for F1, F2, F3 (and F5). F4 is derived from healthy rows - nothing to generate.
+uv run driftwatch calibrate --completions data/completions.parquet
+git commit ...                                       # freeze refuses a dirty tree
+uv run driftwatch freeze --thresholds data/thresholds.proposed.json --completions data/completions.parquet
+uv run driftwatch evaluate --completions data/completions.parquet
+uv run driftwatch report --results data/results/evaluation.json --out-dir data/report
+```
+
+`submit` splits a round into token-balanced jobs and writes a manifest before
+uploading anything; `resume` recovers orphaned jobs, collects what has landed,
+and reconciles every chunk and then the whole round. `driftwatch evaluate
+--synthetic` runs Stages 5-7 end to end on synthetic data, without a freeze.
 
 ## Workstreams
 
@@ -103,16 +132,18 @@ files.
 src/settings.py   configuration + all corpus/window arithmetic
 src/cli.py        typer app
 src/log.py        structured logging  (NOT logging.py — that shadows the stdlib)
-src/config/       models.yaml, prompts.yaml, refusal_patterns.yaml, jsonx_schema.json
+src/textnorm.py   answer normalisation shared by S3 and the oracle (imports neither)
+src/config/       models.yaml, prompts.yaml, refusal_patterns.yaml, jsonx_schema.json,
+                  banking77_labels.yaml
 src/corpus/       query construction and splits  (code; data lives in data/)
-src/provider/     batch client, expand, submit, collect
-src/signals/      windows + S1..S7
+src/provider/     batch client, expand, submit, collect, manifest (resume)
+src/signals/      windows, groups (shared scoring base) + S1..S7
 src/detect/       calibrate, detectors, freeze
 src/oracle/       ground-truth scoring (never imported by detect/)
-src/evaluate/     replay, metrics, bootstrap
+src/evaluate/     replay, metrics, bootstrap, pipeline (the protocol, step by step)
 src/synthetic/    offline completion generator
 src/parallel.py   CPU worker resolution (no GPU — see below)
-tests/            37 gate tests + 112 specification tests
+tests/            61 gate tests + 139 specification tests
 docs/             WORKSTREAMS.md — who owns which file
 ```
 
@@ -130,11 +161,13 @@ locally: chat completions and embeddings both come from the batch endpoint
 use a GPU. Reaching for one would mean adding `torch`, which trips the C7 gate.
 
 The one heavy local computation is the calibration bootstrap — 20,000 windows
-x 7 signals — which is embarrassingly parallel across cores. `parallel.py`
-handles it, and `tests/test_parallel.py` pins the property that matters:
-**the numbers are identical at any worker count.** Results come back in input
-order, and each work item carries its own seed derived via `SeedSequence`, so
-parallelism cannot perturb the byte-identical determinism requirement.
+x 7 signals x 800 completions. It takes seconds, not hours, because no window
+is ever materialised: each signal reduces a query's k samples to sufficient
+statistics ONCE (`signals/groups.py`), and a bootstrap window is scored as an
+index array into that table. `score(window)` calls the same aggregation, and
+calibration cross-checks the two paths on its first windows before trusting
+them. Each window's draw has its own seed (`parallel.derive_worker_seeds`), so
+the numbers cannot depend on how the work is split.
 
 ## Configuration
 
@@ -142,3 +175,27 @@ parallelism cannot perturb the byte-identical determinism requirement.
 `DRIFTWATCH_API_KEY`, or use a `.env`. Model ids live only in
 `src/config/models.yaml`; any three-rung ladder from one family on any
 OpenAI-compatible batch backend substitutes directly.
+
+## Decisions recorded in code
+
+Choices the spec left open, fixed once and documented where they live:
+
+| Decision | Where |
+|---|---|
+| Dataset sources, pinned to exact Hub commits; `eli5` and `banking77` substitutes | `corpus/build.py` |
+| squad2 unanswerables in scope at their natural rate (~50%) | `corpus/build.py` |
+| XSum documents capped at 800 words; cp1252 mojibake repaired (~11% of rows) | `corpus/build.py` |
+| S1 length unit: whitespace tokens | `signals/length.py` |
+| S3: a parse-failed sample agrees with nothing | `signals/consistency.py` |
+| S4: MATTR (window 25) + trigram repeat rate, one-sided, equal weights | `signals/lexical.py` |
+| S5 strips one code fence: measures schema conformance, not fence avoidance | `signals/fmt.py` |
+| S6: Miller-Madow entropy; baseline measured at window size | `signals/entropy.py` |
+| S7: cosine on unit vectors; parse failures excluded symmetrically | `signals/embedding.py` |
+| Thresholds: GPD peaks-over-threshold when n x alpha' < 10 (always, at 20,000) | `detect/calibrate.py` |
+| Replay latency counted from the ONSET window, not the first fully faulty one | `evaluate/replay.py` |
+
+**S7 offline stand-in.** With no embedding vectors injected, S7 falls back to a
+feature-hashed bag of words so it can run in tests. That is string hashing, not
+a model, but it measures lexical rather than semantic drift. The CLI never uses
+it on real data: `calibrate` and `evaluate` inject vectors from the embedding
+round and refuse to run S7 without them.
