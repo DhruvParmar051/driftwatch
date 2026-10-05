@@ -112,7 +112,7 @@ ignore = [
 
 [tool.ruff.lint.isort]
 known-first-party = ["cli", "corpus", "detect", "evaluate", "log", "oracle",
-                     "parallel", "provider", "settings", "signals", "synthetic", "version"]
+                     "parallel", "provider", "settings", "signals", "synthetic", "textnorm", "version"]
 
 [tool.ruff.lint.flake8-tidy-imports]
 ban-relative-imports = "all"
