@@ -1,4 +1,4 @@
-"""Threshold freezing and integrity verification. STUB - track T4.
+"""Threshold freezing and integrity verification. Track T4.
 
 `thresholds.json` is the experimental record. Once written it is immutable: it
 carries the git commit and a hash of the exact calibration rows it was derived
@@ -8,9 +8,34 @@ data only" is checkable rather than asserted.
 
 from __future__ import annotations
 
+import hashlib
+import json
+import os
+import subprocess
+from datetime import UTC, datetime
 from pathlib import Path
 
 from corpus.schemas import Completion, Thresholds
+from log import get_logger
+from settings import PROJECT_ROOT, load_prompts, load_refusal_patterns
+
+log = get_logger(__name__)
+
+#: The row fields that define a calibration row's CONTENT. Timestamps are
+#: transport metadata: they do not change what was calibrated on, and their
+#: precision is the first thing a parquet round trip alters.
+HASHED_FIELDS: tuple[str, ...] = (
+    "query_id",
+    "sample_idx",
+    "condition",
+    "seed",
+    "model_id",
+    "digest",
+    "digest_source",
+    "text",
+    "finish_reason",
+    "parse_ok",
+)
 
 
 class FrozenIntegrityError(RuntimeError):
@@ -31,7 +56,17 @@ def hash_calibration_rows(completions: list[Completion]) -> str:
         version must produce the same digest, or verify() fails spuriously and
         the team learns to ignore it.
     """
-    raise NotImplementedError
+    records = sorted(
+        json.dumps(
+            [getattr(c, f) for f in HASHED_FIELDS], ensure_ascii=False, separators=(",", ":")
+        )
+        for c in completions
+    )
+    h = hashlib.sha256()
+    for record in records:
+        h.update(record.encode("utf-8"))
+        h.update(b"\n")
+    return "sha256:" + h.hexdigest()
 
 
 def current_git_commit() -> str:
@@ -43,7 +78,23 @@ def current_git_commit() -> str:
             calibration logic actually used.
 
     """
-    raise NotImplementedError
+
+    def git(*args: str) -> str:
+        try:
+            out = subprocess.run(
+                ["git", *args], cwd=PROJECT_ROOT, capture_output=True, text=True, check=True
+            )
+        except (OSError, subprocess.CalledProcessError) as exc:
+            raise FrozenIntegrityError(f"cannot read git state: {exc}") from exc
+        return out.stdout.strip()
+
+    dirty = git("status", "--porcelain", "--untracked-files=normal")
+    if dirty:
+        raise FrozenIntegrityError(
+            "working tree is dirty - commit first, so the freeze points at the code that "
+            f"actually produced it:\n{dirty}"
+        )
+    return git("rev-parse", "--short=12", "HEAD")
 
 
 def write(
@@ -77,12 +128,49 @@ def write(
         refreeze from scratch under a new commit.
 
     """
-    raise NotImplementedError
+    if path.exists():
+        raise FrozenIntegrityError(
+            f"{path} already exists. Refreezing is deliberate: move the old file aside by hand."
+        )
+    record = Thresholds(
+        frozen_at=datetime.now(UTC),
+        git_commit=current_git_commit(),
+        calib_rows_hash=hash_calibration_rows(calib_completions),
+        k=k,
+        window_size=window_size,
+        window_stride=window_stride,
+        family_wise_budget=family_wise_budget,
+        per_signal_alpha=per_signal_alpha,
+        n_signals=len(thresholds),
+        bootstrap_windows=bootstrap_windows,
+        calibration_seed=calibration_seed,
+        refusal_patterns_version=str(load_refusal_patterns()["version"]),
+        prompts_version=str(load_prompts()["version"]),
+        thresholds=dict(thresholds),
+    )
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(record.model_dump_json(indent=2) + "\n", encoding="utf-8")
+    # os.link refuses to overwrite: a concurrent freeze cannot clobber this one.
+    try:
+        os.link(tmp, path)
+    except FileExistsError as exc:
+        raise FrozenIntegrityError(f"{path} appeared while freezing - not overwriting") from exc
+    finally:
+        tmp.unlink(missing_ok=True)
+    log.info(
+        "freeze.written", path=str(path), commit=record.git_commit, rows_hash=record.calib_rows_hash
+    )
+    return record
 
 
 def read(path: Path) -> Thresholds:
     """Read and parse thresholds.json. Raises if absent or malformed."""
-    raise NotImplementedError
+    raw = path.read_text(encoding="utf-8")
+    try:
+        return Thresholds.model_validate_json(raw)
+    except ValueError as exc:
+        raise FrozenIntegrityError(f"{path} is not a valid thresholds record: {exc}") from exc
 
 
 def verify(path: Path, calib_completions: list[Completion]) -> Thresholds:
@@ -104,4 +192,25 @@ def verify(path: Path, calib_completions: list[Completion]) -> Thresholds:
         mutated calibration set MUST fail here - that is the Stage 5 gate.
 
     """
-    raise NotImplementedError
+    record = read(path)
+    problems = []
+    actual_hash = hash_calibration_rows(calib_completions)
+    if actual_hash != record.calib_rows_hash:
+        problems.append(
+            f"calibration rows changed: frozen {record.calib_rows_hash}, now {actual_hash}"
+        )
+    patterns = str(load_refusal_patterns()["version"])
+    if patterns != record.refusal_patterns_version:
+        problems.append(
+            f"refusal patterns are v{patterns}, thresholds were frozen on "
+            f"v{record.refusal_patterns_version}"
+        )
+    prompts = str(load_prompts()["version"])
+    if prompts != record.prompts_version:
+        problems.append(f"prompts are v{prompts}, frozen on v{record.prompts_version}")
+    if problems:
+        raise FrozenIntegrityError(
+            f"{path} does not describe this data:\n  " + "\n  ".join(problems)
+        )
+    log.info("freeze.verified", path=str(path), commit=record.git_commit)
+    return record
