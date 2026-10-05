@@ -27,7 +27,7 @@ from corpus.schemas import Completion, Query
 from corpus.splits import f4_subset, fault_subset
 from detect.calibrate import measure_false_alarm_rate
 from evaluate.bootstrap import bootstrap_ci
-from evaluate.metrics import MODEL_FAULTS, auc, discrimination, summarise
+from evaluate.metrics import MODEL_FAULTS, SUMMARY_COLUMNS, auc, discrimination, summarise
 from evaluate.replay import LATENCY_CONVENTION, ReplayRun, randomised_onsets, run_replay
 from log import get_logger
 from oracle.score import score_condition
@@ -196,7 +196,8 @@ def write_report(results: dict[str, Any], out_dir: Path) -> list[Path]:
         )
 
     summary = results["summary"]
-    columns = list(summary[0]) if summary else []
+    # The results JSON is written with sorted keys; restore the reading order.
+    columns = [c for c in SUMMARY_COLUMNS if summary and c in summary[0]]
     latencies = {}
     for r in results["records"]:
         latencies.setdefault(r["condition"], []).append(r["latency"])
@@ -228,7 +229,11 @@ def write_report(results: dict[str, Any], out_dir: Path) -> list[Path]:
         f"Family-wise rate {fa['family_wise']:.4f} against a budget of "
         f"{results['family_wise_budget']} (gate: <= 2x) - "
         f"**{'PASSED' if results['stage5_gate_passed'] else 'FAILED'}**.\n",
-        table([{"signal": k, "rate": v} for k, v in fa.items()], ["signal", "rate"]),
+        table(
+            [{"signal": "family_wise", "rate": fa["family_wise"]}]
+            + [{"signal": k, "rate": fa[k]} for k in SIGNAL_NAMES if k in fa],
+            ["signal", "rate"],
+        ),
         "\n## Detection, per fault (never pooled)\n",
         table(summary, columns),
         "\n## Latency distribution, per fault\n",
@@ -236,7 +241,7 @@ def write_report(results: dict[str, Any], out_dir: Path) -> list[Path]:
         "\n## Discrimination: detection rate on F1-F3 minus on F4, per signal\n",
         "Positive: fires on model faults more than on the benign query shift.\n\n",
         table(
-            [{"signal": k, "f123_minus_f4": v} for k, v in disc.items()],
+            [{"signal": k, "f123_minus_f4": disc[k]} for k in SIGNAL_NAMES if k in disc],
             ["signal", "f123_minus_f4"],
         ),
         "\n## Oracle - true accuracy per condition and slice\n",
