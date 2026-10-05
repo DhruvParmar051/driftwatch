@@ -1,4 +1,4 @@
-"""Alarm rules: fixed thresholds and sequential change-point tests. STUB - track T4."""
+"""Alarm rules: fixed thresholds and sequential change-point tests. Track T4."""
 
 from __future__ import annotations
 
@@ -26,7 +26,9 @@ class ThresholdDetector:
     """
 
     def __init__(self, thresholds: dict[str, float]) -> None:
-        raise NotImplementedError
+        if not thresholds:
+            raise ValueError("ThresholdDetector needs at least one threshold")
+        self.thresholds = dict(thresholds)
 
     def update(self, window_idx: int, scores: dict[str, SignalScore]) -> list[Alarm]:
         """Return an Alarm for every signal whose value exceeds its threshold.
@@ -36,7 +38,14 @@ class ThresholdDetector:
             direction flag - signals are oriented higher = worse at source. If a
             per-signal direction is ever needed, that is a bug in the signal.
         """
-        raise NotImplementedError
+        missing = set(scores) - set(self.thresholds)
+        if missing:
+            raise KeyError(f"no frozen threshold for signal(s) {sorted(missing)}")
+        return [
+            Alarm(window_idx, name, score.value, self.thresholds[name], "threshold")
+            for name, score in sorted(scores.items())
+            if score.value > self.thresholds[name]
+        ]
 
 
 class CUSUMDetector:
@@ -49,7 +58,13 @@ class CUSUMDetector:
     """
 
     def __init__(self, drift: float, threshold: float) -> None:
-        raise NotImplementedError
+        if drift < 0 or threshold <= 0:
+            raise ValueError(f"CUSUM needs drift >= 0 and threshold > 0, got {drift}, {threshold}")
+        self.drift = drift
+        self.threshold = threshold
+        self.signal_name = ""
+        self.n_resets = 0
+        self._s = 0.0
 
     def update(self, window_idx: int, value: float) -> Alarm | None:
         """Update the cumulative sum; return an Alarm if it exceeds the interval.
@@ -59,11 +74,19 @@ class CUSUMDetector:
               reset the detector alarms on every subsequent window and detection
               latency becomes meaningless.
         """
-        raise NotImplementedError
+        # One-sided upper CUSUM: signals are oriented higher = worse, so only an
+        # upward shift is degradation.
+        self._s = max(0.0, self._s + value - self.drift)
+        if self._s > self.threshold:
+            alarm = Alarm(window_idx, self.signal_name, self._s, self.threshold, "cusum")
+            self.n_resets += 1
+            self._s = 0.0
+            return alarm
+        return None
 
     def reset(self) -> None:
         """Clear accumulated state."""
-        raise NotImplementedError
+        self._s = 0.0
 
 
 class PageHinkleyDetector:
@@ -75,12 +98,36 @@ class PageHinkleyDetector:
     """
 
     def __init__(self, delta: float, threshold: float) -> None:
-        raise NotImplementedError
+        if delta < 0 or threshold <= 0:
+            raise ValueError(
+                f"Page-Hinkley needs delta >= 0 and threshold > 0, got {delta}, {threshold}"
+            )
+        self.delta = delta
+        self.threshold = threshold
+        self.signal_name = ""
+        self.n_resets = 0
+        self.reset()
 
     def update(self, window_idx: int, value: float) -> Alarm | None:
         """Update the test statistic; return an Alarm if it crosses the threshold."""
-        raise NotImplementedError
+        # Test for an INCREASE in the mean: m_t accumulates deviations above the
+        # running mean (less the tolerance delta); alarm when it rises more than
+        # `threshold` above its running minimum.
+        self._n += 1
+        self._mean += (value - self._mean) / self._n
+        self._m += value - self._mean - self.delta
+        self._m_min = min(self._m_min, self._m)
+        stat = self._m - self._m_min
+        if stat > self.threshold:
+            alarm = Alarm(window_idx, self.signal_name, stat, self.threshold, "page_hinkley")
+            self.n_resets += 1
+            self.reset()
+            return alarm
+        return None
 
     def reset(self) -> None:
         """Clear accumulated state."""
-        raise NotImplementedError
+        self._n = 0
+        self._mean = 0.0
+        self._m = 0.0
+        self._m_min = 0.0
