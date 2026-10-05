@@ -1,5 +1,7 @@
 # Workstreams
 
+> **Status on branch `dhruv`:** every file in the table below is implemented and the full test suite passes. The ownership table records the original split of the work; it no longer describes outstanding stubs.
+
 Four owners, 25 files, 116 stubs. Dhruv carries the silent-failure work; the other three are exactly balanced. All paths below are relative to `src/`. Ownership is **file-level and exclusive**: every
 file has exactly one owner, so two people never edit the same file. Read your
 column, then read the dependency rules - they decide the order, not preference.
