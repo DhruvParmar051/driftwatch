@@ -1,8 +1,15 @@
-"""Detection metrics. STUB - track T4."""
+"""Detection metrics. Track T4."""
 
 from __future__ import annotations
 
 import numpy as np
+import pandas as pd
+from scipy.stats import mannwhitneyu
+
+from settings import SIGNAL_NAMES
+
+#: Fault conditions that mean "the MODEL got worse" - versus F4, the query shift.
+MODEL_FAULTS: tuple[str, ...] = ("F1", "F2", "F3")
 
 
 def detection_latency(detection_records: list[dict], condition: str) -> np.ndarray:
@@ -18,12 +25,22 @@ def detection_latency(detection_records: list[dict], condition: str) -> np.ndarr
         detected fast or not at all - describes neither mode.
 
     """
-    raise NotImplementedError
+    return np.asarray(
+        [
+            r["latency"]
+            for r in detection_records
+            if r["condition"] == condition and r.get("latency") is not None
+        ],
+        dtype=float,
+    )
 
 
 def non_detection_rate(detection_records: list[dict], condition: str) -> float:
     """Fraction of runs where the fault was never detected."""
-    raise NotImplementedError
+    runs = [r for r in detection_records if r["condition"] == condition]
+    if not runs:
+        raise ValueError(f"no detection records for condition {condition!r}")
+    return sum(1 for r in runs if r.get("latency") is None) / len(runs)
 
 
 def roc_at_budget(
@@ -36,12 +53,19 @@ def roc_at_budget(
         is diagnostic only - quoting the best point on it is a post-hoc
         threshold choice and exactly the leakage C4 forbids.
     """
-    raise NotImplementedError
+    healthy, fault = _nonempty(healthy_scores, "healthy"), _nonempty(fault_scores, "fault")
+    if not 0.0 < budget < 1.0:
+        raise ValueError(f"budget must be in (0, 1), got {budget}")
+    threshold = float(np.quantile(healthy, 1.0 - budget, method="higher"))
+    return float(np.mean(fault > threshold)), threshold
 
 
 def auc(healthy_scores: np.ndarray, fault_scores: np.ndarray) -> float:
     """Area under the ROC curve. Diagnostic; not the headline number."""
-    raise NotImplementedError
+    healthy, fault = _nonempty(healthy_scores, "healthy"), _nonempty(fault_scores, "fault")
+    # P(fault score > healthy score) + 0.5 P(tie) - the Mann-Whitney U statistic, normalised.
+    u = mannwhitneyu(fault, healthy, alternative="two-sided").statistic
+    return float(u / (len(fault) * len(healthy)))
 
 
 def discrimination(f123_records: list[dict], f4_records: list[dict]) -> dict[str, float]:
@@ -62,7 +86,17 @@ def discrimination(f123_records: list[dict], f4_records: list[dict]) -> dict[str
         PATTERN is the discriminative evidence - a pooled score destroys it.
 
     """
-    raise NotImplementedError
+
+    # Per signal: (detection rate on F1-F3 runs) - (detection rate on F4 runs).
+    # Positive = the signal fires on model faults more than on the query shift;
+    # near zero = it cannot tell them apart; negative = it prefers the shift.
+    def rate(records: list[dict], name: str) -> float:
+        if not records:
+            return float("nan")
+        hits = sum(1 for r in records if (r.get("latency_by_signal") or {}).get(name) is not None)
+        return hits / len(records)
+
+    return {name: rate(f123_records, name) - rate(f4_records, name) for name in SIGNAL_NAMES}
 
 
 def summarise(detection_records: list[dict]) -> object:
@@ -74,4 +108,53 @@ def summarise(detection_records: list[dict]) -> object:
         phenomena with different detectability; a pooled number is dominated by
         whichever is easiest and describes none of them.
     """
-    raise NotImplementedError
+    rows = []
+    for condition in sorted({r["condition"] for r in detection_records}):
+        runs = [r for r in detection_records if r["condition"] == condition]
+        lat = detection_latency(detection_records, condition)
+        pre_windows = sum(r.get("pre_onset_windows", 0) for r in runs)
+        pre_alarms = sum(r.get("pre_onset_alarms", 0) for r in runs)
+        q = np.quantile(lat, [0.25, 0.5, 0.75, 0.9]) if len(lat) else [np.nan] * 4
+        rows.append(
+            {
+                "condition": condition,
+                "n_runs": len(runs),
+                "detected": len(lat),
+                "non_detection_rate": round(non_detection_rate(detection_records, condition), 6),
+                "latency_q25": _r(q[0]),
+                "latency_median": _r(q[1]),
+                "latency_q75": _r(q[2]),
+                "latency_q90": _r(q[3]),
+                "latency_max": _r(lat.max()) if len(lat) else np.nan,
+                "pre_onset_false_alarm_rate": round(pre_alarms / pre_windows, 6)
+                if pre_windows
+                else np.nan,
+            }
+        )
+    return pd.DataFrame(rows, columns=SUMMARY_COLUMNS)
+
+
+#: Columns of the `summarise` table. No pooled row and no mean latency, by design.
+SUMMARY_COLUMNS: list[str] = [
+    "condition",
+    "n_runs",
+    "detected",
+    "non_detection_rate",
+    "latency_q25",
+    "latency_median",
+    "latency_q75",
+    "latency_q90",
+    "latency_max",
+    "pre_onset_false_alarm_rate",
+]
+
+
+def _nonempty(values: np.ndarray, what: str) -> np.ndarray:
+    arr = np.asarray(values, dtype=float)
+    if arr.size == 0:
+        raise ValueError(f"no {what} scores")
+    return arr
+
+
+def _r(x: float) -> float:
+    return round(float(x), 6)
