@@ -1,0 +1,338 @@
+"""Evaluation orchestration: the steps behind `driftwatch calibrate / evaluate / report`.
+
+Kept out of cli.py so every step is reachable from a test. The order of
+operations here IS the experimental protocol:
+
+    1. select the calibration rows (split == "calib", condition == "healthy");
+    2. fit + calibrate -> proposed thresholds          (calibrate command)
+    3. freeze, stamping commit and row hash             (freeze command)
+    4. verify the freeze against the same rows          (evaluate refuses otherwise)
+    5. measure the false-alarm rate on REAL heldout windows (Stage 5 gate)
+    6. replay each fault at randomised onsets and score detection
+    7. oracle: the true quality drop under each fault, for context
+
+Nothing in steps 1-6 sees ground truth; step 7 runs after detection is fixed.
+"""
+
+from __future__ import annotations
+
+import json
+from collections.abc import Sequence
+from pathlib import Path
+from typing import Any
+
+import numpy as np
+
+from corpus.schemas import Completion, Query
+from corpus.splits import f4_subset, fault_subset
+from detect.calibrate import measure_false_alarm_rate
+from evaluate.bootstrap import bootstrap_ci
+from evaluate.metrics import MODEL_FAULTS, auc, discrimination, summarise
+from evaluate.replay import LATENCY_CONVENTION, ReplayRun, randomised_onsets, run_replay
+from log import get_logger
+from oracle.score import score_condition
+from settings import SIGNAL_NAMES, get_settings
+from signals.base import Signal
+from signals.embedding import EmbeddingShiftSignal
+from signals.registry import build_signals
+
+log = get_logger(__name__)
+
+HEALTHY: str = "healthy"
+F4: str = "F4"
+
+#: Replay geometry defaults: 40 windows, with at least 10 healthy before onset.
+DEFAULT_REPLAY_WINDOWS: int = 40
+DEFAULT_MIN_PREFIX: int = 10
+
+
+def calibration_rows(
+    queries: Sequence[Query], completions: Sequence[Completion]
+) -> tuple[list[Query], list[Completion]]:
+    """The calibration set: calib queries, and their HEALTHY completions only.
+
+    This is a selection, not a filter that hides mistakes: detect.calibrate
+    re-asserts both properties and raises LeakageError on any violation.
+    """
+    calib = [q for q in queries if q.split == "calib"]
+    ids = {q.query_id for q in calib}
+    rows = [c for c in completions if c.query_id in ids and c.condition == HEALTHY]
+    return calib, rows
+
+
+def build_monitor_signals(
+    embeddings: dict[str, np.ndarray] | None, enabled: Sequence[str] | None = None
+) -> dict[str, Signal]:
+    """The signal set for a REAL run.
+
+    S7 is built with the injected embedding vectors. If S7 is enabled and no
+    vectors are given this raises - the offline lexical stand-in is never
+    allowed into a calibration or evaluation of real data. To run without S7,
+    leave it out of `enabled`; that changes m in the Sidak correction, so it
+    must be decided before calibration.
+    """
+    names = list(SIGNAL_NAMES if enabled is None else enabled)
+    signals = build_signals([n for n in names if n != "embedding_shift"])
+    if "embedding_shift" in names:
+        if embeddings is None:
+            raise ValueError(
+                "S7 is enabled but no embedding store was given. Run the embedding round, "
+                "or disable S7 (--no-embeddings) BEFORE calibrating."
+            )
+        signals["embedding_shift"] = EmbeddingShiftSignal(vectors=embeddings)
+    return {n: signals[n] for n in names}
+
+
+def alias_embeddings(
+    embeddings: dict[str, np.ndarray], healthy_rows: Sequence[Completion], condition: str
+) -> dict[str, np.ndarray]:
+    """Re-key healthy rows' vectors under `condition` (F4 reuses healthy completions)."""
+    from provider.expand import decode_custom_id, encode_custom_id
+
+    wanted = {(c.query_id, c.sample_idx) for c in healthy_rows}
+    out = dict(embeddings)
+    for custom_id, vec in embeddings.items():
+        qid, idx, cond, _round = decode_custom_id(custom_id)
+        if cond == HEALTHY and (qid, idx) in wanted:
+            out[encode_custom_id(qid, idx, condition, "alias")] = vec
+    return out
+
+
+def derive_f4(
+    queries: Sequence[Query], healthy: Sequence[Completion], seed: int
+) -> list[Completion]:
+    """F4's rows: healthy completions for the F4 mixture, relabelled condition F4.
+
+    F4 changes WHAT IS ASKED, not the model, so its completions are the healthy
+    model's own answers to the shifted query mixture - no generation round.
+    """
+    ids = {q.query_id for q in f4_subset(list(queries), seed)}
+    rows = [c.model_copy(update={"condition": F4}) for c in healthy if c.query_id in ids]
+    if not rows:
+        raise ValueError("no healthy completions cover the F4 query mixture")
+    return rows
+
+
+def evaluate_run(
+    queries: Sequence[Query],
+    completions: Sequence[Completion],
+    signals: dict[str, Signal],
+    thresholds: dict[str, float],
+    *,
+    per_signal_alpha: float,
+    n_runs: int,
+    n_windows: int = DEFAULT_REPLAY_WINDOWS,
+    min_prefix: int = DEFAULT_MIN_PREFIX,
+    seed: int,
+    mode: str,
+) -> dict[str, Any]:
+    """Steps 5-7 of the protocol. `signals` must already be fitted on calib.
+
+    Returns a JSON-serialisable results dict (detection records without their
+    per-window score traces, which are summarised into AUCs instead).
+    """
+    settings = get_settings()
+    queries = list(queries)
+    healthy = [c for c in completions if c.condition == HEALTHY]
+
+    heldout = [q for q in queries if q.split == "heldout"]
+    held_ids = {q.query_id for q in heldout}
+    false_alarm = measure_false_alarm_rate(
+        signals, thresholds, heldout, [c for c in healthy if c.query_id in held_ids]
+    )
+    gate = false_alarm["family_wise"] <= 2 * settings.false_alarm_budget
+
+    fault_queries = fault_subset(queries)
+    faults: dict[str, list[Completion]] = {
+        cond: [c for c in completions if c.condition == cond]
+        for cond in sorted({c.condition for c in completions} - {HEALTHY, F4})
+    }
+    faults[F4] = derive_f4(queries, healthy, settings.corpus_seed)
+
+    runs: list[ReplayRun] = []
+    for k, cond in enumerate(sorted(faults)):
+        onsets = randomised_onsets(n_runs, n_windows, min_prefix, seed + k)
+        for i, onset in enumerate(onsets):
+            runs.append(ReplayRun(len(runs), cond, onset, n_windows, seed * 1000 + k * n_runs + i))
+    records = run_replay(runs, healthy, faults, fault_queries, signals, thresholds)
+
+    by_cond = {cond: [r for r in records if r["condition"] == cond] for cond in faults}
+    model_faults = [r for r in records if r["condition"] in MODEL_FAULTS]
+    results: dict[str, Any] = {
+        "mode": mode,
+        "latency_convention": LATENCY_CONVENTION,
+        "family_wise_budget": settings.false_alarm_budget,
+        "per_signal_alpha": per_signal_alpha,
+        "thresholds": thresholds,
+        "false_alarm": false_alarm,
+        "stage5_gate_passed": gate,
+        "summary": summarise(records).to_dict(orient="records"),
+        "latency_median_ci": _latency_cis(by_cond, settings.bootstrap_resamples, seed),
+        "discrimination_f123_minus_f4": discrimination(model_faults, by_cond[F4]),
+        "auc": {cond: _aucs(rs, list(signals)) for cond, rs in by_cond.items()},
+        "oracle": _oracle(queries, completions, list(faults)),
+        "records": [{k: v for k, v in r.items() if k != "scores"} for r in records],
+    }
+    log.info("evaluate.done", mode=mode, gate=gate, runs=len(records))
+    return results
+
+
+def write_results(results: dict[str, Any], path: Path) -> Path:
+    """Write the results JSON (NaN -> null so it stays valid JSON)."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(_jsonable(results), indent=2, sort_keys=True) + "\n")
+    return path
+
+
+def write_report(results: dict[str, Any], out_dir: Path) -> list[Path]:
+    """Tables per fault - never pooled - plus the latency DISTRIBUTION per fault."""
+    out_dir.mkdir(parents=True, exist_ok=True)
+    written: list[Path] = []
+
+    def table(rows: list[dict[str, Any]], columns: list[str]) -> str:
+        head = "| " + " | ".join(columns) + " |\n|" + "---|" * len(columns) + "\n"
+        return head + "".join(
+            "| " + " | ".join(_fmt(r.get(c)) for c in columns) + " |\n" for r in rows
+        )
+
+    summary = results["summary"]
+    columns = list(summary[0]) if summary else []
+    latencies = {}
+    for r in results["records"]:
+        latencies.setdefault(r["condition"], []).append(r["latency"])
+
+    csv = out_dir / "summary.csv"
+    csv.write_text(
+        ",".join(columns)
+        + "\n"
+        + "".join(",".join(_fmt(row.get(c)) for c in columns) + "\n" for row in summary)
+    )
+    written.append(csv)
+
+    dist = out_dir / "latency_distribution.csv"
+    dist.write_text(
+        "condition,run_idx,onset,latency\n"
+        + "".join(
+            f"{r['condition']},{r['run_idx']},{r['onset']},{_fmt(r['latency'])}\n"
+            for r in results["records"]
+        )
+    )
+    written.append(dist)
+
+    disc = results["discrimination_f123_minus_f4"]
+    fa = results["false_alarm"]
+    md = [
+        f"# driftwatch results ({results['mode']})\n",
+        f"Latency convention: {results['latency_convention']}.\n",
+        "## Stage 5 gate - false alarms on real heldout windows\n",
+        f"Family-wise rate {fa['family_wise']:.4f} against a budget of "
+        f"{results['family_wise_budget']} (gate: <= 2x) - "
+        f"**{'PASSED' if results['stage5_gate_passed'] else 'FAILED'}**.\n",
+        table([{"signal": k, "rate": v} for k, v in fa.items()], ["signal", "rate"]),
+        "\n## Detection, per fault (never pooled)\n",
+        table(summary, columns),
+        "\n## Latency distribution, per fault\n",
+        _histograms(latencies),
+        "\n## Discrimination: detection rate on F1-F3 minus on F4, per signal\n",
+        "Positive: fires on model faults more than on the benign query shift.\n\n",
+        table(
+            [{"signal": k, "f123_minus_f4": v} for k, v in disc.items()],
+            ["signal", "f123_minus_f4"],
+        ),
+        "\n## Oracle - true accuracy per condition and slice\n",
+        table(
+            [
+                {"condition": c, "slice": s, **v}
+                for c, per in results["oracle"].items()
+                for s, v in per.items()
+            ],
+            ["condition", "slice", "accuracy", "n_scored", "n_correct", "n_parse_failures"],
+        ),
+    ]
+    report = out_dir / "report.md"
+    report.write_text("\n".join(md))
+    written.append(report)
+    return written
+
+
+# ── internals ───────────────────────────────────────────────────────────────
+
+
+def _latency_cis(by_cond: dict[str, list[dict]], resamples: int, seed: int) -> dict[str, Any]:
+    out: dict[str, Any] = {}
+    for cond, records in by_cond.items():
+        lat = np.asarray([r["latency"] for r in records if r["latency"] is not None], float)
+        if len(lat) < 2 or np.ptp(lat) == 0:
+            out[cond] = (
+                None
+                if len(lat) == 0
+                else {"point": float(np.median(lat)), "note": "too few distinct latencies for a CI"}
+            )
+            continue
+        point, lo, hi = bootstrap_ci(lat, np.median, resamples, seed)
+        out[cond] = {"point": point, "lo": lo, "hi": hi}
+    return out
+
+
+def _aucs(records: list[dict], names: list[str]) -> dict[str, float | None]:
+    """Per signal: pre-onset windows (healthy) vs fully faulty windows."""
+    out: dict[str, float | None] = {}
+    for name in names:
+        healthy = [v for r in records for v in r["scores"][name][: r["onset"]]]
+        faulty = [v for r in records for v in r["scores"][name][r["fully_faulty_from"] :]]
+        out[name] = auc(np.asarray(healthy), np.asarray(faulty)) if healthy and faulty else None
+    return out
+
+
+def _oracle(queries: list[Query], completions: Sequence[Completion], faults: list[str]) -> dict:
+    out: dict[str, dict[str, Any]] = {}
+    for cond in [HEALTHY, *faults]:
+        rows = [c for c in completions if c.condition == cond]
+        if cond == F4 and not rows:
+            continue
+        out[cond] = {
+            r.slice: {
+                "accuracy": r.accuracy,
+                "n_scored": r.n_scored,
+                "n_correct": r.n_correct,
+                "n_parse_failures": r.n_parse_failures,
+            }
+            for r in score_condition(rows, queries, cond)
+        }
+    return out
+
+
+def _histograms(latencies: dict[str, list[int | None]]) -> str:
+    lines = []
+    for cond in sorted(latencies):
+        values = latencies[cond]
+        missed = sum(v is None for v in values)
+        counts: dict[int, int] = {}
+        for v in values:
+            if v is not None:
+                counts[v] = counts.get(v, 0) + 1
+        lines.append(f"\n**{cond}** - {len(values)} runs, {missed} not detected\n\n```")
+        for lat in sorted(counts):
+            lines.append(f"{lat:>4} | {'#' * counts[lat]} {counts[lat]}")
+        lines.append("```")
+    return "\n".join(lines) + "\n"
+
+
+def _fmt(value: Any) -> str:
+    if value is None:
+        return "none"
+    if isinstance(value, float):
+        return "nan" if value != value else f"{value:.4g}"
+    return str(value)
+
+
+def _jsonable(obj: Any) -> Any:
+    if isinstance(obj, dict):
+        return {str(k): _jsonable(v) for k, v in obj.items()}
+    if isinstance(obj, list | tuple):
+        return [_jsonable(v) for v in obj]
+    if isinstance(obj, np.generic):
+        obj = obj.item()
+    if isinstance(obj, float) and obj != obj:
+        return None
+    return obj
