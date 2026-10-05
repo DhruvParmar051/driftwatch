@@ -1,4 +1,4 @@
-"""Query -> JSONL batch rows. STUB - track T2.
+"""Query -> JSONL batch rows. Track T2.
 
 The platform's row schema is STRICT. Its validator allows exactly four
 top-level keys:
@@ -13,10 +13,26 @@ not preference, is why `encode_custom_id` exists.
 
 from __future__ import annotations
 
+import hashlib
+import json
+from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
 from corpus.schemas import Query
+from settings import CHAT_URL, EMBEDDINGS_URL, MAX_BATCH_FILE_BYTES, MAX_ROWS_PER_BATCH
+
+#: The only top-level keys the platform's row validator accepts.
+ALLOWED_ROW_KEYS: frozenset[str] = frozenset({"custom_id", "method", "url", "body"})
+
+#: Body keys that must never be sent. `n` fails at the worker (C1); `stream` is
+#: rejected for batch execution; `logprobs` is silently dropped by the runtime.
+FORBIDDEN_BODY_KEYS: frozenset[str] = frozenset({"n", "stream", "logprobs", "top_logprobs"})
+
+#: Seeds are kept in the signed 31-bit range: every runtime in the stack
+#: accepts it, and it leaves no room for a silent overflow wrapping two seeds
+#: onto one value.
+SEED_MODULUS: int = 2**31 - 1
 
 #: Separator for custom_id fields. Must not occur in any query_id or condition.
 CUSTOM_ID_SEP: str = "|"
@@ -39,7 +55,15 @@ def encode_custom_id(query_id: str, sample_idx: int, condition: str, round_id: s
         ValueError: if any component contains CUSTOM_ID_SEP.
 
     """
-    raise NotImplementedError
+    parts = [query_id, str(sample_idx), condition, round_id]
+    if sample_idx < 0:
+        raise ValueError(f"sample_idx must be >= 0, got {sample_idx}")
+    for part in parts:
+        if not part:
+            raise ValueError(f"custom_id components must be non-empty, got {parts}")
+        if CUSTOM_ID_SEP in part:
+            raise ValueError(f"custom_id component {part!r} contains separator {CUSTOM_ID_SEP!r}")
+    return CUSTOM_ID_SEP.join(parts)
 
 
 def decode_custom_id(custom_id: str) -> tuple[str, int, str, str]:
@@ -52,7 +76,13 @@ def decode_custom_id(custom_id: str) -> tuple[str, int, str, str]:
             row to quietly discard (C6).
 
     """
-    raise NotImplementedError
+    parts = custom_id.split(CUSTOM_ID_SEP)
+    if len(parts) != 4 or not all(parts):
+        raise ValueError(f"malformed custom_id {custom_id!r}: expected 4 non-empty fields")
+    query_id, raw_idx, condition, round_id = parts
+    if not raw_idx.isdigit():
+        raise ValueError(f"malformed custom_id {custom_id!r}: sample_idx {raw_idx!r} is not an int")
+    return query_id, int(raw_idx), condition, round_id
 
 
 def derive_seed(query_id: str, sample_idx: int, seed_base: int) -> int:
@@ -72,7 +102,9 @@ def derive_seed(query_id: str, sample_idx: int, seed_base: int) -> int:
         A non-negative int within the backend's accepted seed range.
 
     """
-    raise NotImplementedError
+    material = f"{seed_base}{CUSTOM_ID_SEP}{query_id}{CUSTOM_ID_SEP}{sample_idx}".encode()
+    digest = hashlib.sha256(material).digest()
+    return int.from_bytes(digest[:8], "big") % SEED_MODULUS
 
 
 def build_chat_row(
@@ -114,7 +146,26 @@ def build_chat_row(
             substitution IS fault F3; the model is unchanged.
 
     """
-    raise NotImplementedError
+    messages: list[dict[str, str]] = []
+    if system_prompt:
+        messages.append({"role": "system", "content": system_prompt})
+    messages.append({"role": "user", "content": query.prompt})
+
+    body: dict[str, Any] = {
+        "model": model_id,
+        "messages": messages,
+        "temperature": temperature,
+        "max_tokens": max_tokens,
+        "seed": derive_seed(query.query_id, sample_idx, seed_base),
+    }
+    # V8: no response_format on ANY row, jsonx included - S5 validates client-side.
+    _assert_body_is_safe(body)
+    return {
+        "custom_id": encode_custom_id(query.query_id, sample_idx, condition, round_id),
+        "method": "POST",
+        "url": CHAT_URL,
+        "body": body,
+    }
 
 
 def build_embedding_row(text: str, custom_id: str, model_id: str) -> dict[str, Any]:
@@ -130,7 +181,13 @@ def build_embedding_row(text: str, custom_id: str, model_id: str) -> dict[str, A
         second round trip after the chat round, not part of it. Budget the extra
         turnaround: this is an extra day per condition if run serially.
     """
-    raise NotImplementedError
+    decode_custom_id(custom_id)  # an unmatchable embedding row is a C10 failure later
+    return {
+        "custom_id": custom_id,
+        "method": "POST",
+        "url": EMBEDDINGS_URL,
+        "body": {"model": model_id, "input": text},
+    }
 
 
 def expand_queries(
@@ -158,7 +215,36 @@ def expand_queries(
         no row carries `n`, and seeds are distinct within every query_id.
 
     """
-    raise NotImplementedError
+    if k < 1:
+        raise ValueError(f"k must be >= 1, got {k}")
+    n_rows = len(queries) * k
+    if n_rows > MAX_ROWS_PER_BATCH:
+        raise ValueError(
+            f"{len(queries)} queries x k={k} = {n_rows} rows exceeds the platform cap of "
+            f"{MAX_ROWS_PER_BATCH}; chunk with provider.submit.chunk_rows instead"
+        )
+    ids = [q.query_id for q in queries]
+    if len(set(ids)) != len(ids):
+        raise ValueError("duplicate query_id in expand_queries input")
+
+    rows = [
+        build_chat_row(
+            q, i, model_id, condition, round_id, system_prompt, seed_base, temperature, max_tokens
+        )
+        for q in sorted(queries, key=lambda q: q.query_id)
+        for i in range(k)
+    ]
+
+    seeds_by_query: dict[str, set[int]] = defaultdict(set)
+    for row in rows:
+        if "n" in row["body"]:
+            raise AssertionError(f"C1 violation: row {row['custom_id']} carries `n`")
+        query_id = decode_custom_id(row["custom_id"])[0]
+        seeds_by_query[query_id].add(row["body"]["seed"])
+    collided = [q for q, seeds in seeds_by_query.items() if len(seeds) != k]
+    if collided:
+        raise AssertionError(f"C2 violation: duplicate seeds within {collided[:5]}")
+    return rows
 
 
 def write_jsonl(rows: list[dict[str, Any]], path: Path) -> int:
@@ -170,4 +256,55 @@ def write_jsonl(rows: list[dict[str, Any]], path: Path) -> int:
         validator performs should fail HERE, where it costs seconds, rather
         than at submission where it costs the round's window.
     """
-    raise NotImplementedError
+    validate_rows(rows)
+    lines = [json.dumps(row, ensure_ascii=False, separators=(",", ":")) for row in rows]
+    payload = ("\n".join(lines) + "\n").encode("utf-8") if lines else b""
+    if len(payload) > MAX_BATCH_FILE_BYTES:
+        raise ValueError(
+            f"{len(payload)} bytes exceeds the platform cap of {MAX_BATCH_FILE_BYTES}; chunk it"
+        )
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_bytes(payload)
+    tmp.replace(path)
+    return len(rows)
+
+
+def validate_rows(rows: list[dict[str, Any]]) -> None:
+    """Every check the platform's validator performs, run locally. Raises ValueError."""
+    if len(rows) > MAX_ROWS_PER_BATCH:
+        raise ValueError(f"{len(rows)} rows exceeds the platform cap of {MAX_ROWS_PER_BATCH}")
+    seen: set[str] = set()
+    for i, row in enumerate(rows):
+        keys = set(row)
+        if keys != ALLOWED_ROW_KEYS:
+            raise ValueError(
+                f"row {i}: top-level keys {sorted(keys)} != {sorted(ALLOWED_ROW_KEYS)} "
+                "(the platform rejects the WHOLE FILE on an unknown key)"
+            )
+        custom_id = row["custom_id"]
+        if not isinstance(custom_id, str) or not custom_id:
+            raise ValueError(f"row {i}: custom_id must be a non-empty string")
+        if custom_id in seen:
+            raise ValueError(f"row {i}: duplicate custom_id {custom_id!r}")
+        seen.add(custom_id)
+        if row["method"] != "POST":
+            raise ValueError(f"row {i}: method must be POST, got {row['method']!r}")
+        if row["url"] not in (CHAT_URL, EMBEDDINGS_URL):
+            raise ValueError(f"row {i}: unsupported url {row['url']!r}")
+        if not isinstance(row["body"], dict):
+            raise ValueError(f"row {i}: body must be an object")
+        _assert_body_is_safe(row["body"], where=f"row {i}")
+        if row["url"] == CHAT_URL and not row["body"].get("messages"):
+            raise ValueError(f"row {i}: chat row has no messages")
+
+
+def _assert_body_is_safe(body: dict[str, Any], where: str = "row") -> None:
+    bad = FORBIDDEN_BODY_KEYS & set(body)
+    if bad:
+        raise UnsupportedParameterError(f"{where}: body carries forbidden key(s) {sorted(bad)}")
+    fmt = body.get("response_format")
+    if isinstance(fmt, dict) and fmt.get("type") == "json_schema":
+        raise UnsupportedParameterError(
+            f"{where}: strict json_schema mode would make the platform do S5's job (V8)"
+        )
