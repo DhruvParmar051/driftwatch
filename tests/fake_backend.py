@@ -6,9 +6,16 @@ chunk, submit, poll, collect, reconcile) can run with no network. Batches
 complete on the first poll. Each chat row is answered deterministically from its
 seed, so tests can tell distinct seeds from identical ones.
 
+Response shape: by default the one the DAU deployment actually writes - the
+completion object inline under `response`, and a failed row as a STRING error
+in the OUTPUT file. `openai_envelope=True` switches to OpenAI's shape
+(`response: {status_code, body}`, errors in a separate error file). Both are
+tested, because a fake that only spoke OpenAI's shape once let a parser that
+could not read the real platform pass every test.
+
 Fault injection mirrors what the real worker daemon does:
   - `drop_ids`: custom_ids silently skipped (the daemon skips malformed lines);
-  - `error_ids`: custom_ids answered in the ERROR file, not the output file.
+  - `error_ids`: custom_ids that fail on the worker.
 """
 
 from __future__ import annotations
@@ -31,6 +38,7 @@ class FakeBatchBackend:
     drop_ids: set[str] = field(default_factory=set)
     error_ids: set[str] = field(default_factory=set)
     answer: Callable[[dict[str, Any]], str] | None = None
+    openai_envelope: bool = False
     files: dict[str, bytes] = field(default_factory=dict)
     batches: dict[str, dict[str, Any]] = field(default_factory=dict)
     created: int = 0
@@ -83,7 +91,12 @@ class FakeBatchBackend:
             if cid in self.drop_ids:
                 continue
             if cid in self.error_ids:
-                err_lines.append({"custom_id": cid, "response": None, "error": {"message": "x"}})
+                if self.openai_envelope:
+                    err = {"custom_id": cid, "response": None, "error": {"message": "x"}}
+                    err_lines.append(err)
+                else:
+                    msg = f"HTTP 500 for prompt {cid}: model failed to load"
+                    out_lines.append({"custom_id": cid, "response": None, "error": msg})
                 continue
             out_lines.append({"custom_id": cid, "response": self._respond(row), "error": None})
         out_id = self._store(out_lines)
@@ -106,12 +119,11 @@ class FakeBatchBackend:
         if row["url"].endswith("/embeddings"):
             seed = sum(map(ord, body["input"])) % 97 + 1
             vec = [((seed * (i + 3)) % 17 - 8) / 8.0 for i in range(16)]
-            return {"status_code": 200, "body": {"data": [{"embedding": vec}]}}
-        text = self.answer(body) if self.answer else f"answer for seed {body['seed']}"
-        return {
-            "status_code": 200,
-            "body": {"choices": [{"message": {"content": text}, "finish_reason": "stop"}]},
-        }
+            payload: dict[str, Any] = {"data": [{"embedding": vec}]}
+        else:
+            text = self.answer(body) if self.answer else f"answer for seed {body['seed']}"
+            payload = {"choices": [{"message": {"content": text}, "finish_reason": "stop"}]}
+        return {"status_code": 200, "body": payload} if self.openai_envelope else payload
 
     def _store(self, lines: list[dict[str, Any]]) -> str:
         file_id = f"file-{len(self.files)}"
