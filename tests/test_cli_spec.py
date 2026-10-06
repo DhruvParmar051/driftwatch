@@ -81,14 +81,14 @@ def run(*args: str) -> object:
 
 
 def test_probe_passes_when_the_backend_honours_seeds(small_corpus, backend):
-    result = run("probe", "--rows", "20")
+    result = run("probe", "--rows", "20", "--backend", "batch")
     assert result.exit_code == 0, result.output
     assert "PROBE PASSED" in result.output
 
 
 def test_probe_fails_loudly_when_seeds_are_ignored(small_corpus, backend):
     backend.answer = lambda body: "the same text whatever the seed"
-    result = run("probe", "--rows", "20")
+    result = run("probe", "--rows", "20", "--backend", "batch")
     assert result.exit_code == 1
     assert "PROBE FAILED" in result.output
 
@@ -216,7 +216,7 @@ def test_probe_is_inconclusive_when_requests_fail(small_corpus, backend):
     Judging seeds on them would blame the seed for a backend failure.
     """
     backend.error_ids = {f"eli5_00000|{i}|probe|probe" for i in range(20)}
-    result = run("probe", "--rows", "20")
+    result = run("probe", "--rows", "20", "--backend", "batch")
     assert result.exit_code == 2, result.output
     assert "PROBE INCONCLUSIVE" in result.output
     assert "seeds were NOT tested" in result.output
