@@ -195,3 +195,21 @@ def test_embedding_round_writes_a_vector_per_row(tmp_path, settings):
     manifest.resume(path, _client(FakeBatchBackend()), out)
     vectors = read_embeddings(out)
     assert set(vectors) == set(ids)
+
+
+@pytest.mark.parametrize("openai_envelope", [False, True], ids=["sheshnag-shape", "openai-shape"])
+def test_answers_survive_collection_in_either_response_shape(
+    tmp_path, queries, settings, openai_envelope
+):
+    """Every row must come back ANSWERED, not merely returned: a parser that
+    misreads the shape still passes reconciliation while discarding every answer.
+    """
+    from provider import manifest
+    from provider.collect import read_completions
+
+    path, rows = _plan(tmp_path, queries, settings)
+    out = tmp_path / "completions.parquet"
+    manifest.resume(path, _client(FakeBatchBackend(openai_envelope=openai_envelope)), out)
+    got = read_completions(out)
+    assert len(got) == len(rows)
+    assert all(c.parse_ok and c.text.startswith("answer for seed") for c in got)
