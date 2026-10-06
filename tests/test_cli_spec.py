@@ -209,3 +209,14 @@ def test_synthetic_evaluation_runs_without_a_freeze(full_corpus, data_dir):
     assert data["mode"] == "synthetic"
     assert {r["condition"] for r in data["summary"]} == {"F1", "F2", "F3", "F4"}
     assert not (data_dir / "thresholds.json").exists(), "synthetic mode must not freeze"
+
+
+def test_probe_is_inconclusive_when_requests_fail(small_corpus, backend):
+    """Failed requests come back empty - and empty answers are all 'identical'.
+    Judging seeds on them would blame the seed for a backend failure.
+    """
+    backend.error_ids = {f"eli5_00000|{i}|probe|probe" for i in range(20)}
+    result = run("probe", "--rows", "20")
+    assert result.exit_code == 2, result.output
+    assert "PROBE INCONCLUSIVE" in result.output
+    assert "seeds were NOT tested" in result.output
