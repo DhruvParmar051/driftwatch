@@ -20,6 +20,7 @@ from version import __version__
 if TYPE_CHECKING:
     from provider.catalogue import ResolvedModel
     from provider.client import BatchClient
+    from provider.local import LocalClient
 
 app = typer.Typer(
     name="driftwatch",
@@ -107,16 +108,18 @@ def synth(
 @app.command()
 def probe(
     rows: int = typer.Option(20, help="Total probe rows (10 distinct + 10 identical seeds)."),
+    backend: str = typer.Option("local", help="'local' (Ollama) or 'batch' (Sheshnag)."),
+    concurrency: int = typer.Option(4, help="Local only: requests in flight at once."),
 ) -> None:
     """Stage 2 seed-determinism probe. RUN THIS BEFORE ANY LARGE ROUND.
 
-    Submits one prompt x 10 distinct seeds and the same prompt x 10 identical
-    seeds, then asserts: distinct seeds give >= 8 distinct outputs, identical
-    seeds give identical output.
+    Sends one prompt x 10 distinct seeds and the same prompt x 10 identical
+    seeds to the HEALTHY model, then asserts: distinct seeds give >= 8 distinct
+    outputs, identical seeds give identical output.
 
-    The platform's compatibility matrix documents `seed` as honoured, but it is
-    explicitly doc-derived and not verified against a live server. This probe is
-    the evidence.
+    Locally, run it at the concurrency you will generate with: identical seeds
+    can stop reproducing when Ollama batches parallel requests together, and
+    this is where that shows up.
 
     IF DISTINCT SEEDS DO NOT VARY THE OUTPUT, STOP. S3 (self-consistency) is not
     viable and the design must change before a baseline round is spent.
@@ -128,24 +131,19 @@ def probe(
     import tempfile
 
     from corpus.build import read_queries
-    from provider.catalogue import resolve_roles
     from provider.collect import collect_results
-    from provider.expand import build_chat_row, encode_custom_id, write_jsonl
-    from provider.submit import poll_until_complete, submit_batch
-    from settings import CHAT_URL, get_settings, system_prompt_for_condition
+    from provider.expand import build_chat_row
+    from settings import get_settings, system_prompt_for_condition
 
     s = get_settings()
     if rows < 4 or rows % 2:
         raise typer.BadParameter("rows must be an even number >= 4")
     half = rows // 2
-    client = _client()
-    resolved = resolve_roles(client, ["healthy"])["healthy"]
-    log.info("probe.roles_resolved", model=resolved.model_id, digest=resolved.digest)
+    resolved = _resolve_role("healthy", backend)
 
     # One free-text query from the corpus: long answers make sampling variation visible.
     query = next(q for q in read_queries(s.queries_path) if q.slice == "eli5")
     system = system_prompt_for_condition("healthy")
-    fixed_seed = None
     probe_rows = []
     for i in range(rows):
         row = build_chat_row(
@@ -159,18 +157,13 @@ def probe(
             s.temperature,
             s.max_tokens,
         )
-        if i >= half:  # second half: one identical seed
-            fixed_seed = fixed_seed if fixed_seed is not None else row["body"]["seed"]
-            row["body"]["seed"] = fixed_seed
+        if i > half:  # second half: every row reuses the seed of row `half`
+            row["body"]["seed"] = probe_rows[half]["body"]["seed"]
         probe_rows.append(row)
 
     with tempfile.TemporaryDirectory() as tmp:
-        path = Path(tmp) / "probe.jsonl"
-        write_jsonl(probe_rows, path)
-        submitted = submit_batch(client, path, CHAT_URL, "probe", "probe")
-        batch = poll_until_complete(client, submitted.batch_id, s.poll_interval_s, s.poll_timeout_s)
         out = Path(tmp) / "probe.out.jsonl"
-        _download_batch(client, batch, out)
+        _answer_rows(probe_rows, out, backend, concurrency)
         seeds = {r["custom_id"]: r["body"]["seed"] for r in probe_rows}
         completions, report = collect_results(
             out,
@@ -190,7 +183,7 @@ def probe(
             f"PROBE INCONCLUSIVE: {len(failed)}/{rows} requests failed on the backend, so "
             "seeds were NOT tested. The backend said:"
         )
-        for sample in report.error_samples:
+        for sample in report.error_samples or ["(no error text - see the log)"]:
             typer.echo(f"  {sample}")
         raise typer.Exit(code=2)
     texts = {c.sample_idx: c.text for c in completions}
@@ -199,18 +192,19 @@ def probe(
     ok = distinct >= int(0.8 * half) and identical == 1
     log.info(
         "probe.result",
+        backend=backend,
+        model=resolved.model_id,
         distinct_seed_outputs=distinct,
         of=half,
         identical_seed_outputs=identical,
         passed=ok,
-        custom_id=encode_custom_id(query.query_id, 0, "probe", "probe"),
     )
     typer.echo(f"distinct seeds -> {distinct}/{half} distinct outputs (need >= {int(0.8 * half)})")
     typer.echo(f"identical seed -> {identical} distinct output(s) (need exactly 1)")
     if not ok:
-        typer.echo("PROBE FAILED: the backend does not honour `seed`. S3 is not viable - STOP.")
+        typer.echo("PROBE FAILED: `seed` is not honoured as required. S3 is not viable - STOP.")
         raise typer.Exit(code=1)
-    typer.echo("PROBE PASSED: seeds are honoured. The baseline round may be submitted.")
+    typer.echo("PROBE PASSED: seeds are honoured. The baseline round may be run.")
 
 
 @app.command()
@@ -225,38 +219,51 @@ def expand(
     subset (C8). F4 is not generated: it is a re-weighted view over healthy
     completions, derived at evaluation time.
     """
-    from corpus.build import read_queries
-    from corpus.splits import fault_subset
-    from provider.expand import expand_queries, write_jsonl
-    from settings import (
-        CONDITION_ROLES,
-        get_settings,
-        model_id_for_role,
-        system_prompt_for_condition,
-    )
+    from provider.expand import write_jsonl
 
-    s = get_settings()
-    if condition == "F4":
-        raise typer.BadParameter("F4 has no generation round - it is derived from healthy rows")
-    if condition not in CONDITION_ROLES:
-        raise typer.BadParameter(
-            f"unknown condition {condition!r}; one of {sorted(CONDITION_ROLES)}"
-        )
-    queries = read_queries(s.queries_path)
-    selected = queries if condition == "healthy" else fault_subset(queries)
-    rows = expand_queries(
-        selected,
-        s.k,
-        model_id_for_role(CONDITION_ROLES[condition]),
-        condition,
-        round_id,
-        system_prompt_for_condition(condition),
-        s.seed_base,
-        s.temperature,
-        s.max_tokens,
-    )
+    rows, _role = _round_rows(condition, round_id)
     n = write_jsonl(rows, out)
     log.info("expand.written", condition=condition, round_id=round_id, rows=n, path=str(out))
+
+
+@app.command()
+def generate(
+    condition: str = typer.Option(..., help="healthy, F1, F2, F3 or F5."),
+    round_id: str = typer.Option(..., help="Round identifier, e.g. r001."),
+    concurrency: int = typer.Option(4, help="Requests in flight; match OLLAMA_NUM_PARALLEL."),
+    timeout: float = typer.Option(900.0, help="Seconds allowed per request."),
+) -> None:
+    """Generate a round on the LOCAL Ollama server, checkpointing every answer (Stage 3).
+
+    Rerun the exact same command after any interruption: answers already on
+    disk are kept and only the rest are sent. When every row is answered the
+    round is reconciled (C10) and appended to completions.parquet once.
+
+    Refuses to run if the model the server reports is not the build pinned in
+    config/models.yaml (C9).
+    """
+    from provider.local import generate_round
+    from settings import get_settings
+
+    s = get_settings()
+    rows, role = _round_rows(condition, round_id)
+    resolved = _resolve_role(role, "local")
+    client = _local_client(timeout)
+    generate_round(
+        client,
+        rows,
+        _rounds_dir() / round_id,
+        s.completions_path,
+        round_id=round_id,
+        condition=condition,
+        model_id=resolved.model_id,
+        digest=resolved.digest,
+        digest_source=resolved.digest_source,
+        concurrency=concurrency,
+    )
+    typer.echo(
+        f"round {round_id} ({condition}, {resolved.model_id}) complete -> {s.completions_path}"
+    )
 
 
 @app.command()
@@ -338,35 +345,57 @@ def resume(
 def embed(
     completions: Path = typer.Option(None, help="Completions parquet. Defaults to settings."),
     condition: str = typer.Option(..., help="Which condition's completions to embed."),
-    round_id: str = typer.Option(..., help="Identifier for the embedding round, e.g. e003."),
-    chunks: int = typer.Option(1, help="Jobs to split the round into."),
+    round_id: str = typer.Option(..., help="Identifier for the embedding round, e.g. e001."),
+    backend: str = typer.Option("local", help="'local' (Ollama) or 'batch' (Sheshnag)."),
+    concurrency: int = typer.Option(4, help="Local only: requests in flight at once."),
+    chunks: int = typer.Option(1, help="Batch only: jobs to split the round into."),
 ) -> None:
-    """Submit the S7 embedding round for one condition's completions.
+    """Run the S7 embedding round for one condition's completions.
 
-    A second round trip after the chat round. Parse-failed rows have no text
-    and are not embedded; S7 excludes them symmetrically. Continue with
-    `driftwatch resume ROUND_ID`.
+    Parse-failed rows have no text and are not embedded; S7 excludes them
+    symmetrically. Locally the round runs to completion here (rerun to resume);
+    on the batch backend it is submitted - continue with `driftwatch resume`.
     """
-    from provider import manifest
     from provider.collect import read_completions
     from provider.expand import build_embedding_row, encode_custom_id
-    from provider.submit import balance_chunks
-    from settings import model_id_for_role
 
-    model_id = model_id_for_role("embedding")
+    resolved = _resolve_role("embedding", backend)
     rows = [
         build_embedding_row(
-            c.text, encode_custom_id(c.query_id, c.sample_idx, c.condition, round_id), model_id
+            c.text,
+            encode_custom_id(c.query_id, c.sample_idx, c.condition, round_id),
+            resolved.model_id,
         )
         for c in read_completions(completions or _completions_path())
         if c.condition == condition and c.parse_ok
     ]
     if not rows:
         raise typer.BadParameter(f"no parse_ok completions for condition {condition!r}")
+
+    if backend == "local":
+        from provider.local import generate_embedding_round
+
+        vectors = generate_embedding_round(
+            _local_client(),
+            rows,
+            _rounds_dir() / round_id,
+            _embeddings_path(),
+            round_id=round_id,
+            condition=condition,
+            model_id=resolved.model_id,
+            digest=resolved.digest,
+            digest_source=resolved.digest_source,
+            concurrency=concurrency,
+        )
+        typer.echo(f"embedded {len(vectors)} rows -> {_embeddings_path()}")
+        return
+
+    from provider import manifest
+    from provider.submit import balance_chunks
+
     path = _manifest_path(round_id)
-    resolved = _resolve_model(model_id)
     manifest.create(
-        path, round_id, condition, model_id, resolved.digest, balance_chunks(rows, chunks)
+        path, round_id, condition, resolved.model_id, resolved.digest, balance_chunks(rows, chunks)
     )
     m = manifest.submit_pending(path, _client())
     typer.echo(f"submitted {len(m.chunks)} embedding chunk(s); manifest {path}")
@@ -578,6 +607,97 @@ def _client() -> BatchClient:
 
     s = get_settings()
     return BatchClient(s.base_url, s.api_key, s.request_timeout_s)
+
+
+def _local_client(timeout: float | None = None) -> LocalClient:
+    from provider.local import DEFAULT_TIMEOUT_S, LocalClient
+    from settings import get_settings
+
+    s = get_settings()
+    return LocalClient(s.base_url, s.api_key, timeout or DEFAULT_TIMEOUT_S)
+
+
+def _resolve_role(role: str, backend: str) -> ResolvedModel:
+    """Resolve a role on the chosen backend, checking the local build against the pin (C9)."""
+    from provider.catalogue import RoleResolutionError, resolve_roles
+    from settings import load_model_roles
+
+    if backend not in ("local", "batch"):
+        raise typer.BadParameter(f"backend must be 'local' or 'batch', got {backend!r}")
+    if backend == "batch":
+        return resolve_roles(_client(), [role])[role]
+
+    client = _local_client()
+    log.info("local.server", ollama_version=client.version())
+    resolved = resolve_roles(client, [role])[role]  # type: ignore[arg-type]
+    pinned = load_model_roles()[role].get("library_digest")
+    if pinned and not resolved.digest.startswith(str(pinned)):
+        raise RoleResolutionError(
+            f"{resolved.model_id}: the local server has build {resolved.digest[:12]}, but "
+            f"config/models.yaml pins {pinned}. The library build changed - check it before "
+            "running, then update the pin deliberately."
+        )
+    return resolved
+
+
+def _round_rows(condition: str, round_id: str) -> tuple[list[dict], str]:
+    """The rows of one generation round, and the role that serves it.
+
+    healthy runs the whole corpus; F1, F2, F3 and F5 the ONE shared fault
+    subset (C8). F4 has no round - it is derived from healthy completions.
+    """
+    from corpus.build import read_queries
+    from corpus.splits import fault_subset
+    from provider.expand import expand_queries
+    from settings import (
+        CONDITION_ROLES,
+        get_settings,
+        model_id_for_role,
+        system_prompt_for_condition,
+    )
+
+    s = get_settings()
+    if condition == "F4":
+        raise typer.BadParameter("F4 has no generation round - it is derived from healthy rows")
+    if condition not in CONDITION_ROLES:
+        raise typer.BadParameter(
+            f"unknown condition {condition!r}; one of {sorted(CONDITION_ROLES)}"
+        )
+    role = CONDITION_ROLES[condition]
+    queries = read_queries(s.queries_path)
+    selected = queries if condition == "healthy" else fault_subset(queries)
+    rows = expand_queries(
+        selected,
+        s.k,
+        model_id_for_role(role),
+        condition,
+        round_id,
+        system_prompt_for_condition(condition),
+        s.seed_base,
+        s.temperature,
+        s.max_tokens,
+    )
+    return rows, role
+
+
+def _answer_rows(rows: list[dict], out: Path, backend: str, concurrency: int) -> None:
+    """Answer rows on either backend, writing batch-output-shaped lines to `out`."""
+    if backend == "local":
+        from provider.local import run_rows
+
+        run_rows(_local_client(), rows, out, concurrency)
+        return
+    from provider.expand import write_jsonl
+    from provider.submit import poll_until_complete, submit_batch
+    from settings import CHAT_URL, get_settings
+
+    s = get_settings()
+    client = _client()
+    path = out.with_name("probe.jsonl")
+    write_jsonl(rows, path)
+    submitted = submit_batch(client, path, CHAT_URL, "probe", "probe")
+    batch = poll_until_complete(client, submitted.batch_id, s.poll_interval_s, s.poll_timeout_s)
+    _download_batch(client, batch, out)
 
 
 def _resolve_model(model_id: str) -> ResolvedModel:
