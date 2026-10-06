@@ -3,55 +3,64 @@
 #
 # THIS FILE IS THE ONLY PLACE MODEL IDS MAY APPEAR IN THE PROJECT.
 # Never hardcode a model id, a backend URL, or a provider name in the source
-# tree. tests/test_no_hardcoded_ids.py enforces this.
+# tree. tests/test_architecture.py enforces this.
 #
-# Ids below are the DAU deployment's catalogue ids, read from
-# GET https://sheshnag-api.dau.ac.in/v1/models on 2026-10-06. They name the same
-# weights the platform source catalogue calls `<model>-ollama`: identical
-# parameter sizes, all on the Ollama runtime, all Q4_K_M (nomic-embed: F16).
+# Ids are LOCAL OLLAMA TAGS (run with `driftwatch generate`). Every tag is the
+# EXPLICIT quantisation build, never a bare or `latest` alias:
 #
-# Do NOT use `gemma3-12b-it-q4km` for F5: it runs on llama.cpp and is marked
-# `unverified`, so it would change runtime and family at once.
+#   - `gemma4:latest` is only an alias of `gemma4:e4b`, and an alias can be
+#     repointed by the library at any time - the weak rung would change under
+#     a running experiment.
+#   - the bare `gemma4:26b` is a different build (ed3c4359df98) from the
+#     explicit Q4_K_M one (5571076f3d70). The latter is the build the original
+#     platform catalogue pinned, so it keeps the design as specified: every chat
+#     model Q4_K_M.
 #
-# This deployment exposes NO version pin for these models (`source_revision`
-# is null, and there is no digest field), so rows carry a visibly marked
-# sentinel digest (digest_source = "sentinel"). C9 is therefore weaker here:
-# a silent model update between rounds would not be caught by the digest. Every chat entry in that
-# catalogue is quantised Q4_K_M - there is NO full-precision variant of
-# anything - which is why F2 is a smaller sibling model rather than a
-# "full vs quantized" pair. That comparison is not executable on this platform.
+# Digests listed below were read from ollama.com/library on 2026-10-06. At run
+# time driftwatch records the digest the local server REPORTS on every row
+# (C9); a mismatch with these means the library build changed.
 #
-# Any three-rung ladder from one model family on any OpenAI-compatible batch
-# backend substitutes directly. Swap the ids here and nothing else changes.
+# DESIGN NOTE - for the team, not settled here: `gemma4:26b` is a MIXTURE OF
+# EXPERTS model, 26B total parameters with ~4B active per token. The ladder is
+# therefore 26B-MoE (~4B active) / 12B dense / e4b (~4B effective), which is
+# not obviously ordered by capability. The oracle measures true accuracy per
+# condition; if the 26B does not beat the 12B, F2 is not a degradation.
+# `gemma4:31b-it-q4_K_M` (dense, 20 GB) is the alternative healthy rung.
 # ---------------------------------------------------------------------------
 
 roles:
   # Condition: healthy. Also used for F3 (corrupted system prompt) and
   # F4 (shifted query mixture) - both change the *input*, not the model.
   healthy:
-    id: gemma4-26b-q4km
-    parameter_size: 25.8B
-    note: baseline. If Stage 2 shows this role queues too slowly, shift the
-      whole ladder down one rung and RECORD the change in the run log.
+    id: gemma4:26b-a4b-it-q4_K_M
+    parameter_size: 25.8B (MoE, ~4B active)
+    library_digest: 5571076f3d70
+    download: 18 GB
 
   # Condition: F2 (moderate degradation) - a smaller sibling, same family.
   sibling:
-    id: gemma4-12b-q4km
+    id: gemma4:12b-it-q4_K_M
     parameter_size: 11.9B
+    library_digest: 6114515d63c1
+    download: 8.0 GB
 
   # Condition: F1 (severe degradation) - smallest rung, same family.
   weak:
-    id: gemma4-latest-q4km
-    parameter_size: 8.0B
+    id: gemma4:e4b-it-q4_K_M
+    parameter_size: 8.0B (~4B effective)
+    library_digest: dc35e8d9c606
+    download: 6.6 GB
 
   # Condition: F5 (optional extension) - comparable size, DIFFERENT family.
-  # Only run if reserve budget is unspent.
   cross_family:
-    id: gemma3-12b-q4km
+    id: gemma3:12b-it-q4_K_M
     parameter_size: 12.2B
+    library_digest: f4031aab637d
+    download: 8.1 GB
 
-  # Signal S7. Reached via POST /v1/embeddings as ordinary JSONL batch rows -
-  # the same pipeline as chat, not a separate synchronous API.
+  # Signal S7. POST /v1/embeddings on the same local server.
   embedding:
-    id: nomic-embed-text-f16
+    id: nomic-embed-text:v1.5
     task_type: embedding
+    library_digest: 0a109f422b47
+    download: 274 MB
