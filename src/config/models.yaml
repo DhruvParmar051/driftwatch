@@ -5,8 +5,18 @@
 # Never hardcode a model id, a backend URL, or a provider name in the source
 # tree. tests/test_no_hardcoded_ids.py enforces this.
 #
-# Ids below were verified against the platform catalogue
-# (backend/catalog/models.yaml, branch `develop`). Every chat entry in that
+# Ids below are the DAU deployment's catalogue ids, read from
+# GET https://sheshnag-api.dau.ac.in/v1/models on 2026-10-06. They name the same
+# weights the platform source catalogue calls `<model>-ollama`: identical
+# parameter sizes, all on the Ollama runtime, all Q4_K_M (nomic-embed: F16).
+#
+# Do NOT use `gemma3-12b-it-q4km` for F5: it runs on llama.cpp and is marked
+# `unverified`, so it would change runtime and family at once.
+#
+# This deployment exposes NO version pin for these models (`source_revision`
+# is null, and there is no digest field), so rows carry a visibly marked
+# sentinel digest (digest_source = "sentinel"). C9 is therefore weaker here:
+# a silent model update between rounds would not be caught by the digest. Every chat entry in that
 # catalogue is quantised Q4_K_M - there is NO full-precision variant of
 # anything - which is why F2 is a smaller sibling model rather than a
 # "full vs quantized" pair. That comparison is not executable on this platform.
@@ -19,29 +29,29 @@ roles:
   # Condition: healthy. Also used for F3 (corrupted system prompt) and
   # F4 (shifted query mixture) - both change the *input*, not the model.
   healthy:
-    id: gemma4-26b-ollama
+    id: gemma4-26b-q4km
     parameter_size: 25.8B
     note: baseline. If Stage 2 shows this role queues too slowly, shift the
       whole ladder down one rung and RECORD the change in the run log.
 
   # Condition: F2 (moderate degradation) - a smaller sibling, same family.
   sibling:
-    id: gemma4-12b-ollama
+    id: gemma4-12b-q4km
     parameter_size: 11.9B
 
   # Condition: F1 (severe degradation) - smallest rung, same family.
   weak:
-    id: gemma4-latest-ollama
+    id: gemma4-latest-q4km
     parameter_size: 8.0B
 
   # Condition: F5 (optional extension) - comparable size, DIFFERENT family.
   # Only run if reserve budget is unspent.
   cross_family:
-    id: gemma3-12b-ollama
+    id: gemma3-12b-q4km
     parameter_size: 12.2B
 
   # Signal S7. Reached via POST /v1/embeddings as ordinary JSONL batch rows -
   # the same pipeline as chat, not a separate synchronous API.
   embedding:
-    id: nomic-embed-text-ollama
+    id: nomic-embed-text-f16
     task_type: embedding
