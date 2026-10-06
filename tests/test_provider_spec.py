@@ -289,3 +289,23 @@ def test_resolved_roles_carry_a_digest():
     client = BatchClient("http://test.invalid/v1", "k", transport=transport)
     for resolved in resolve_roles(client).values():
         assert resolved.digest and resolved.digest_source == "backend"
+
+
+def test_backend_error_text_is_recovered_in_both_shapes():
+    """The platform writes per-row errors as a STRING; OpenAI uses an object."""
+    from provider.collect import error_message
+
+    as_string = json.dumps(
+        {"custom_id": "q|0|h|r", "response": None, "error": "HTTP 500: model name=x failed to load"}
+    )
+    as_object = json.dumps({"custom_id": "q|0|h|r", "response": None, "error": {"message": "boom"}})
+    ok = json.dumps(
+        {
+            "custom_id": "q|0|h|r",
+            "error": None,
+            "response": {"status_code": 200, "body": {"choices": [{"message": {"content": "hi"}}]}},
+        }
+    )
+    assert "failed to load" in error_message(as_string)
+    assert error_message(as_object) == "boom"
+    assert error_message(ok) is None
