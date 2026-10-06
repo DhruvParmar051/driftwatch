@@ -16,27 +16,50 @@ and the full suite passes offline - no network, no credentials:
 ```bash
 uv sync
 uv run pytest -m gate    # 61 architectural gates - must always pass
-uv run pytest -m spec    # 139 behavioural specs, incl. the Stage 0-7 gates
+uv run pytest -m spec    # behavioural specs, incl. the Stage 0-7 gates
 ```
 
 The four freeze tests require a **clean git tree**: a freeze stamps the current
 commit and refuses to point at code that was never committed. Commit, then run.
 
-What has NOT been run is a real round on the backend. Everything below Stage 2
-is exercised against synthetic data and an in-memory batch backend
-(`tests/fake_backend.py`); the numbers mean the pipeline works, nothing yet
-about real models.
+Generation runs **locally, on your own machine, through Ollama**. The batch
+platform path (`expand` / `submit` / `resume`) is kept and tested, but it is no
+longer the default. Before a real round, every stage is exercised against
+synthetic data and in-memory fakes of both backends
+(`tests/fake_ollama.py`, `tests/fake_backend.py`).
 
-## Running a round
+## Running locally
+
+**One-time setup.** Install Ollama, start the server, and pull the five pinned
+builds (about 41 GB):
 
 ```bash
-uv run driftwatch corpus build                       # 5,000 queries + splits (HuggingFace)
-uv run driftwatch probe --rows 20                    # STOP if this fails - see below
-uv run driftwatch expand --condition healthy --round-id r001 --out data/r001.jsonl
-uv run driftwatch submit data/r001.jsonl --condition healthy --round-id r001 --chunks 4
-uv run driftwatch resume r001                        # rerun freely after any crash
-uv run driftwatch embed --condition healthy --round-id e001 && uv run driftwatch resume e001
-# ... same for F1, F2, F3 (and F5). F4 is derived from healthy rows - nothing to generate.
+OLLAMA_NUM_PARALLEL=4 OLLAMA_CONTEXT_LENGTH=8192 ollama serve
+```
+
+```bash
+for m in gemma4:26b-a4b-it-q4_K_M gemma4:12b-it-q4_K_M gemma4:e4b-it-q4_K_M gemma3:12b-it-q4_K_M nomic-embed-text:v1.5; do ollama pull $m; done
+```
+
+- `OLLAMA_NUM_PARALLEL` is how many requests the server runs at once; pass the
+  same number to `--concurrency`.
+- `OLLAMA_CONTEXT_LENGTH=8192` matters: the longest prompts (XSum articles,
+  banking77 with its 77 labels) plus a 512-token answer must fit, and Ollama
+  TRUNCATES an oversized prompt silently rather than failing.
+- `.env` points at the local server:
+  `DRIFTWATCH_BASE_URL=http://localhost:11434/v1`, `DRIFTWATCH_API_KEY=ollama`
+  (Ollama ignores the key, but the setting is required).
+
+**The run.** Keep the machine on power and awake (`caffeinate -dims` on macOS).
+
+```bash
+uv run driftwatch corpus build
+uv run driftwatch probe                              # STOP if this fails - see below
+uv run driftwatch generate --condition healthy --round-id r001
+uv run driftwatch generate --condition F1 --round-id r002
+uv run driftwatch generate --condition F2 --round-id r003
+uv run driftwatch generate --condition F3 --round-id r004
+uv run driftwatch embed --condition healthy --round-id e001   # ... and F1, F2, F3
 uv run driftwatch calibrate --completions data/completions.parquet
 git commit ...                                       # freeze refuses a dirty tree
 uv run driftwatch freeze --thresholds data/thresholds.proposed.json --completions data/completions.parquet
@@ -44,10 +67,32 @@ uv run driftwatch evaluate --completions data/completions.parquet
 uv run driftwatch report --results data/results/evaluation.json --out-dir data/report
 ```
 
-`submit` splits a round into token-balanced jobs and writes a manifest before
-uploading anything; `resume` recovers orphaned jobs, collects what has landed,
-and reconciles every chunk and then the whole round. `driftwatch evaluate
---synthetic` runs Stages 5-7 end to end on synthetic data, without a freeze.
+F4 has no round: it is derived from the healthy completions. F5
+(`--condition F5`) is optional.
+
+**Interrupted? Run the same command again.** `generate` and `embed` append
+every answer to `data/rounds/<round_id>/results.jsonl` the moment it arrives;
+a rerun sends only what is missing. A crashed or overloaded server is never
+recorded as a model failure - those rows are simply retried. When every row is
+in, the round is reconciled (C10) and stored once.
+
+**The model on disk must be the pinned build.** `generate` compares the digest
+Ollama reports with the one in `config/models.yaml` and refuses to run on a
+mismatch. Every row records the real digest (C9), and
+`data/rounds/<round_id>/round.json` records the Ollama version and settings.
+
+**All rounds must come from one machine and one set of builds.** Thresholds are
+calibrated against specific model digests; mixing rounds from two machines or
+two builds silently invalidates them.
+
+`driftwatch evaluate --synthetic` runs Stages 5-7 end to end on synthetic data,
+without a freeze.
+
+### The batch platform (optional)
+
+The Sheshnag path still works: `expand`, `submit --chunks N`, `resume`, and
+`probe --backend batch` / `embed --backend batch`. `models.yaml` would then
+need that deployment's catalogue ids instead of Ollama tags.
 
 ## Workstreams
 
@@ -84,9 +129,11 @@ Each stage has a gate; do not proceed past a failing one.
 uv run driftwatch probe --rows 20
 ```
 
-Submits one prompt x 10 distinct seeds and x 10 identical seeds. The platform
-documents `seed` as honoured, but that documentation is explicitly doc-derived
-and unverified against a live server.
+Sends one prompt x 10 distinct seeds and x 10 identical seeds to the healthy
+model. Run it at the `--concurrency` you will generate with: when Ollama
+batches parallel requests together, identical seeds can stop reproducing, and
+this is where that shows up. If it fails only at high concurrency, generate at
+a lower one.
 
 **If distinct seeds do not vary the output, stop.** S3 (self-consistency) is not
 viable and the design must change before a baseline round is spent.
@@ -104,7 +151,7 @@ experiment; the ones marked *enforced* fail the build.
 | C4 | Thresholds calibrated on `calib` only, then frozen | *enforced* |
 | C5 | `heldout` used only for false-alarm measurement | *enforced* |
 | C6 | Unparseable completions are counted, never dropped | |
-| C7 | No local model inference - embeddings come from the endpoint | *enforced* |
+| C7 | No in-process model inference - models run in a separate server (Ollama), pinned by digest | *enforced* |
 | C8 | F1-F3 share one query subset; only F4 changes queries | |
 | C9 | Log `model_id`, `digest` and `seed` on every row | |
 | C10 | Reconcile returned against submitted rows every round | |
@@ -136,7 +183,7 @@ src/textnorm.py   answer normalisation shared by S3 and the oracle (imports neit
 src/config/       models.yaml, prompts.yaml, refusal_patterns.yaml, jsonx_schema.json,
                   banking77_labels.yaml
 src/corpus/       query construction and splits  (code; data lives in data/)
-src/provider/     batch client, expand, submit, collect, manifest (resume)
+src/provider/     expand, collect; local (Ollama, the default); batch client, submit, manifest
 src/signals/      windows, groups (shared scoring base) + S1..S7
 src/detect/       calibrate, detectors, freeze
 src/oracle/       ground-truth scoring (never imported by detect/)
@@ -155,10 +202,11 @@ Runs on any machine — Apple silicon, x86, cluster node — with no device
 configuration. `DRIFTWATCH_N_WORKERS` sets the worker count; `0` (the default)
 auto-detects and leaves one core free.
 
-**There is no CUDA/MPS/CPU switch, and that is deliberate.** No model runs
-locally: chat completions and embeddings both come from the batch endpoint
-(C7). What executes here is numpy/scipy over text statistics, which does not
-use a GPU. Reaching for one would mean adding `torch`, which trips the C7 gate.
+**There is no CUDA/MPS/CPU switch in driftwatch, and that is deliberate.**
+Models run inside the Ollama server, which uses the GPU on its own - Metal on
+Apple silicon, CUDA on NVIDIA. driftwatch talks to it over HTTP and never loads
+a model itself (C7); what executes in its own process is numpy/scipy over text
+statistics. Reaching for `torch` would trip the C7 gate.
 
 The one heavy local computation is the calibration bootstrap — 20,000 windows
 x 7 signals x 800 completions. It takes seconds, not hours, because no window
@@ -172,9 +220,10 @@ the numbers cannot depend on how the work is split.
 ## Configuration
 
 `base_url` and `api_key` have no defaults - set `DRIFTWATCH_BASE_URL` and
-`DRIFTWATCH_API_KEY`, or use a `.env`. Model ids live only in
-`src/config/models.yaml`; any three-rung ladder from one family on any
-OpenAI-compatible batch backend substitutes directly.
+`DRIFTWATCH_API_KEY`, or use a `.env` (locally: `http://localhost:11434/v1` and
+any non-empty key). Model ids live only in `src/config/models.yaml`, each with
+the library digest it is pinned to; any three-rung ladder from one model family
+substitutes directly - change the ids and pins there and nothing else.
 
 ## Decisions recorded in code
 
