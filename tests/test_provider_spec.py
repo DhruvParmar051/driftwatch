@@ -309,3 +309,46 @@ def test_backend_error_text_is_recovered_in_both_shapes():
     assert "failed to load" in error_message(as_string)
     assert error_message(as_object) == "boom"
     assert error_message(ok) is None
+
+
+def test_sheshnag_inline_response_shape_parses():
+    """The DAU deployment writes the completion inline: response.choices, no body
+    wrapper. Reading only OpenAI's shape turned every real answer into a failure.
+    """
+    from provider.collect import parse_embedding_line, parse_result_line
+
+    chat = json.dumps(
+        {
+            "custom_id": "q|0|healthy|r1",
+            "error": None,
+            "response": {
+                "choices": [
+                    {"finish_reason": "stop", "message": {"content": "transfer_fee_charged"}}
+                ],
+                "usage": {"completion_tokens": 5},
+            },
+        }
+    )
+    assert parse_result_line(chat) == ("q|0|healthy|r1", "transfer_fee_charged", "stop", True)
+
+    emb = json.dumps(
+        {
+            "custom_id": "q|0|healthy|r1",
+            "error": None,
+            "response": {"data": [{"embedding": [0.1, 0.2]}]},
+        }
+    )
+    assert parse_embedding_line(emb) == ("q|0|healthy|r1", [0.1, 0.2])
+
+
+def test_non_200_openai_envelope_is_still_a_failure():
+    from provider.collect import parse_result_line
+
+    line = json.dumps(
+        {
+            "custom_id": "q|0|h|r",
+            "error": None,
+            "response": {"status_code": 500, "body": {"error": "x"}},
+        }
+    )
+    assert parse_result_line(line)[3] is False
