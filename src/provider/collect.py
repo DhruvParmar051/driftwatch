@@ -33,6 +33,9 @@ log = get_logger(__name__)
 #: finish_reason recorded on a row whose response was an error or unusable.
 ERROR_FINISH_REASON: str = "error"
 
+#: Failed rows whose error text is kept on the ReconciliationReport.
+MAX_ERROR_SAMPLES: int = 5
+
 #: Parquet schema for completions.parquet - column order and types mirror
 #: corpus.schemas.Completion field for field.
 COMPLETION_SCHEMA: pa.Schema = pa.schema(
@@ -72,6 +75,11 @@ class ReconciliationReport:
     unexpected: list[str] = field(default_factory=list)  # returned, never submitted
     duplicated: list[str] = field(default_factory=list)  # returned more than once
     n_parse_failures: int = 0
+    #: The backend's own words for the first few failed rows. A parse failure
+    #: is data (C6), but when MANY rows fail the reason is usually one
+    #: deployment-side cause - e.g. "model failed to load" - and it must reach
+    #: the operator without a manual trip to the raw output file.
+    error_samples: list[str] = field(default_factory=list)
 
     @property
     def is_clean(self) -> bool:
@@ -204,11 +212,16 @@ def collect_results(
     counts: Counter[str] = Counter()
     completions: list[Completion] = []
     n_parse_failures = 0
+    error_samples: list[str] = []
     with output_path.open(encoding="utf-8") as fh:
         for line in fh:
             if not line.strip():
                 continue
             custom_id, text, finish, parse_ok = parse_result_line(line)
+            if not parse_ok and len(error_samples) < MAX_ERROR_SAMPLES:
+                reason = error_message(line)
+                if reason:
+                    error_samples.append(f"{custom_id}: {reason}")
             counts[custom_id] += 1
             if counts[custom_id] > 1 or custom_id not in submitted_custom_ids:
                 continue
@@ -234,6 +247,9 @@ def collect_results(
             )
 
     report = _reconcile(submitted_custom_ids, counts, n_parse_failures)
+    report.error_samples = error_samples
+    if error_samples:
+        log.warning("collect.row_errors", failed=n_parse_failures, samples=error_samples)
     log.info(
         "collect.reconciled",
         path=str(output_path),
@@ -386,6 +402,24 @@ def read_embeddings(path: Path) -> dict[str, np.ndarray]:
 
 
 # ── internals ───────────────────────────────────────────────────────────────
+
+
+def error_message(line: str) -> str | None:
+    """The backend's error text for one result line, or None if the row succeeded.
+
+    Handles the error as a string (this platform writes them that way into the
+    OUTPUT file) or as an OpenAI-style object, and a non-200 response body.
+    """
+    envelope = _load_envelope(line)
+    error = envelope.get("error")
+    if isinstance(error, dict):
+        return str(error.get("message") or error)[:500]
+    if error:
+        return str(error)[:500]
+    response = envelope.get("response")
+    if isinstance(response, dict) and response.get("status_code", 200) != 200:
+        return f"HTTP {response.get('status_code')}: {str(response.get('body'))[:400]}"
+    return None
 
 
 def _load_envelope(line: str) -> dict[str, Any]:
