@@ -120,6 +120,10 @@ def probe(
 
     IF DISTINCT SEEDS DO NOT VARY THE OUTPUT, STOP. S3 (self-consistency) is not
     viable and the design must change before a baseline round is spent.
+
+    Exit codes: 0 passed; 1 seeds not honoured; 2 inconclusive - requests
+    failed on the backend, so seeds were never tested (the backend's error is
+    printed).
     """
     import tempfile
 
@@ -178,6 +182,17 @@ def probe(
             seeds=seeds,
         )
     report.raise_if_dirty()
+    failed = [c for c in completions if not c.parse_ok]
+    if failed:
+        # Empty answers are all "identical", so judging seeds on them would
+        # report a seed problem that is really a backend problem.
+        typer.echo(
+            f"PROBE INCONCLUSIVE: {len(failed)}/{rows} requests failed on the backend, so "
+            "seeds were NOT tested. The backend said:"
+        )
+        for sample in report.error_samples:
+            typer.echo(f"  {sample}")
+        raise typer.Exit(code=2)
     texts = {c.sample_idx: c.text for c in completions}
     distinct = len({texts[i] for i in range(half)})
     identical = len({texts[i] for i in range(half, rows)})
