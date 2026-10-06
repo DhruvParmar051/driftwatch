@@ -143,12 +143,8 @@ def parse_result_line(line: str) -> tuple[str, str, str, bool]:
 
     if envelope.get("error"):
         return custom_id, "", ERROR_FINISH_REASON, False
-    response = envelope.get("response")
-    if not isinstance(response, dict):
-        return custom_id, "", ERROR_FINISH_REASON, False
-    status = response.get("status_code", 200)
-    body = response.get("body")
-    if status != 200 or not isinstance(body, dict):
+    body = _response_body(envelope.get("response"))
+    if body is None:
         return custom_id, "", ERROR_FINISH_REASON, False
 
     choices = body.get("choices")
@@ -250,6 +246,15 @@ def collect_results(
     report.error_samples = error_samples
     if error_samples:
         log.warning("collect.row_errors", failed=n_parse_failures, samples=error_samples)
+    returned = sum(counts.values())
+    if returned and n_parse_failures > returned / 2 and not error_samples:
+        log.error(
+            "collect.unexplained_failures",
+            failed=n_parse_failures,
+            returned=returned,
+            hint="most rows failed to parse and the backend gave no error - the response "
+            "format probably changed; inspect one raw line before trusting this round",
+        )
     log.info(
         "collect.reconciled",
         path=str(output_path),
@@ -324,11 +329,8 @@ def parse_embedding_line(line: str) -> tuple[str, list[float] | None]:
     """
     envelope = _load_envelope(line)
     custom_id = envelope["custom_id"]
-    response = envelope.get("response")
-    if envelope.get("error") or not isinstance(response, dict):
-        return custom_id, None
-    body = response.get("body")
-    if response.get("status_code", 200) != 200 or not isinstance(body, dict):
+    body = _response_body(envelope.get("response"))
+    if envelope.get("error") or body is None:
         return custom_id, None
     data = body.get("data")
     if not isinstance(data, list) or not data or not isinstance(data[0], dict):
@@ -357,11 +359,16 @@ def collect_embeddings(
     counts: Counter[str] = Counter()
     vectors: dict[str, list[float]] = {}
     n_failures = 0
+    error_samples: list[str] = []
     with output_path.open(encoding="utf-8") as fh:
         for line in fh:
             if not line.strip():
                 continue
             custom_id, vector = parse_embedding_line(line)
+            if vector is None and len(error_samples) < MAX_ERROR_SAMPLES:
+                reason = error_message(line)
+                if reason:
+                    error_samples.append(f"{custom_id}: {reason}")
             counts[custom_id] += 1
             if counts[custom_id] > 1 or custom_id not in submitted_custom_ids:
                 continue
@@ -369,7 +376,11 @@ def collect_embeddings(
                 n_failures += 1
             else:
                 vectors[custom_id] = vector
-    return vectors, _reconcile(submitted_custom_ids, counts, n_failures)
+    report = _reconcile(submitted_custom_ids, counts, n_failures)
+    report.error_samples = error_samples
+    if error_samples:
+        log.warning("collect.embedding_errors", failed=n_failures, samples=error_samples)
+    return vectors, report
 
 
 def write_embeddings(vectors: dict[str, list[float]], path: Path, mode: str = "append") -> int:
@@ -420,6 +431,25 @@ def error_message(line: str) -> str | None:
     if isinstance(response, dict) and response.get("status_code", 200) != 200:
         return f"HTTP {response.get('status_code')}: {str(response.get('body'))[:400]}"
     return None
+
+
+def _response_body(response: Any) -> dict[str, Any] | None:
+    """The completion object from a result line's `response`, in either shape.
+
+    - OpenAI:   {"status_code": 200, "body": {"choices": [...]}}
+    - Sheshnag: {"choices": [...], "usage": ...} - the completion object itself,
+      with no status/body wrapper (observed live on the DAU deployment).
+
+    Returns None for a non-200 OpenAI envelope or anything that is not an object.
+    """
+    if not isinstance(response, dict):
+        return None
+    if "body" in response or "status_code" in response:
+        body = response.get("body")
+        if response.get("status_code", 200) != 200 or not isinstance(body, dict):
+            return None
+        return body
+    return response
 
 
 def _load_envelope(line: str) -> dict[str, Any]:
