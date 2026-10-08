@@ -119,7 +119,9 @@ def probe(
 
     Locally, run it at the concurrency you will generate with: identical seeds
     can stop reproducing when Ollama batches parallel requests together, and
-    this is where that shows up.
+    this is where that shows up. A cold prompt cache also changes the text
+    for a fixed seed, so the local probe warms the cache with one unscored
+    request before the scored rows.
 
     IF DISTINCT SEEDS DO NOT VARY THE OUTPUT, STOP. S3 (self-consistency) is not
     viable and the design must change before a baseline round is spent.
@@ -685,7 +687,15 @@ def _answer_rows(rows: list[dict], out: Path, backend: str, concurrency: int) ->
     if backend == "local":
         from provider.local import run_rows
 
-        run_rows(_local_client(), rows, out, concurrency)
+        client = _local_client()
+        # Ollama reuses the KV cache of a prompt it has just processed. The
+        # cold pass and the cached pass differ in the last bits, and over a
+        # few hundred tokens one sampled token flips: a fixed seed reproduces
+        # exactly WITHIN each cache state, not across them (measured on the
+        # 26B: cold always gives one text, warm always another). One unscored
+        # request first puts every scored row in the same, warm, state.
+        client.post_row(rows[0])
+        run_rows(client, rows, out, concurrency)
         return
     from provider.expand import write_jsonl
     from provider.submit import poll_until_complete, submit_batch
