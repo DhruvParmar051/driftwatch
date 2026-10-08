@@ -33,6 +33,17 @@ ALLOWED_ROW_KEYS: frozenset[str] = frozenset({"custom_id", "method", "url", "bod
 #: stalled round, for a field no signal uses.
 FORBIDDEN_BODY_KEYS: frozenset[str] = frozenset({"n", "stream", "logprobs", "top_logprobs"})
 
+#: Sent on every chat row. Gemma 4 THINKS by default on Ollama: it writes a
+#: hidden `reasoning` field first, and that reasoning is billed against
+#: max_tokens. On a long prompt it consumes the whole budget and `content`
+#: comes back empty - every row a parse failure. Even when an answer survives,
+#: S1 would measure how long the model deliberated, not what it said, and the
+#: truncation rate would differ by model size for reasons unrelated to answer
+#: quality. "none" switches thinking off; models without a thinking mode
+#: (gemma3) accept it and ignore it. Ollama ignores a top-level `think: false`
+#: on the OpenAI-compatible endpoint - only this key works there.
+REASONING_EFFORT = "none"
+
 #: Seeds are kept in the signed 31-bit range: every runtime in the stack
 #: accepts it, and it leaves no room for a silent overflow wrapping two seeds
 #: onto one value.
@@ -164,6 +175,7 @@ def build_chat_row(
         "temperature": temperature,
         "max_tokens": max_tokens,
         "seed": derive_seed(query.query_id, sample_idx, seed_base),
+        "reasoning_effort": REASONING_EFFORT,
     }
     # V8: no response_format on ANY row, jsonx included - S5 validates client-side.
     _assert_body_is_safe(body)
