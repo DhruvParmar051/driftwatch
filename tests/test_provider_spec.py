@@ -85,6 +85,11 @@ def chat_row(sample_query, settings):
     )
 
 
+def test_row_switches_thinking_off(chat_row):
+    """Gemma 4 thinks by default; hidden reasoning eats max_tokens and skews S1."""
+    assert chat_row["body"]["reasoning_effort"] == "none"
+
+
 def test_row_has_only_the_four_allowed_top_level_keys(chat_row):
     """The platform rejects the ENTIRE FILE on an unknown top-level key."""
     assert set(chat_row) == {"custom_id", "method", "url", "body"}
