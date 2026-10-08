@@ -10,7 +10,7 @@
 # This is the same rule as refusal_patterns.yaml, for the same reason.
 # ---------------------------------------------------------------------------
 
-version: "1.0.0"
+version: "1.1.0"
 
 # ── System prompts ─────────────────────────────────────────────────────────
 #
@@ -91,9 +91,13 @@ slice_templates:
 
     {context}
 
+  # 1.1.0: word budget added. Without it 62% of the healthy model's answers
+  # ran into max_tokens (512), and a truncated answer has no natural length,
+  # so S1 on eli5 measured the cap instead of the model. 250 words is ~330
+  # tokens: room to finish, and a model that rambles still shows it.
   eli5: |
     Explain the following in plain language that a general audience would
-    understand.
+    understand. Answer in at most 250 words.
 
     {question}
 
