@@ -23,4 +23,6 @@ data/report*/
 
 # Project brief (local only, not tracked)
 docs/PROJECT_BRIEF.md
-docs/PROJECT_BRIEF.pdf
+
+# PDFs are generated exports, never tracked
+*.pdf
