@@ -31,14 +31,14 @@ synthetic data and in-memory fakes of both backends
 ## Running locally
 
 **One-time setup.** Install Ollama, start the server, and pull the five pinned
-builds (about 41 GB):
+builds (about 37 GB):
 
 ```bash
 OLLAMA_NUM_PARALLEL=4 OLLAMA_CONTEXT_LENGTH=8192 ollama serve
 ```
 
 ```bash
-for m in gemma4:26b-a4b-it-q4_K_M gemma4:12b-it-q4_K_M gemma4:e4b-it-q4_K_M gemma3:12b-it-q4_K_M nomic-embed-text:v1.5; do ollama pull $m; done
+for m in gemma4:26b-a4b-it-q4_K_M gemma4:e4b-it-q4_K_M gemma4:e2b-it-q4_K_M gemma3:12b-it-q4_K_M nomic-embed-text:v1.5; do ollama pull $m; done
 ```
 
 - `OLLAMA_NUM_PARALLEL` is how many requests the server runs at once; pass the
