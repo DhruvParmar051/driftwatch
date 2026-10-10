@@ -20,12 +20,27 @@
 # time driftwatch records the digest the local server REPORTS on every row
 # (C9); a mismatch with these means the library build changed.
 #
-# DESIGN NOTE - for the team, not settled here: `gemma4:26b` is a MIXTURE OF
-# EXPERTS model, 26B total parameters with ~4B active per token. The ladder is
-# therefore 26B-MoE (~4B active) / 12B dense / e4b (~4B effective), which is
-# not obviously ordered by capability. The oracle measures true accuracy per
-# condition; if the 26B does not beat the 12B, F2 is not a degradation.
-# `gemma4:31b-it-q4_K_M` (dense, 20 GB) is the alternative healthy rung.
+# LADDER - measured, not assumed. `gemma4:26b` is a MIXTURE OF EXPERTS model
+# (26B total, ~4B active per token). On 500 scorable queries (100 each of
+# banking77, gsm8k, jsonx, squad2, triviaqa; one sample per query; 2026-10-09)
+# its accuracy was NOT distinguishable from the dense 12B:
+#
+#     26B-MoE 76.2%   12B 74.8%   e4b 69.8%
+#     26B - 12B: +1.4%  95% CI [-1.8%, +4.6%]   <- includes zero
+#     26B - e4b: +6.4%  95% CI [+2.8%, +10.0%]
+#
+# With the 12B as F2, the fault would be a model swap, not a degradation. So
+# every fault moved one rung down: F2 = e4b, F1 = e2b. The 12B is not used.
+# The same 500 queries on the new bottom rung (2026-10-10):
+#
+#     26B-MoE 76.2%   e4b 69.8%   e2b 62.6%
+#     e4b - e2b: +7.2%  95% CI [+3.0%, +11.4%]
+#     26B - e2b: +13.6% 95% CI [+9.0%, +18.2%]
+#
+# Every rung is separated from the next: F2 is a moderate drop, F1 twice it.
+# `gemma4:31b-it-q4_K_M` (dense) was the alternative - rejected because a
+# dense 31B is several times slower per token and the healthy round is the
+# longest by far.
 # ---------------------------------------------------------------------------
 
 roles:
@@ -39,17 +54,18 @@ roles:
 
   # Condition: F2 (moderate degradation) - a smaller sibling, same family.
   sibling:
-    id: gemma4:12b-it-q4_K_M
-    parameter_size: 11.9B
-    library_digest: 6114515d63c1
-    download: 8.0 GB
-
-  # Condition: F1 (severe degradation) - smallest rung, same family.
-  weak:
     id: gemma4:e4b-it-q4_K_M
     parameter_size: 8.0B (~4B effective)
     library_digest: dc35e8d9c606
     download: 6.6 GB
+
+  # Condition: F1 (severe degradation) - smallest rung, same family.
+  # Digest read from the local pull on 2026-10-10.
+  weak:
+    id: gemma4:e2b-it-q4_K_M
+    parameter_size: 4.6B (~2B effective)
+    library_digest: b37049369adf
+    download: 4.6 GB
 
   # Condition: F5 (optional extension) - comparable size, DIFFERENT family.
   cross_family:
