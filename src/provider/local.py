@@ -18,7 +18,9 @@ that is the model's output and becomes a parse failure (C6). A 4xx rejection of
 the request is also final, recorded as an error row. A 5xx, a timeout or a
 dropped connection is NOT recorded - the round stops, and the row is retried on
 the next run. Recording a crashed server as a model failure would invent a
-degradation signal.
+degradation signal. One 500 is the exception: Ollama aborts a generation stuck
+in a repetition loop with a 500 whose body says so. That is the MODEL's output,
+deterministic for its seed, so it is final and recorded as a parse failure.
 """
 
 from __future__ import annotations
@@ -63,6 +65,10 @@ DEFAULT_CONCURRENCY: int = 4
 _RETRIES: int = 3
 _BACKOFF_S: float = 5.0
 _TRANSIENT_STATUS: frozenset[int] = frozenset({408, 429, 500, 502, 503, 504})
+
+#: Body text of the 500 Ollama sends when it aborts a degenerate repetition
+#: loop. Retrying replays the same seed into the same loop; it is a model failure.
+_MODEL_LOOP_MARKER: str = "token repeat limit reached"
 
 
 class LocalServerError(RuntimeError):
@@ -140,6 +146,12 @@ class LocalClient:
                     f"{custom_id}: {resp.text[:300]} - is the model pulled? `ollama pull "
                     f"{row['body'].get('model')}`"
                 )
+            if resp.status_code == 500 and _MODEL_LOOP_MARKER in resp.text:
+                return {
+                    "custom_id": custom_id,
+                    "response": None,
+                    "error": f"HTTP 500: {resp.text[:500]}",
+                }
             if resp.status_code in _TRANSIENT_STATUS:
                 if attempt == _RETRIES:
                     raise LocalServerError(
