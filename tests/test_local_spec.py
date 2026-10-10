@@ -119,6 +119,31 @@ def test_rejected_request_is_recorded_as_a_parse_failure(tmp_path, rows):
     assert len(bad) == 1 and f"{bad[0].query_id}|{bad[0].sample_idx}" in target["custom_id"]
 
 
+def test_repetition_abort_is_a_model_failure_not_a_server_failure(tmp_path, rows):
+    """Ollama aborts a looping generation with a 500. Same seed, same loop: retrying
+    cannot help, and stopping the round on it stalls a whole night's run.
+    """
+    import httpx
+
+    from provider.local import LocalClient, run_rows
+
+    looping = rows[0]["custom_id"]
+    inner = FakeOllama().transport
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        if json.loads(request.content).get("seed") == rows[0]["body"]["seed"]:
+            body = {"error": {"message": "prediction aborted, token repeat limit reached"}}
+            return httpx.Response(500, json=body)
+        return inner.handle_request(request)
+
+    ck = tmp_path / "results.jsonl"
+    c = LocalClient("http://localhost:11434/v1", transport=httpx.MockTransport(handle))
+    run_rows(c, rows, ck)
+    lines = {json.loads(x)["custom_id"]: json.loads(x) for x in ck.read_text().splitlines()}
+    assert sorted(lines) == sorted(r["custom_id"] for r in rows)
+    assert lines[looping]["response"] is None and "repeat limit" in lines[looping]["error"]
+
+
 def test_torn_last_line_from_a_crash_is_dropped_and_retried(tmp_path, rows):
     from provider.local import run_rows
 
