@@ -27,7 +27,14 @@ from corpus.schemas import Completion, Query
 from corpus.splits import f4_subset, fault_subset
 from detect.calibrate import measure_false_alarm_rate
 from evaluate.bootstrap import bootstrap_ci
-from evaluate.metrics import MODEL_FAULTS, SUMMARY_COLUMNS, auc, discrimination, summarise
+from evaluate.metrics import (
+    MODEL_FAULTS,
+    SUMMARY_COLUMNS,
+    auc,
+    discrimination,
+    signal_detection_rate,
+    summarise,
+)
 from evaluate.replay import LATENCY_CONVENTION, ReplayRun, randomised_onsets, run_replay
 from log import get_logger
 from oracle.score import score_condition
@@ -40,6 +47,17 @@ log = get_logger(__name__)
 
 HEALTHY: str = "healthy"
 F4: str = "F4"
+
+#: Oracle slices whose accuracy is reported but is NOT a quality measure, with
+#: the reason printed beside them. jsonx: the answer key maps vague phrases to
+#: a priority number ("high priority" -> 4, "low priority" -> 2) and the
+#: healthy model consistently reads them one step further out (5 and 1), so the
+#: STRONGER model scores LOWER. Found after the first real evaluation; the
+#: strict numbers stay in the results, only the summary mean leaves them out.
+ORACLE_NOT_A_QUALITY_MEASURE: dict[str, str] = {
+    "jsonx": "answer key maps vague priority phrases to one number; stronger models "
+    "read them differently and score lower",
+}
 
 #: Replay geometry defaults: 40 windows, with at least 10 healthy before onset.
 DEFAULT_REPLAY_WINDOWS: int = 40
@@ -168,9 +186,15 @@ def evaluate_run(
         "stage5_gate_passed": gate,
         "summary": summarise(records).to_dict(orient="records"),
         "latency_median_ci": _latency_cis(by_cond, settings.bootstrap_resamples, seed),
-        "discrimination_f123_minus_f4": discrimination(model_faults, by_cond[F4]),
+        "detection_rate_by_signal": {
+            cond: {n: signal_detection_rate(rs, n) for n in signals} for cond, rs in by_cond.items()
+        },
+        "discrimination_f123_minus_f4": discrimination(model_faults, by_cond[F4], list(signals)),
+        "unmonitored_signals": [n for n in SIGNAL_NAMES if n not in signals],
         "auc": {cond: _aucs(rs, list(signals)) for cond, rs in by_cond.items()},
-        "oracle": _oracle(queries, completions, list(faults)),
+        "oracle_scope": "every condition, healthy included, scored on the same "
+        f"{len(fault_queries)} fault-subset queries",
+        "oracle": _oracle(queries, completions, list(faults), fault_queries),
         "records": [{k: v for k, v in r.items() if k != "scores"} for r in records],
     }
     log.info("evaluate.done", mode=mode, gate=gate, runs=len(records))
@@ -221,6 +245,8 @@ def write_report(results: dict[str, Any], out_dir: Path) -> list[Path]:
     written.append(dist)
 
     disc = results["discrimination_f123_minus_f4"]
+    rates = results.get("detection_rate_by_signal", {})
+    unmonitored = results.get("unmonitored_signals", [])
     fa = results["false_alarm"]
     md = [
         f"# driftwatch results ({results['mode']})\n",
@@ -238,21 +264,26 @@ def write_report(results: dict[str, Any], out_dir: Path) -> list[Path]:
         table(summary, columns),
         "\n## Latency distribution, per fault\n",
         _histograms(latencies),
+        "\n## Detection rate per signal and fault\n",
+        "Fraction of runs in which each signal alarmed at all.\n\n",
+        table(
+            [{"condition": c, **per} for c, per in sorted(rates.items())],
+            ["condition", *[k for k in SIGNAL_NAMES if k in disc]],
+        ),
         "\n## Discrimination: detection rate on F1-F3 minus on F4, per signal\n",
         "Positive: fires on model faults more than on the benign query shift.\n\n",
         table(
             [{"signal": k, "f123_minus_f4": disc[k]} for k in SIGNAL_NAMES if k in disc],
             ["signal", "f123_minus_f4"],
         ),
-        "\n## Oracle - true accuracy per condition and slice\n",
-        table(
-            [
-                {"condition": c, "slice": s, **v}
-                for c, per in results["oracle"].items()
-                for s, v in per.items()
-            ],
-            ["condition", "slice", "accuracy", "n_scored", "n_correct", "n_parse_failures"],
+        *(
+            [f"\nNot monitored (left out at calibration): {', '.join(unmonitored)}.\n"]
+            if unmonitored
+            else []
         ),
+        "\n## Oracle - true accuracy per condition and slice\n",
+        f"Scope: {results.get('oracle_scope', 'per condition')}.\n\n",
+        _oracle_table(results["oracle"]),
     ]
     report = out_dir / "report.md"
     report.write_text("\n".join(md))
@@ -289,10 +320,22 @@ def _aucs(records: list[dict], names: list[str]) -> dict[str, float | None]:
     return out
 
 
-def _oracle(queries: list[Query], completions: Sequence[Completion], faults: list[str]) -> dict:
+def _oracle(
+    queries: list[Query],
+    completions: Sequence[Completion],
+    faults: list[str],
+    fault_queries: Sequence[Query],
+) -> dict:
+    """Accuracy per condition and slice, ALL on the fault-subset queries.
+
+    Healthy answered every query; the faults only the fault subset. Scoring
+    healthy on everything would compare different questions, and the gap would
+    mix the fault's effect with the difficulty of the two query sets (C8).
+    """
+    ids = {q.query_id for q in fault_queries}
     out: dict[str, dict[str, Any]] = {}
     for cond in [HEALTHY, *faults]:
-        rows = [c for c in completions if c.condition == cond]
+        rows = [c for c in completions if c.condition == cond and c.query_id in ids]
         if cond == F4 and not rows:
             continue
         out[cond] = {
@@ -305,6 +348,27 @@ def _oracle(queries: list[Query], completions: Sequence[Completion], faults: lis
             for r in score_condition(rows, queries, cond)
         }
     return out
+
+
+def _oracle_table(oracle: dict[str, dict[str, dict[str, Any]]]) -> str:
+    """Conditions as rows, slices as columns, and a mean over the quality slices.
+
+    Slices in ORACLE_NOT_A_QUALITY_MEASURE are shown, starred, and left out of
+    the mean, with the reason underneath.
+    """
+    slices = sorted({s for per in oracle.values() for s in per})
+    flagged = [s for s in slices if s in ORACLE_NOT_A_QUALITY_MEASURE]
+    kept = [s for s in slices if s not in flagged]
+    head = [*(f"{s}*" if s in flagged else s for s in slices), "mean"]
+    lines = ["| condition | " + " | ".join(head) + " |", "|---|" + "---|" * len(head)]
+    # The results JSON sorts its keys; the baseline row goes first regardless.
+    for cond in sorted(oracle, key=lambda c: (c != HEALTHY, c)):
+        per = oracle[cond]
+        mean = float(np.mean([per[s]["accuracy"] for s in kept])) if kept else float("nan")
+        cells = [_fmt(per[s]["accuracy"]) for s in slices] + [_fmt(mean)]
+        lines.append(f"| {cond} | " + " | ".join(cells) + " |")
+    lines += [f"\n\\* {s}: {ORACLE_NOT_A_QUALITY_MEASURE[s]}. Not in the mean." for s in flagged]
+    return "\n".join(lines) + "\n"
 
 
 def _histograms(latencies: dict[str, list[int | None]]) -> str:
