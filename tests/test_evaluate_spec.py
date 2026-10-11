@@ -55,6 +55,49 @@ def test_discrimination_reports_per_signal_not_pooled():
     assert len(result) > 1, "a single pooled number destroys the discriminative pattern"
 
 
+def test_discrimination_covers_only_the_monitored_signals():
+    """A signal left out at calibration never alarms; a 0 for it would read as
+    "cannot tell faults from F4" when it was never measured at all.
+    """
+    from evaluate.metrics import discrimination
+
+    f123 = [{"latency_by_signal": {"length_ks": 1, "lexical_ttr": 2}}]
+    f4 = [{"latency_by_signal": {"length_ks": 1, "lexical_ttr": None}}]
+    result = discrimination(f123, f4, ["length_ks", "lexical_ttr"])
+    assert result == {"length_ks": 0.0, "lexical_ttr": 1.0}
+
+
+def test_oracle_scores_healthy_on_the_fault_queries_only(settings):
+    """Healthy answered all 5,000 queries, faults only 1,500: compare like with like."""
+    from corpus.build import build_corpus
+    from corpus.splits import assign_splits, fault_subset
+    from evaluate.pipeline import _oracle
+    from synthetic.generate import DegradationKnob, generate_completions
+
+    full_corpus = assign_splits(build_corpus(settings.corpus_seed), settings.corpus_seed)
+    fault = fault_subset(full_corpus)
+    rows = generate_completions(full_corpus, DegradationKnob(), settings.k, "healthy", 1)
+    rows += generate_completions(fault, DegradationKnob(), settings.k, "F1", 1)
+    out = _oracle(full_corpus, rows, ["F1"], fault)
+    for slice_name, healthy in out["healthy"].items():
+        assert healthy["n_scored"] == out["F1"][slice_name]["n_scored"]
+
+
+def test_oracle_table_keeps_flagged_slices_out_of_the_mean():
+    from evaluate.pipeline import _oracle_table
+
+    oracle = {
+        "healthy": {
+            "gsm8k": {"accuracy": 0.9},
+            "jsonx": {"accuracy": 0.1},
+            "triviaqa": {"accuracy": 0.7},
+        }
+    }
+    table = _oracle_table(oracle)
+    assert "jsonx*" in table and "Not in the mean" in table
+    assert table.splitlines()[2].rstrip(" |").endswith("0.8")
+
+
 def test_bootstrap_ci_is_deterministic_under_a_fixed_seed():
     from evaluate.bootstrap import bootstrap_ci
 
