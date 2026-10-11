@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 import numpy as np
 import pandas as pd
 from scipy.stats import mannwhitneyu
@@ -68,7 +70,17 @@ def auc(healthy_scores: np.ndarray, fault_scores: np.ndarray) -> float:
     return float(u / (len(fault) * len(healthy)))
 
 
-def discrimination(f123_records: list[dict], f4_records: list[dict]) -> dict[str, float]:
+def signal_detection_rate(records: list[dict], name: str) -> float:
+    """Fraction of runs in which signal `name` alarmed at all (NaN with no runs)."""
+    if not records:
+        return float("nan")
+    hits = sum(1 for r in records if (r.get("latency_by_signal") or {}).get(name) is not None)
+    return hits / len(records)
+
+
+def discrimination(
+    f123_records: list[dict], f4_records: list[dict], names: Sequence[str] = SIGNAL_NAMES
+) -> dict[str, float]:
     """Can the monitor tell a MODEL fault (F1-F3) from a QUERY SHIFT (F4)?
 
     Why it matters operationally:
@@ -78,7 +90,10 @@ def discrimination(f123_records: list[dict], f4_records: list[dict]) -> dict[str
         this is a headline result, not a footnote.
 
     Returns:
-        Per-signal separation statistics between the two groups.
+        Per-signal separation statistics between the two groups, for the
+        signals in `names` - pass the MONITORED ones: a signal left out at
+        calibration never alarms, and a 0 for it would read as "cannot tell
+        them apart" rather than "not measured".
 
     Constraints:
         Report per signal. Some signals (embedding shift, length) should respond
@@ -86,17 +101,13 @@ def discrimination(f123_records: list[dict], f4_records: list[dict]) -> dict[str
         PATTERN is the discriminative evidence - a pooled score destroys it.
 
     """
-
     # Per signal: (detection rate on F1-F3 runs) - (detection rate on F4 runs).
     # Positive = the signal fires on model faults more than on the query shift;
     # near zero = it cannot tell them apart; negative = it prefers the shift.
-    def rate(records: list[dict], name: str) -> float:
-        if not records:
-            return float("nan")
-        hits = sum(1 for r in records if (r.get("latency_by_signal") or {}).get(name) is not None)
-        return hits / len(records)
-
-    return {name: rate(f123_records, name) - rate(f4_records, name) for name in SIGNAL_NAMES}
+    return {
+        name: signal_detection_rate(f123_records, name) - signal_detection_rate(f4_records, name)
+        for name in names
+    }
 
 
 def summarise(detection_records: list[dict]) -> object:
