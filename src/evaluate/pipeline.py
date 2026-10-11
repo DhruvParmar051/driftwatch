@@ -42,6 +42,7 @@ from settings import SIGNAL_NAMES, get_settings
 from signals.base import Signal
 from signals.embedding import EmbeddingShiftSignal
 from signals.registry import build_signals
+from signals.stratified import PER_SLICE, POOLED, SCORINGS, stratify
 
 log = get_logger(__name__)
 
@@ -79,7 +80,9 @@ def calibration_rows(
 
 
 def build_monitor_signals(
-    embeddings: dict[str, np.ndarray] | None, enabled: Sequence[str] | None = None
+    embeddings: dict[str, np.ndarray] | None,
+    enabled: Sequence[str] | None = None,
+    scoring: str = POOLED,
 ) -> dict[str, Signal]:
     """The signal set for a REAL run.
 
@@ -88,7 +91,12 @@ def build_monitor_signals(
     allowed into a calibration or evaluation of real data. To run without S7,
     leave it out of `enabled`; that changes m in the Sidak correction, so it
     must be decided before calibration.
+
+    `scoring` is "pooled" (v1) or "per_slice" (v2, signals.stratified). It is
+    recorded in the frozen thresholds and must be rebuilt the same way there.
     """
+    if scoring not in SCORINGS:
+        raise ValueError(f"scoring must be one of {SCORINGS}, got {scoring!r}")
     names = list(SIGNAL_NAMES if enabled is None else enabled)
     signals = build_signals([n for n in names if n != "embedding_shift"])
     if "embedding_shift" in names:
@@ -98,7 +106,8 @@ def build_monitor_signals(
                 "or disable S7 (--no-embeddings) BEFORE calibrating."
             )
         signals["embedding_shift"] = EmbeddingShiftSignal(vectors=embeddings)
-    return {n: signals[n] for n in names}
+    ordered = {n: signals[n] for n in names}
+    return stratify(ordered) if scoring == PER_SLICE else ordered
 
 
 def alias_embeddings(
@@ -249,7 +258,7 @@ def write_report(results: dict[str, Any], out_dir: Path) -> list[Path]:
     unmonitored = results.get("unmonitored_signals", [])
     fa = results["false_alarm"]
     md = [
-        f"# driftwatch results ({results['mode']})\n",
+        f"# driftwatch results ({results['mode']}, {results.get('scoring', POOLED)} scoring)\n",
         f"Latency convention: {results['latency_convention']}.\n",
         "## Stage 5 gate - false alarms on real heldout windows\n",
         f"Family-wise rate {fa['family_wise']:.4f} against a budget of "
