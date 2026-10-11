@@ -7,6 +7,7 @@ change for all four workstreams, so agree edits before making them.
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -159,6 +160,11 @@ class Thresholds(BaseModel):
         "numbers describe a different experiment and evaluate/ must refuse to run."
     )
     thresholds: dict[str, float]
+    scoring: Literal["pooled", "per_slice"] = Field(
+        default="pooled",
+        description="How window scores were computed (signals.stratified). 'pooled' is v1 and "
+        "the default, so records frozen before the field existed still read as what they were.",
+    )
 
     @model_validator(mode="after")
     def _check_signal_count(self) -> Thresholds:
