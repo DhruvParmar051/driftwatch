@@ -119,6 +119,29 @@ def test_expand_refuses_f4(small_corpus, data_dir):
     assert result.exit_code != 0
 
 
+def test_calibrate_can_leave_out_constant_signals(full_corpus, data_dir):
+    """A healthy model that never refuses (S2) or never breaks JSON (S5) leaves that
+    signal constant at zero: nothing to freeze, so it must be possible to leave it out.
+    """
+    from provider.collect import write_completions
+    from settings import get_settings
+    from synthetic.generate import DegradationKnob, generate_completions
+
+    s = get_settings()
+    rows = generate_completions(full_corpus, DegradationKnob(), s.k, "healthy", s.seed_base)
+    write_completions(rows, s.completions_path, mode="overwrite")
+
+    comp = ("--completions", str(s.completions_path), "--no-embeddings")
+    drop = ("--without", "refusal_rate", "--without", "format_validity")
+    result = run("calibrate", *comp, *drop)
+    assert result.exit_code == 0, result.output
+    proposal = json.loads((data_dir / "thresholds.proposed.json").read_text())
+    assert proposal["signals"] == ["length_ks", "self_consistency", "lexical_ttr", "label_entropy"]
+    assert proposal["signals"] == list(proposal["thresholds"])
+
+    assert run("calibrate", *comp, "--without", "no_such_signal").exit_code != 0
+
+
 def test_calibrate_freeze_verify_evaluate_report(full_corpus, data_dir, monkeypatch):
     """The whole Stage 5-8 path on synthetic rounds, through the CLI."""
     from corpus.splits import fault_subset
