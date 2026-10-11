@@ -108,6 +108,7 @@ def write(
     window_stride: int,
     bootstrap_windows: int,
     calibration_seed: int,
+    scoring: str = "pooled",
 ) -> Thresholds:
     """Write thresholds.json. THE POINT OF NO RETURN.
 
@@ -147,6 +148,7 @@ def write(
         refusal_patterns_version=str(load_refusal_patterns()["version"]),
         prompts_version=str(load_prompts()["version"]),
         thresholds=dict(thresholds),
+        scoring=scoring,
     )
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name(path.name + ".tmp")
