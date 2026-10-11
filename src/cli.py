@@ -423,6 +423,12 @@ def calibrate(
         "never refuses: the signal is then constant and has no threshold to freeze. "
         "Changes m; decide before freezing.",
     ),
+    per_slice: bool = typer.Option(
+        False,
+        "--per-slice",
+        help="v2 scoring: each slice against its own healthy reference (signals.stratified). "
+        "Post-hoc; freeze it to its own file with `freeze --out`.",
+    ),
 ) -> None:
     """Fit reference distributions and estimate thresholds (Stage 5).
 
@@ -436,13 +442,15 @@ def calibrate(
     from detect.calibrate import LeakageError, calibrate_with_report, sidak_alpha
     from evaluate.pipeline import build_monitor_signals
     from settings import get_settings
+    from signals.stratified import PER_SLICE, POOLED
 
     s = get_settings()
     if split != "calib":
         raise LeakageError(f"thresholds are calibrated on 'calib' only (C4), not {split!r}")
     queries, rows = _calibration_inputs(completions)
+    scoring = PER_SLICE if per_slice else POOLED
     signals = build_monitor_signals(
-        _embeddings_or_none(no_embeddings), _enabled(no_embeddings, without)
+        _embeddings_or_none(no_embeddings), _enabled(no_embeddings, without), scoring
     )
     thresholds, fits = calibrate_with_report(
         signals, queries, rows, s.false_alarm_budget, s.bootstrap_windows, s.calibration_seed
@@ -454,6 +462,7 @@ def calibrate(
         "bootstrap_windows": s.bootstrap_windows,
         "calibration_seed": s.calibration_seed,
         "signals": list(signals),
+        "scoring": scoring,
         "tail_fits": {n: asdict(f) for n, f in fits.items()},
     }
     out = out or s.data_dir / "thresholds.proposed.json"
@@ -468,6 +477,9 @@ def calibrate(
 def freeze_cmd(
     thresholds: Path = typer.Option(..., help="Proposed thresholds from `calibrate`."),
     completions: Path = typer.Option(..., help="The exact calibration rows used."),
+    out: Path = typer.Option(
+        None, help="Where to freeze. Defaults to settings.thresholds_path (v1's record)."
+    ),
 ) -> None:
     """Freeze thresholds to data/thresholds.json. THE POINT OF NO RETURN (Stage 5).
 
@@ -481,8 +493,9 @@ def freeze_cmd(
     s = get_settings()
     proposal = json.loads(thresholds.read_text())
     _queries, rows = _calibration_inputs(completions)
+    path = out or s.thresholds_path
     record = freeze.write(
-        s.thresholds_path,
+        path,
         proposal["thresholds"],
         rows,
         proposal["family_wise_budget"],
@@ -492,8 +505,9 @@ def freeze_cmd(
         s.window_stride,
         proposal["bootstrap_windows"],
         proposal["calibration_seed"],
+        proposal.get("scoring", "pooled"),
     )
-    typer.echo(f"FROZEN at commit {record.git_commit}: {s.thresholds_path}")
+    typer.echo(f"FROZEN at commit {record.git_commit} ({record.scoring}): {path}")
 
 
 @app.command()
@@ -540,6 +554,7 @@ def evaluate(
         False, "--synthetic", help="Evaluate against synthetic data (Stage 7 gate)."
     ),
     n_runs: int = typer.Option(200, help="Randomised-onset replay runs per condition."),
+    out: Path = typer.Option(None, help="Results file. Defaults to data/results/evaluation.json."),
 ) -> None:
     """Replay, detection latency, ROC and bootstrap CIs (Stage 7).
 
@@ -578,7 +593,9 @@ def evaluate(
                 derive_f4(queries, healthy, s.corpus_seed),
                 "F4",
             )
-        signals = fit_signals(build_monitor_signals(embeddings, names), calib_q, calib_rows)
+        signals = fit_signals(
+            build_monitor_signals(embeddings, names, record.scoring), calib_q, calib_rows
+        )
         results = evaluate_run(
             queries,
             rows,
@@ -589,7 +606,8 @@ def evaluate(
             seed=s.calibration_seed,
             mode="real",
         )
-        out = s.data_dir / "results" / "evaluation.json"
+        results["scoring"] = record.scoring
+        out = out or s.data_dir / "results" / "evaluation.json"
     write_results(results, out)
     typer.echo(
         f"Stage 5 gate: {'PASSED' if results['stage5_gate_passed'] else 'FAILED'} "
