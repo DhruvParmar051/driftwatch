@@ -142,6 +142,31 @@ def test_calibrate_can_leave_out_constant_signals(full_corpus, data_dir):
     assert run("calibrate", *comp, "--without", "no_such_signal").exit_code != 0
 
 
+def test_per_slice_v2_freezes_to_its_own_file_and_says_so(full_corpus, data_dir, monkeypatch):
+    """v2 is post-hoc: it must never land in, or be confused with, v1's record."""
+    from detect import freeze
+    from provider.collect import write_completions
+    from settings import get_settings
+    from synthetic.generate import DegradationKnob, generate_completions
+
+    monkeypatch.setattr(freeze, "current_git_commit", lambda: "test0000commit")
+    s = get_settings()
+    rows = generate_completions(full_corpus, DegradationKnob(), s.k, "healthy", s.seed_base)
+    write_completions(rows, s.completions_path, mode="overwrite")
+    comp = str(s.completions_path)
+    proposal, frozen = data_dir / "v2.proposed.json", data_dir / "thresholds_v2.json"
+
+    drop = ("--no-embeddings", "--without", "refusal_rate", "--without", "format_validity")
+    result = run("calibrate", "--completions", comp, *drop, "--per-slice", "--out", str(proposal))
+    assert result.exit_code == 0, result.output
+    assert json.loads(proposal.read_text())["scoring"] == "per_slice"
+
+    args = ("--thresholds", str(proposal), "--completions", comp, "--out", str(frozen))
+    assert run("freeze", *args).exit_code == 0
+    assert json.loads(frozen.read_text())["scoring"] == "per_slice"
+    assert not s.thresholds_path.exists(), "v2 must not take v1's place"
+
+
 def test_calibrate_freeze_verify_evaluate_report(full_corpus, data_dir, monkeypatch):
     """The whole Stage 5-8 path on synthetic rounds, through the CLI."""
     from corpus.splits import fault_subset
