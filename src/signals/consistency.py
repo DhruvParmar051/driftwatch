@@ -123,15 +123,27 @@ class SelfConsistencySignal(GroupedSignal):
         """
         return super().score(window)
 
-    def prepare(self, groups: Sequence[Sequence[Completion]]) -> GroupTable:
-        """Per-group agreement. Raises on short groups (C10) or repeated seeds (C2)."""
-        require_complete_groups(self.name, groups)
+    #: Whether prepare() runs `check_not_all_identical`. The per-slice wrapper
+    #: (signals.stratified) turns it off on its parts and runs it on the whole
+    #: window instead: within ONE slice a consistent classifier is legitimately
+    #: all-identical (96% of healthy banking77 queries are), across a mixed
+    #: window it is not.
+    check_identical: bool = True
+
+    def check_not_all_identical(self, groups: Sequence[Sequence[Completion]]) -> None:
+        """Raise if >= 10 groups and every one has k identical samples (C2)."""
         identical = [len({c.text for c in g}) == 1 for g in groups]
         if len(groups) >= 10 and all(identical):
             raise ValueError(
                 f"{self.name}: every one of {len(groups)} query groups has identical samples - "
                 "the signature of duplicated seeds, not of a consistent model (C2)"
             )
+
+    def prepare(self, groups: Sequence[Sequence[Completion]]) -> GroupTable:
+        """Per-group agreement. Raises on short groups (C10) or repeated seeds (C2)."""
+        require_complete_groups(self.name, groups)
+        if self.check_identical:
+            self.check_not_all_identical(groups)
         return {
             "agree": np.array([group_agreement(g) for g in groups], float),
             "rows": np.array([len(g) for g in groups], float),
