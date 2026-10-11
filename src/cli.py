@@ -18,6 +18,8 @@ from log import configure_logging, get_logger
 from version import __version__
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from provider.catalogue import ResolvedModel
     from provider.client import BatchClient
     from provider.local import LocalClient
@@ -414,6 +416,13 @@ def calibrate(
     no_embeddings: bool = typer.Option(
         False, "--no-embeddings", help="Calibrate WITHOUT S7 (m=6). Decide before freezing."
     ),
+    without: list[str] = typer.Option(
+        [],
+        "--without",
+        help="Leave a signal out (repeatable), e.g. refusal_rate when the healthy model "
+        "never refuses: the signal is then constant and has no threshold to freeze. "
+        "Changes m; decide before freezing.",
+    ),
 ) -> None:
     """Fit reference distributions and estimate thresholds (Stage 5).
 
@@ -432,7 +441,9 @@ def calibrate(
     if split != "calib":
         raise LeakageError(f"thresholds are calibrated on 'calib' only (C4), not {split!r}")
     queries, rows = _calibration_inputs(completions)
-    signals = build_monitor_signals(_embeddings_or_none(no_embeddings), _enabled(no_embeddings))
+    signals = build_monitor_signals(
+        _embeddings_or_none(no_embeddings), _enabled(no_embeddings, without)
+    )
     thresholds, fits = calibrate_with_report(
         signals, queries, rows, s.false_alarm_budget, s.bootstrap_windows, s.calibration_seed
     )
@@ -768,10 +779,15 @@ def _calibration_inputs(completions: Path) -> tuple[list, list]:
     return calibration_rows(queries, read_completions(completions))
 
 
-def _enabled(no_embeddings: bool) -> list[str]:
+def _enabled(no_embeddings: bool, without: Sequence[str] = ()) -> list[str]:
+    """Signals to calibrate. The frozen record carries this list; evaluate reads it back."""
     from settings import SIGNAL_NAMES
 
-    return [n for n in SIGNAL_NAMES if not (no_embeddings and n == "embedding_shift")]
+    unknown = set(without) - set(SIGNAL_NAMES)
+    if unknown:
+        raise typer.BadParameter(f"unknown signal(s) {sorted(unknown)}; known: {SIGNAL_NAMES}")
+    dropped = set(without) | ({"embedding_shift"} if no_embeddings else set())
+    return [n for n in SIGNAL_NAMES if n not in dropped]
 
 
 def _embeddings_or_none(no_embeddings: bool) -> dict | None:
