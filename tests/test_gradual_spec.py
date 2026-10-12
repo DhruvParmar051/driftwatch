@@ -54,8 +54,7 @@ def synthetic_gradual():
     calib_q, calib_rows = calibration_rows(corpus, healthy)
     signals = build_signals(names)
     thresholds, _ = calibrate_with_report(signals, calib_q, calib_rows, 0.001, 1000, 11)
-    records = run_gradual(corpus, healthy, faults, signals, thresholds, n_runs=3, seed=5)
-    return records
+    return run_gradual(corpus, healthy, faults, signals, thresholds, n_runs=3, seed=5)
 
 
 def test_every_fault_and_schedule_is_replayed(synthetic_gradual):
@@ -75,7 +74,7 @@ def test_a_dose_serves_about_that_share_of_queries(synthetic_gradual):
 
 
 def test_a_full_dose_is_caught_at_least_as_often_as_a_5_percent_one(synthetic_gradual):
-    def rate(schedule):
+    def rate(schedule: str) -> float:
         rs = [r for r in synthetic_gradual if r["schedule"] == schedule]
         return sum(r["latency"] is not None for r in rs) / len(rs)
 
