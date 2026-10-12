@@ -30,7 +30,7 @@ DATA_DIR: Path = PROJECT_ROOT / "data"
 
 Slice = Literal["gsm8k", "triviaqa", "squad2", "banking77", "xsum", "eli5", "jsonx"]
 Split = Literal["calib", "heldout", "fault"]
-Condition = Literal["healthy", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8"]
+Condition = Literal["healthy", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "H2"]
 
 SLICES: tuple[str, ...] = ("gsm8k", "triviaqa", "squad2", "banking77", "xsum", "eli5", "jsonx")
 
@@ -265,7 +265,16 @@ CONDITION_ROLES: dict[str, str] = {
     "F6": "healthy",
     "F7": "healthy",
     "F8": "healthy",
+    "H2": "cross_family",
 }
+
+#: H2 is the SECOND HEALTHY MODEL (Stage 7n): gemma3:12b, the F5 model, on the
+#: calib and heldout questions with the healthy prompt and seeds. Its answers to
+#: the fault questions are F5's round, so together they mirror the healthy
+#: round and the whole method can be re-run with gemma3 as the deployed model.
+#: Never a fault: `evaluate` and the other replays leave it out.
+SECOND_HEALTHY: str = "H2"
+SECOND_HEALTHY_FAULT_ROUND: str = "F5"
 
 #: F7 is the healthy model rerun with FRESH seeds - a new day's sample of the
 #: same deployment. Same model, prompt and questions; only this differs from
