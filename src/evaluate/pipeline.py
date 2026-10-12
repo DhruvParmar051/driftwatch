@@ -159,6 +159,34 @@ def derive_f6(
     return rows
 
 
+def fault_conditions(
+    queries: Sequence[Query], completions: Sequence[Completion]
+) -> dict[str, list[Completion]]:
+    """Every replayed condition's rows: the generated faults, then F4 and F6 derived."""
+    settings = get_settings()
+    healthy = [c for c in completions if c.condition == HEALTHY]
+    faults: dict[str, list[Completion]] = {
+        cond: [c for c in completions if c.condition == cond]
+        for cond in sorted({c.condition for c in completions} - {HEALTHY, F4, F6})
+    }
+    faults[F4] = derive_f4(queries, healthy, settings.corpus_seed)
+    # Sorted after F1-F5, so adding it leaves every earlier condition's replay seeds as they were.
+    faults[F6] = derive_f6(queries, healthy, settings.corpus_seed)
+    return faults
+
+
+def replay_runs(
+    conditions: Sequence[str], n_runs: int, n_windows: int, min_prefix: int, seed: int
+) -> list[ReplayRun]:
+    """The replay plan `evaluate` uses: same seeds, so any analysis on it sees the same streams."""
+    runs: list[ReplayRun] = []
+    for k, cond in enumerate(sorted(conditions)):
+        onsets = randomised_onsets(n_runs, n_windows, min_prefix, seed + k)
+        for i, onset in enumerate(onsets):
+            runs.append(ReplayRun(len(runs), cond, onset, n_windows, seed * 1000 + k * n_runs + i))
+    return runs
+
+
 def evaluate_run(
     queries: Sequence[Query],
     completions: Sequence[Completion],
@@ -189,19 +217,8 @@ def evaluate_run(
     gate = false_alarm["family_wise"] <= 2 * settings.false_alarm_budget
 
     fault_queries = fault_subset(queries)
-    faults: dict[str, list[Completion]] = {
-        cond: [c for c in completions if c.condition == cond]
-        for cond in sorted({c.condition for c in completions} - {HEALTHY, F4, F6})
-    }
-    faults[F4] = derive_f4(queries, healthy, settings.corpus_seed)
-    # Sorted after F1-F5, so adding it leaves every earlier condition's replay seeds as they were.
-    faults[F6] = derive_f6(queries, healthy, settings.corpus_seed)
-
-    runs: list[ReplayRun] = []
-    for k, cond in enumerate(sorted(faults)):
-        onsets = randomised_onsets(n_runs, n_windows, min_prefix, seed + k)
-        for i, onset in enumerate(onsets):
-            runs.append(ReplayRun(len(runs), cond, onset, n_windows, seed * 1000 + k * n_runs + i))
+    faults = fault_conditions(queries, completions)
+    runs = replay_runs(list(faults), n_runs, n_windows, min_prefix, seed)
     records = run_replay(runs, healthy, faults, fault_queries, signals, thresholds)
 
     by_cond = {cond: [r for r in records if r["condition"] == cond] for cond in faults}
@@ -250,9 +267,10 @@ def write_report(results: dict[str, Any], out_dir: Path) -> list[Path]:
             "| " + " | ".join(_fmt(r.get(c)) for c in columns) + " |\n" for r in rows
         )
 
-    summary = results["summary"]
-    # The results JSON is written with sorted keys; restore the reading order.
-    columns = [c for c in SUMMARY_COLUMNS if summary and c in summary[0]]
+    # Re-derived from the records, so a report regenerated from an older results
+    # file gains every column added since (the detection-rate intervals).
+    summary = summarise(results["records"]).to_dict(orient="records")
+    columns = list(SUMMARY_COLUMNS)
     latencies = {}
     for r in results["records"]:
         latencies.setdefault(r["condition"], []).append(r["latency"])
