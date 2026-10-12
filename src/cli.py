@@ -232,7 +232,7 @@ def expand(
 
 @app.command()
 def generate(
-    condition: str = typer.Option(..., help="healthy, F1, F2, F3 or F5."),
+    condition: str = typer.Option(..., help="healthy, F1, F2, F3, F5, F7 or F8."),
     round_id: str = typer.Option(..., help="Round identifier, e.g. r001."),
     concurrency: int = typer.Option(4, help="Requests in flight; match OLLAMA_NUM_PARALLEL."),
     timeout: float = typer.Option(900.0, help="Seconds allowed per request."),
@@ -699,6 +699,100 @@ def gradual(
     typer.echo(report_md.read_text())
 
 
+@app.command("pilot-f8")
+def pilot_f8(
+    completions: Path = typer.Option(..., help="Completions holding the healthy round."),
+    out: Path = typer.Option(..., help="Pilot results JSON."),
+    per_slice: int = typer.Option(20, help="Calib queries per slice."),
+    concurrency: int = typer.Option(4, help="Requests in flight."),
+) -> None:
+    """Pick F8's prompt by the rule fixed in config/extension_prompts.yaml.
+
+    Answers a small CALIB sample with each candidate prompt (one sample, the
+    healthy round's sample-0 seeds) and compares accuracy and answer length
+    with the healthy answers to the same questions. Never touches the fault
+    split, and no monitor scores anything here.
+    """
+    import numpy as np
+
+    from corpus.build import read_queries
+    from oracle.score import score_condition
+    from provider.collect import collect_results, read_completions
+    from provider.expand import expand_queries
+    from settings import get_settings, load_extension_prompts
+    from signals.length import completion_length
+
+    s = get_settings()
+    scorable = ("banking77", "gsm8k", "squad2", "triviaqa")
+    queries = read_queries(s.queries_path)
+    rng = np.random.default_rng(s.calibration_seed)
+    picked = []
+    for name in (*scorable, "xsum", "eli5"):
+        pool = sorted(
+            (q for q in queries if q.slice == name and q.split == "calib"),
+            key=lambda q: q.query_id,
+        )
+        picked += [pool[int(i)] for i in sorted(rng.choice(len(pool), per_slice, replace=False))]
+    ids = {q.query_id for q in picked}
+    healthy = [
+        c
+        for c in read_completions(completions)
+        if c.condition == "healthy" and c.sample_idx == 0 and c.query_id in ids
+    ]
+
+    def measure(rows: list) -> dict:
+        acc = {r.slice: r.accuracy for r in score_condition(rows, queries, rows[0].condition)}
+        return {
+            "accuracy_by_slice": {k: acc[k] for k in scorable},
+            "accuracy": float(np.mean([acc[k] for k in scorable])),
+            "mean_length": float(np.mean([completion_length(c) for c in rows])),
+        }
+
+    ext = load_extension_prompts()
+    resolved = _resolve_role("healthy", "local")
+    results = {"healthy": measure(healthy), "candidates": {}, "rule_version": ext["version"]}
+    chosen = ""
+    for name, prompt in ext["f8_candidates"].items():
+        rows = expand_queries(
+            picked,
+            1,
+            resolved.model_id,
+            "F8",
+            "p001",
+            prompt,
+            s.seed_base,
+            s.temperature,
+            s.max_tokens,
+        )
+        raw = out.with_name(f"pilot_f8_{name}.jsonl")
+        _answer_rows(rows, raw, "local", concurrency)
+        got, report = collect_results(
+            raw,
+            {r["custom_id"] for r in rows},
+            resolved.model_id,
+            resolved.digest,
+            resolved.digest_source,
+            datetime.now(UTC),
+            seeds={r["custom_id"]: r["body"]["seed"] for r in rows},
+        )
+        report.raise_if_dirty()
+        m = measure(got)
+        m["accuracy_drop_points"] = 100 * (results["healthy"]["accuracy"] - m["accuracy"])
+        m["length_ratio"] = m["mean_length"] / results["healthy"]["mean_length"]
+        m["qualifies"] = m["accuracy_drop_points"] >= 5 and abs(m["length_ratio"] - 1) <= 0.10
+        results["candidates"][name] = m
+        if m["qualifies"] and not chosen:
+            chosen = name  # candidates are listed in preference order
+        typer.echo(
+            f"{name:14} drop {m['accuracy_drop_points']:+.1f} pts, length x{m['length_ratio']:.3f}"
+            f" -> {'qualifies' if m['qualifies'] else 'does not qualify'}"
+        )
+    results["chosen"] = chosen
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(results, indent=2) + "\n")
+    typer.echo(f"chosen: {chosen or 'NONE - no length-matched fault found'}")
+
+
 @app.command()
 def ablation(
     completions: Path = typer.Option(..., help="Healthy + fault completions."),
@@ -869,6 +963,7 @@ def _round_rows(condition: str, round_id: str) -> tuple[list[dict], str]:
     from provider.expand import expand_queries
     from settings import (
         CONDITION_ROLES,
+        F7_SEED_BASE,
         get_settings,
         model_id_for_role,
         system_prompt_for_condition,
@@ -893,7 +988,7 @@ def _round_rows(condition: str, round_id: str) -> tuple[list[dict], str]:
         condition,
         round_id,
         system_prompt_for_condition(condition),
-        s.seed_base,
+        F7_SEED_BASE if condition == "F7" else s.seed_base,
         s.temperature,
         s.max_tokens,
     )
