@@ -1010,6 +1010,68 @@ def one_answer(
     typer.echo(report_md.read_text())
 
 
+@app.command("second-model")
+def second_model(
+    completions: Path = typer.Option(..., help="All completions, H2 included."),
+    thresholds: Path = typer.Option(..., help="Frozen record giving the signals and scoring."),
+    out: Path = typer.Option(..., help="Results JSON."),
+    report_md: Path = typer.Option(..., help="Markdown table."),
+    n_runs: int = typer.Option(200, help="Replay runs per condition."),
+) -> None:
+    """The method with gemma3:12b as the healthy model (Stage 7n).
+
+    Exploratory: calibrated afresh on gemma3's calib answers with the frozen
+    record's signals and scoring; nothing is frozen. The record is verified first.
+    """
+    from evaluate.pipeline import alias_embeddings, build_monitor_signals, derive_f4, derive_f6
+    from evaluate.secondmodel import (
+        accuracy_table,
+        second_model_markdown,
+        second_model_rows,
+        second_model_vectors,
+        verdict,
+    )
+    from evaluate.sensitivity import calibrate_and_replay
+    from settings import get_settings
+
+    s = get_settings()
+    queries, all_rows, record, embeddings = _frozen_inputs(completions, thresholds, ())
+    rows = second_model_rows(queries, all_rows)
+    healthy = [c for c in rows if c.condition == "healthy"]
+    vectors = None
+    if embeddings is not None:
+        vectors = second_model_vectors(queries, embeddings)
+        vectors = alias_embeddings(vectors, derive_f4(queries, healthy, s.corpus_seed), "F4")
+        vectors = alias_embeddings(vectors, derive_f6(queries, healthy, s.corpus_seed), "F6")
+    names = list(record.thresholds)
+    result = calibrate_and_replay(
+        lambda: build_monitor_signals(vectors, names, record.scoring),
+        queries,
+        rows,
+        [q for q in queries if q.split == "calib"],
+        n_runs=n_runs,
+        seed=s.calibration_seed,
+    )
+    accuracy = accuracy_table(queries, rows)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(
+        json.dumps(
+            {
+                "scoring": record.scoring,
+                "accuracy": accuracy,
+                "verdict": verdict(result),
+                **result,
+            },
+            indent=2,
+            default=float,
+        )
+        + "\n"
+    )
+    report_md.parent.mkdir(parents=True, exist_ok=True)
+    report_md.write_text(second_model_markdown(result, accuracy, record.scoring))
+    typer.echo(report_md.read_text())
+
+
 @app.command("jsonx-check")
 def jsonx_check(
     completions: Path = typer.Option(..., help="All completions."),
