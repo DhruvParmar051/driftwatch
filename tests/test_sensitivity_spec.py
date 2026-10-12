@@ -123,3 +123,24 @@ def test_jsonx_lenient_accepts_only_a_priority_off_by_one(sample_completion):
     assert r["strict"] == pytest.approx(1 / 4)
     assert r["lenient"] == pytest.approx(2 / 4)
     assert r["wrong_priority"] == pytest.approx(2 / 4)
+
+
+def test_length_matched_keeps_the_same_share_of_every_slice_closest_first(settings):
+    from collections import Counter
+
+    from corpus.build import build_corpus
+    from corpus.splits import assign_splits, fault_subset
+    from evaluate.lengthmatched import KEEP_SHARE, matched_queries
+
+    corpus = assign_splits(build_corpus(settings.corpus_seed), settings.corpus_seed)
+    fault = fault_subset(corpus)
+    gaps = {q.query_id: (i * 7919 % 1000) / 1000 for i, q in enumerate(fault)}
+    kept = matched_queries(corpus, gaps)
+    per_slice = Counter(q.slice for q in fault)
+    assert Counter(q.slice for q in kept) == {
+        s: round(KEEP_SHARE * n) for s, n in per_slice.items()
+    }
+    for s in per_slice:
+        inside = max(gaps[q.query_id] for q in kept if q.slice == s)
+        outside = min(gaps[q.query_id] for q in fault if q.slice == s and q not in kept)
+        assert inside <= outside, s
