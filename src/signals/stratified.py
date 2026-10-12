@@ -24,6 +24,19 @@ Two changes:
     over a 77-label space is lower than that of 80 by construction. v2
     compares a window with the healthy entropy distribution AT ITS OWN SIZE,
     as a z-score.
+
+v3 (`per_slice_capped`) changes one thing, the weights. v2 gives a slice its
+standard weight whenever it is present, so a slice with 10 queries where it
+normally has 28 counts as much as a full one while being far noisier - the
+source of most of v2's remaining F4 alarms. v3 weights each slice by the
+queries it actually has in the window, capped at its standard quota:
+
+    w_s = min(n_s, WINDOW_STRATA[s])
+
+A standard window (every calibration window) gets exactly v2's weights; only a
+thin slice counts for less. Designed after looking at v2 on F4, so it is
+judged on F6 (settings.F6_MIXTURE), a harmless shift neither v2 nor v3 had
+seen when they were frozen.
 """
 
 from __future__ import annotations
@@ -44,7 +57,8 @@ from textnorm import slice_of
 #: thresholds record; evaluate rebuilds the signals the same way.
 POOLED: str = "pooled"
 PER_SLICE: str = "per_slice"
-SCORINGS: tuple[str, ...] = (POOLED, PER_SLICE)
+PER_SLICE_CAPPED: str = "per_slice_capped"
+SCORINGS: tuple[str, ...] = (POOLED, PER_SLICE, PER_SLICE_CAPPED)
 
 #: Pseudo-windows per banking77 sample size for S6's size-matched baseline.
 _ENTROPY_SIMS: int = 400
@@ -54,9 +68,13 @@ _ENTROPY_SEED: int = 7700
 class PerSliceSignal(GroupedSignal):
     """One fitted copy of a signal per slice, combined with the standard weights."""
 
-    def __init__(self, factory: Callable[[], GroupedSignal]) -> None:
-        """`factory` builds a fresh, unfitted copy of the wrapped signal."""
+    def __init__(self, factory: Callable[[], GroupedSignal], capped: bool = False) -> None:
+        """`factory` builds a fresh, unfitted copy of the wrapped signal.
+
+        `capped` selects v3's weights, min(n_s, quota_s), instead of v2's quota_s.
+        """
         self._factory = factory
+        self._capped = capped
         self.name = factory().name
         self._parts: dict[str, GroupedSignal] = {}
         self._fitted = False
@@ -122,7 +140,8 @@ class PerSliceSignal(GroupedSignal):
     def score_indices(self, table: GroupTable, idx: np.ndarray) -> SignalScore:
         """Standard-weighted mean of the slice scores, over the slices present.
 
-        value = sum_s w_s * score_s / sum_s w_s,  w_s = WINDOW_STRATA[s],
+        value = sum_s w_s * score_s / sum_s w_s,  w_s = WINDOW_STRATA[s]
+        (v3: min(n_s, WINDOW_STRATA[s]), n_s = the slice's queries in the window),
         for every fitted slice s with at least one group in the window.
         A window with none of the fitted slices scores 0 (nothing to compare).
         """
@@ -136,8 +155,9 @@ class PerSliceSignal(GroupedSignal):
                 continue
             prefix = f"{s}::"
             sub = {k[len(prefix) :]: v for k, v in table.items() if k.startswith(prefix)}
-            total += WINDOW_STRATA[s] * part.score_indices(sub, table["local"][sel]).value
-            weight += WINDOW_STRATA[s]
+            w = min(len(sel), WINDOW_STRATA[s]) if self._capped else WINDOW_STRATA[s]
+            total += w * part.score_indices(sub, table["local"][sel]).value
+            weight += w
         return self._result(total / weight if weight else 0.0, rows, fails)
 
 
@@ -178,11 +198,11 @@ class SizeMatchedLabelEntropy(LabelEntropySignal):
         return self._result(abs(miller_madow_entropy(counts) - mean) / sd, rows, fails)
 
 
-def stratify(signals: dict[str, GroupedSignal]) -> dict[str, GroupedSignal]:
+def stratify(signals: dict[str, GroupedSignal], capped: bool = False) -> dict[str, GroupedSignal]:
     """The v2 counterpart of an UNFITTED signal set, same names, same order.
 
-    S6 becomes size-matched (it is single-slice already); every other signal is
-    wrapped per slice, each part built like the original - S7's parts share the
+    S6 becomes size-matched (it is single-slice already, so `capped` does not
+    touch it); every other signal is wrapped per slice, each part built like the original - S7's parts share the
     original's injected embedding store.
     """
     out: dict[str, GroupedSignal] = {}
@@ -190,7 +210,7 @@ def stratify(signals: dict[str, GroupedSignal]) -> dict[str, GroupedSignal]:
         if isinstance(sig, LabelEntropySignal):
             out[name] = SizeMatchedLabelEntropy()
         else:
-            out[name] = PerSliceSignal(_factory_like(sig))
+            out[name] = PerSliceSignal(_factory_like(sig), capped)
     return out
 
 
