@@ -840,6 +840,25 @@ def jsonx_check(
     typer.echo(report_md.read_text())
 
 
+@app.command("leakage-check")
+def leakage_check_cmd(
+    completions: Path = typer.Option(..., help="All completions."),
+    report_md: Path = typer.Option(..., help="Markdown report."),
+) -> None:
+    """Check the real splits and answers for leakage: ids, prompts, source material, answers."""
+    from corpus.build import read_queries
+    from corpus.leakage import leakage_check, leakage_markdown
+    from provider.collect import read_completions
+    from settings import get_settings
+
+    r = leakage_check(read_queries(get_settings().queries_path), read_completions(completions))
+    report_md.parent.mkdir(parents=True, exist_ok=True)
+    report_md.write_text(leakage_markdown(r))
+    typer.echo(report_md.read_text())
+    if r["shared_prompts"] or r["answers"]["misplaced"]:
+        raise typer.Exit(1)
+
+
 @app.command("pilot-f8")
 def pilot_f8(
     completions: Path = typer.Option(..., help="Completions holding the healthy round."),
