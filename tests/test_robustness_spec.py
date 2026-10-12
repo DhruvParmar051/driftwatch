@@ -195,3 +195,12 @@ def test_fourth_model_is_llama_with_the_same_design_as_qwen():
     h3, h4 = sm.DEPLOYED[THIRD_HEALTHY], sm.DEPLOYED[FOURTH_HEALTHY]
     assert h4["healthy"] == (FOURTH_HEALTHY,)
     assert h4["swaps"] == h3["swaps"]
+
+
+def test_fifth_model_is_phi_with_the_same_design_as_qwen():
+    import evaluate.secondmodel as sm
+    from settings import ALTERNATE_HEALTHY, CONDITION_ROLES, FIFTH_HEALTHY, THIRD_HEALTHY
+
+    assert CONDITION_ROLES[FIFTH_HEALTHY] == "fifth_family"
+    assert FIFTH_HEALTHY in ALTERNATE_HEALTHY
+    assert sm.DEPLOYED[FIFTH_HEALTHY]["swaps"] == sm.DEPLOYED[THIRD_HEALTHY]["swaps"]
