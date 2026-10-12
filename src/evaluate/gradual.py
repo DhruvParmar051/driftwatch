@@ -28,6 +28,7 @@ import numpy as np
 
 from corpus.schemas import Completion, Query
 from corpus.splits import fault_subset
+from evaluate.metrics import wilson_interval
 from evaluate.replay import LATENCY_CONVENTION, ReplayRun, _prepare, _record, _ReplayPlan
 from log import get_logger
 
@@ -142,6 +143,7 @@ def summarise_gradual(
             pre_w = sum(r["pre_onset_windows"] for r in rs)
             pre_a = sum(r["pre_onset_alarms"] for r in rs)
             full = accuracy_drop.get(cond)
+            lo, hi = wilson_interval(len(lat), len(rs))
             rows.append(
                 {
                     "condition": cond,
@@ -154,6 +156,8 @@ def summarise_gradual(
                     "n_runs": len(rs),
                     "detected": int(len(lat)),
                     "detection_rate": len(lat) / len(rs),
+                    "detection_ci_lo": lo,
+                    "detection_ci_hi": hi,
                     "latency_median": float(np.median(lat)) if len(lat) else None,
                     "latency_q90": float(np.quantile(lat, 0.9)) if len(lat) else None,
                     "pre_onset_false_alarm_rate": pre_a / pre_w if pre_w else 0.0,
@@ -172,8 +176,8 @@ def gradual_markdown(summary: Sequence[dict[str, Any]], scoring: str) -> str:
         f"Latency: {LATENCY_CONVENTION}. Streams of {N_WINDOWS} windows, onset at window "
         f"{ONSET_MIN}-{ONSET_MAX}. dose_NN: NN% of post-onset queries from the faulty "
         f"model; ramp_{RAMP_WINDOWS}: 0 to 100% over {RAMP_WINDOWS} windows.\n\n"
-        "| fault | schedule | accuracy drop (points) | detected | median latency | "
-        "q90 latency | pre-onset false alarms |\n|---|---|---|---|---|---|---|\n"
+        "| fault | schedule | accuracy drop (points) | detected | 95% interval | median latency | "
+        "q90 latency | pre-onset false alarms |\n|---|---|---|---|---|---|---|---|\n"
     )
 
     def f(v: Any, spec: str) -> str:
@@ -181,11 +185,17 @@ def gradual_markdown(summary: Sequence[dict[str, Any]], scoring: str) -> str:
 
     body = "".join(
         f"| {r['condition']} | {r['schedule']} | {f(r['accuracy_drop_points'], '.1f')} | "
-        f"{r['detected']}/{r['n_runs']} | {f(r['latency_median'], 'g')} | "
+        f"{r['detected']}/{r['n_runs']} | {_pct(r['detection_ci_lo'], r['detection_ci_hi'])} | "
+        f"{f(r['latency_median'], 'g')} | "
         f"{f(r['latency_q90'], 'g')} | {r['pre_onset_false_alarm_rate']:.4f} |\n"
         for r in summary
     )
     return head + body
+
+
+def _pct(lo: float, hi: float) -> str:
+    """A Wilson interval as whole percentages, e.g. '96-100%'."""
+    return f"{100 * lo:.0f}-{100 * hi:.0f}%"
 
 
 def _run_one(
