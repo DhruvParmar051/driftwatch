@@ -798,6 +798,50 @@ def length_matched(
     typer.echo(report_md.read_text())
 
 
+@app.command("one-slice")
+def one_slice(
+    completions: Path = typer.Option(..., help="Healthy + fault completions."),
+    thresholds: Path = typer.Option(..., help="A frozen thresholds record (v1, v2 or v3)."),
+    out: Path = typer.Option(..., help="Results JSON."),
+    report_md: Path = typer.Option(..., help="Markdown tables."),
+    n_runs: int = typer.Option(200, help="Replay runs per fault and slice."),
+) -> None:
+    """F1, F2 and F5 on one kind of question at a time, the rest healthy (Stage 7i).
+
+    Replayed against a FROZEN monitor, verified first.
+    """
+    from detect.calibrate import fit_signals
+    from evaluate.oneslice import (
+        alias_one_slice,
+        one_slice_conditions,
+        one_slice_markdown,
+        run_one_slice,
+    )
+    from evaluate.pipeline import build_monitor_signals, calibration_rows
+    from settings import get_settings
+
+    s = get_settings()
+    queries, rows, record, embeddings = _frozen_inputs(completions, thresholds, ())
+    if embeddings is not None:
+        embeddings = alias_one_slice(embeddings, one_slice_conditions(queries, rows)[2])
+    calib_q, calib_rows = calibration_rows(queries, rows)
+    signals = fit_signals(
+        build_monitor_signals(embeddings, list(record.thresholds), record.scoring),
+        calib_q,
+        calib_rows,
+    )
+    results = run_one_slice(
+        queries, rows, signals, record.thresholds, n_runs=n_runs, seed=s.calibration_seed
+    )
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(
+        json.dumps({"scoring": record.scoring, "results": results}, indent=2, default=float) + "\n"
+    )
+    report_md.parent.mkdir(parents=True, exist_ok=True)
+    report_md.write_text(one_slice_markdown(results, record.scoring))
+    typer.echo(report_md.read_text())
+
+
 @app.command("jsonx-check")
 def jsonx_check(
     completions: Path = typer.Option(..., help="All completions."),
