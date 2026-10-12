@@ -232,7 +232,7 @@ def expand(
 
 @app.command()
 def generate(
-    condition: str = typer.Option(..., help="healthy, F1, F2, F3, F5, F7 or F8."),
+    condition: str = typer.Option(..., help="healthy, F1, F2, F3, F5, F7, F8 or H2."),
     round_id: str = typer.Option(..., help="Round identifier, e.g. r001."),
     concurrency: int = typer.Option(4, help="Requests in flight; match OLLAMA_NUM_PARALLEL."),
     timeout: float = typer.Option(900.0, help="Seconds allowed per request."),
@@ -1333,8 +1333,9 @@ def _resolve_role(role: str, backend: str) -> ResolvedModel:
 def _round_rows(condition: str, round_id: str) -> tuple[list[dict], str]:
     """The rows of one generation round, and the role that serves it.
 
-    healthy runs the whole corpus; F1, F2, F3 and F5 the ONE shared fault
-    subset (C8). F4 has no round - it is derived from healthy completions.
+    healthy runs the whole corpus; F1, F2, F3, F5 and F7 the ONE shared fault
+    subset (C8); H2 the calib and heldout questions. F4 and F6 have no round -
+    they are derived from healthy completions.
     """
     from corpus.build import read_queries
     from corpus.splits import fault_subset
@@ -1342,6 +1343,7 @@ def _round_rows(condition: str, round_id: str) -> tuple[list[dict], str]:
     from settings import (
         CONDITION_ROLES,
         F7_SEED_BASE,
+        SECOND_HEALTHY,
         get_settings,
         model_id_for_role,
         system_prompt_for_condition,
@@ -1358,7 +1360,13 @@ def _round_rows(condition: str, round_id: str) -> tuple[list[dict], str]:
         )
     role = CONDITION_ROLES[condition]
     queries = read_queries(s.queries_path)
-    selected = queries if condition == "healthy" else fault_subset(queries)
+    if condition == "healthy":
+        selected = queries
+    elif condition == SECOND_HEALTHY:
+        # The fault questions are F5's round already: same model, prompt and seeds.
+        selected = [q for q in queries if q.split != "fault"]
+    else:
+        selected = fault_subset(queries)
     rows = expand_queries(
         selected,
         s.k,
