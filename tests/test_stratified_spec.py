@@ -165,3 +165,55 @@ def test_unknown_scoring_is_refused():
 
     with pytest.raises(ValueError, match="scoring"):
         build_monitor_signals(None, ["length_ks"], "per_query")
+
+
+# ── v3: weights capped at the queries a slice actually has ─────────────────
+
+
+def test_v3_equals_v2_on_a_standard_window(corpus, settings):
+    """Every calibration window has the standard mix, so v3 changes nothing there."""
+    from signals.length import LengthKSSignal
+    from signals.stratified import PerSliceSignal
+    from signals.windows import stream_windows
+
+    rows = healthy_round(corpus, settings)
+    v2, v3 = PerSliceSignal(LengthKSSignal), PerSliceSignal(LengthKSSignal, capped=True)
+    v2.fit(rows)
+    v3.fit(rows)
+    for window in list(stream_windows(corpus, rows, seed=1))[:3]:
+        assert v3.score(window).value == pytest.approx(v2.score(window).value)
+
+
+def test_v3_weights_a_thin_slice_by_the_queries_it_has(corpus, settings):
+    """5 gsm8k queries where the quota is 28 count 5/28 as much as in v2."""
+    from signals.groups import group_completions, group_slices
+    from signals.length import LengthKSSignal
+    from signals.stratified import PerSliceSignal
+
+    rows = healthy_round(corpus, settings)
+    v3 = PerSliceSignal(LengthKSSignal, capped=True)
+    v3.fit(rows)
+    groups = group_completions(rows)
+    slices = np.asarray(group_slices(groups))
+    xsum, gsm = np.flatnonzero(slices == "xsum")[:60], np.flatnonzero(slices == "gsm8k")[:5]
+    table = v3.prepare(groups)
+    part = {s: v3._parts[s] for s in ("xsum", "gsm8k")}
+
+    def alone(s: str, idx: np.ndarray) -> float:
+        prefix = f"{s}::"
+        sub = {k[len(prefix) :]: v for k, v in table.items() if k.startswith(prefix)}
+        return part[s].score_indices(sub, table["local"][idx]).value
+
+    expected = (44 * alone("xsum", xsum) + 5 * alone("gsm8k", gsm)) / 49
+    value = v3.score_indices(table, np.concatenate([xsum, gsm])).value
+    assert value == pytest.approx(expected)
+
+
+def test_f6_draws_its_exact_mixture_and_never_heldout(corpus, settings):
+    from corpus.splits import f6_subset
+    from settings import F6_MIXTURE
+
+    drawn = f6_subset(corpus, settings.corpus_seed)
+    assert Counter(q.slice for q in drawn) == Counter({s: n for s, n in F6_MIXTURE.items() if n})
+    assert all(q.split != "heldout" for q in drawn)
+    assert drawn == f6_subset(corpus, settings.corpus_seed), "the draw must be reproducible"
