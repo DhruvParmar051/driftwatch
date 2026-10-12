@@ -63,10 +63,10 @@ scripts/analyse_all.sh                               # every evaluation and stre
 ```
 
 The rounds, as run: r001 healthy, r002 F3, r003 F2, r004 F1, r005 F5, then
-r006 F7 (the healthy model on fresh seeds, a negative control) and r007 F8 (a
-system-prompt fault built to keep answer length; its prompt is chosen by
-`driftwatch pilot-f8` before the round, by the rule in
-`config/extension_prompts.yaml`). F4 and F6 have no round: both are derived
+r006 F7 (the healthy model on fresh seeds, a negative control). F8, a
+system-prompt fault built to keep answer length, was designed but not
+generated: neither candidate prompt passed the pre-registered pilot
+(`driftwatch pilot-f8`, rule and result in `config/extension_prompts.yaml`). F4 and F6 have no round: both are derived
 from the healthy completions.
 
 v2 and v3 were calibrated after v1 with `calibrate --scoring per_slice` /
