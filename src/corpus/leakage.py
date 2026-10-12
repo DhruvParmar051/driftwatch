@@ -28,7 +28,7 @@ from typing import Any
 
 from corpus.schemas import Completion, Query
 from corpus.splits import assert_no_leakage
-from settings import SECOND_HEALTHY
+from settings import ALTERNATE_HEALTHY
 
 HEALTHY = "healthy"
 SPLITS: tuple[str, ...] = ("calib", "heldout", "fault")
@@ -75,7 +75,7 @@ def misplaced_answers(queries: Sequence[Query], completions: Sequence[Completion
     misplaced = sum(
         n
         for (cond, split), n in table.items()
-        if cond not in (HEALTHY, SECOND_HEALTHY) and split != "fault"
+        if cond not in (HEALTHY, *ALTERNATE_HEALTHY) and split != "fault"
     )
     return {"table": dict(table), "misplaced": misplaced}
 
