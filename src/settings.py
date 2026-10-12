@@ -30,7 +30,7 @@ DATA_DIR: Path = PROJECT_ROOT / "data"
 
 Slice = Literal["gsm8k", "triviaqa", "squad2", "banking77", "xsum", "eli5", "jsonx"]
 Split = Literal["calib", "heldout", "fault"]
-Condition = Literal["healthy", "F1", "F2", "F3", "F4", "F5", "F6"]
+Condition = Literal["healthy", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8"]
 
 SLICES: tuple[str, ...] = ("gsm8k", "triviaqa", "squad2", "banking77", "xsum", "eli5", "jsonx")
 
@@ -263,7 +263,14 @@ CONDITION_ROLES: dict[str, str] = {
     "F4": "healthy",
     "F5": "cross_family",
     "F6": "healthy",
+    "F7": "healthy",
+    "F8": "healthy",
 }
+
+#: F7 is the healthy model rerun with FRESH seeds - a new day's sample of the
+#: same deployment. Same model, prompt and questions; only this differs from
+#: settings.seed_base, so no F7 answer repeats a healthy one by construction.
+F7_SEED_BASE: int = 20261012
 
 
 @lru_cache(maxsize=1)
@@ -292,9 +299,25 @@ def system_prompt_for_condition(condition: str) -> str:
     Every other condition runs the healthy baseline prompt; F1/F2/F5 change the
     model and F4 changes the query mixture.
     """
+    if condition == "F8":
+        ext = load_extension_prompts()
+        if not ext["f8_chosen"]:
+            raise ValueError("F8 has no prompt yet: run the pilot and set f8_chosen first")
+        return ext["f8_candidates"][ext["f8_chosen"]]
     prompts = load_prompts()["system_prompts"]
     key = "f3_corrupted" if condition == "F3" else "healthy"
     return prompts[key]
+
+
+@lru_cache(maxsize=1)
+def load_extension_prompts() -> dict:
+    """Return config/extension_prompts.yaml: F8's candidate prompts and the chosen one.
+
+    Kept apart from prompts.yaml so the version the frozen thresholds were
+    calibrated on is untouched; see that file's header.
+    """
+    with (CONFIG_DIR / "extension_prompts.yaml").open() as fh:
+        return yaml.safe_load(fh)
 
 
 def slice_template(slice_name: str) -> str:
