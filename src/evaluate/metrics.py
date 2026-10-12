@@ -70,6 +70,22 @@ def auc(healthy_scores: np.ndarray, fault_scores: np.ndarray) -> float:
     return float(u / (len(fault) * len(healthy)))
 
 
+def wilson_interval(k: int, n: int, z: float = 1.959964) -> tuple[float, float]:
+    """95% Wilson score interval for k successes in n runs ((nan, nan) with n == 0).
+
+    Chosen over the normal approximation because it stays inside [0, 1] and is
+    honest at the extremes: 200/200 detected is [0.981, 1], not [1, 1].
+    """
+    if n == 0:
+        return float("nan"), float("nan")
+    p = k / n
+    centre = (p + z * z / (2 * n)) / (1 + z * z / n)
+    half = z * np.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / (1 + z * z / n)
+    lo = 0.0 if k == 0 else max(0.0, float(centre - half))
+    hi = 1.0 if k == n else min(1.0, float(centre + half))
+    return lo, hi
+
+
 def signal_detection_rate(records: list[dict], name: str) -> float:
     """Fraction of runs in which signal `name` alarmed at all (NaN with no runs)."""
     if not records:
@@ -126,11 +142,14 @@ def summarise(detection_records: list[dict]) -> object:
         pre_windows = sum(r.get("pre_onset_windows", 0) for r in runs)
         pre_alarms = sum(r.get("pre_onset_alarms", 0) for r in runs)
         q = np.quantile(lat, [0.25, 0.5, 0.75, 0.9]) if len(lat) else [np.nan] * 4
+        lo, hi = wilson_interval(len(lat), len(runs))
         rows.append(
             {
                 "condition": condition,
                 "n_runs": len(runs),
                 "detected": len(lat),
+                "detection_ci_lo": _r(lo),
+                "detection_ci_hi": _r(hi),
                 "non_detection_rate": round(non_detection_rate(detection_records, condition), 6),
                 "latency_q25": _r(q[0]),
                 "latency_median": _r(q[1]),
@@ -150,6 +169,8 @@ SUMMARY_COLUMNS: list[str] = [
     "condition",
     "n_runs",
     "detected",
+    "detection_ci_lo",
+    "detection_ci_hi",
     "non_detection_rate",
     "latency_q25",
     "latency_median",
