@@ -40,6 +40,9 @@ The same again with llama3.1:8b as the deployed model (Stage 7p, round H4),
 fixed before any H4 answer was read: identical design and checks to qwen's,
 the guard included - llama 8B may well not beat gemma4 e4b, and then F2 is
 reported, not judged.
+
+And with phi4:14b (Stage 7q, round H5), fixed before any H5 answer was read:
+identical design and checks to qwen's and llama's, the guard included.
 """
 
 from __future__ import annotations
@@ -54,6 +57,7 @@ from corpus.splits import fault_subset
 from evaluate.pipeline import ORACLE_NOT_A_QUALITY_MEASURE, _oracle
 from log import get_logger
 from settings import (
+    FIFTH_HEALTHY,
     FOURTH_HEALTHY,
     SECOND_HEALTHY,
     SECOND_HEALTHY_FAULT_ROUND,
@@ -88,6 +92,11 @@ DEPLOYED: dict[str, dict[str, Any]] = {
         "healthy": (FOURTH_HEALTHY,),
         "swaps": {HEALTHY: SWAP, SECOND_HEALTHY_FAULT_ROUND: SWAP_GEMMA3},
         "name": "llama3.1:8b",
+    },
+    FIFTH_HEALTHY: {
+        "healthy": (FIFTH_HEALTHY,),
+        "swaps": {HEALTHY: SWAP, SECOND_HEALTHY_FAULT_ROUND: SWAP_GEMMA3},
+        "name": "phi4:14b",
     },
 }
 
