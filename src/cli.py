@@ -760,6 +760,44 @@ def sensitivity(
     typer.echo(report_md.read_text())
 
 
+@app.command("length-matched")
+def length_matched(
+    completions: Path = typer.Option(..., help="Healthy + fault completions."),
+    thresholds: Path = typer.Option(..., help="A frozen thresholds record (v1, v2 or v3)."),
+    out: Path = typer.Option(..., help="Results JSON."),
+    report_md: Path = typer.Option(..., help="Markdown table."),
+    n_runs: int = typer.Option(200, help="Replay runs per fault."),
+) -> None:
+    """F1 and F2 on the questions where they answer as long as the healthy model (Stage 7f).
+
+    Can the monitor see a real quality drop when answer length gives nothing
+    away? Replayed against a FROZEN monitor, verified first.
+    """
+    from detect.calibrate import fit_signals
+    from evaluate.lengthmatched import length_matched_markdown, run_length_matched
+    from evaluate.pipeline import build_monitor_signals, calibration_rows
+    from settings import get_settings
+
+    s = get_settings()
+    queries, rows, record, embeddings = _frozen_inputs(completions, thresholds, ())
+    calib_q, calib_rows = calibration_rows(queries, rows)
+    signals = fit_signals(
+        build_monitor_signals(embeddings, list(record.thresholds), record.scoring),
+        calib_q,
+        calib_rows,
+    )
+    results = run_length_matched(
+        queries, rows, signals, record.thresholds, n_runs=n_runs, seed=s.calibration_seed
+    )
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(
+        json.dumps({"scoring": record.scoring, "results": results}, indent=2, default=float) + "\n"
+    )
+    report_md.parent.mkdir(parents=True, exist_ok=True)
+    report_md.write_text(length_matched_markdown(results, record.scoring))
+    typer.echo(report_md.read_text())
+
+
 @app.command("jsonx-check")
 def jsonx_check(
     completions: Path = typer.Option(..., help="All completions."),
