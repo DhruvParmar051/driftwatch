@@ -13,6 +13,7 @@ import pytest
 from detect.calibrate import sidak_alpha
 from settings import (
     F4_MIXTURE,
+    F6_MIXTURE,
     SIGNAL_NAMES,
     SLICE_SIZES,
     SLICES,
@@ -73,6 +74,15 @@ def test_f4_mixture_totals_1500_and_differs_from_corpus():
     corpus_shape = {s: SLICE_SIZES[s] / 5000 for s in SLICES}
     f4_shape = {s: F4_MIXTURE[s] / 1500 for s in SLICES}
     assert f4_shape != corpus_shape, "F4 must be a SHIFTED mixture or it is not a fault at all"
+
+
+def test_f6_is_the_opposite_shift_to_f4():
+    """F6 is the unseen harmless control for v2/v3: short-answer heavy where F4 is long-form."""
+    assert sum(F6_MIXTURE.values()) == 1500
+    long_form = ("xsum", "eli5")
+    corpus_long = sum(SLICE_SIZES[s] for s in long_form) / 5000
+    assert sum(F4_MIXTURE[s] for s in long_form) / 1500 > corpus_long
+    assert sum(F6_MIXTURE[s] for s in long_form) / 1500 < corpus_long
 
 
 def test_sidak_alpha_is_below_the_family_wise_budget():
