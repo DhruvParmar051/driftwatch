@@ -163,3 +163,47 @@ def score_condition(
 @lru_cache(maxsize=1)
 def _jsonx_validator() -> Draft202012Validator:
     return Draft202012Validator(load_jsonx_schema())
+
+
+def jsonx_field_check(
+    completions: list[Completion], queries: list[Query], condition: str, priority_tolerance: int = 1
+) -> dict[str, float | int]:
+    """Score jsonx strictly, with `priority` allowed off by `priority_tolerance`, and per field.
+
+    The strict key maps vague phrases to one priority ("high priority" -> 4);
+    the healthy model reads them one step further out. This asks whether that
+    one field explains why the strongest model scores lowest: if the lenient
+    ordering of conditions matches the other slices', it does. Diagnostic
+    only - `score_condition` and its strict rule are unchanged.
+    """
+    by_id = {q.query_id: q for q in queries}
+    n = strict = lenient = invalid = 0
+    wrong = dict.fromkeys(JSONX_EXACT_FIELDS, 0)
+    for c in completions:
+        query = by_id.get(c.query_id)
+        if c.condition != condition or query is None or query.slice != "jsonx":
+            continue
+        n += 1
+        obj = parse_json_object(c.text) if c.parse_ok else None
+        if obj is None or not _jsonx_validator().is_valid(obj) or query.ground_truth is None:
+            invalid += 1
+            continue
+        expected = json.loads(query.ground_truth)
+        misses = [f for f in JSONX_EXACT_FIELDS if obj.get(f) != expected.get(f)]
+        for f in misses:
+            wrong[f] += 1
+        strict += not misses
+        near = isinstance(obj.get("priority"), int) and isinstance(expected.get("priority"), int)
+        lenient += misses == [] or (
+            misses == ["priority"]
+            and near
+            and abs(obj["priority"] - expected["priority"]) <= priority_tolerance
+        )
+    out: dict[str, float | int] = {
+        "n": n,
+        "invalid": invalid,
+        "strict": strict / n if n else float("nan"),
+        "lenient": lenient / n if n else float("nan"),
+    }
+    out.update({f"wrong_{f}": wrong[f] / n if n else float("nan") for f in JSONX_EXACT_FIELDS})
+    return out
