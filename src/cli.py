@@ -232,7 +232,7 @@ def expand(
 
 @app.command()
 def generate(
-    condition: str = typer.Option(..., help="healthy, F1, F2, F3, F5, F7, F8 or H2."),
+    condition: str = typer.Option(..., help="healthy, F1, F2, F3, F5, F7, F8, H2 or H3."),
     round_id: str = typer.Option(..., help="Round identifier, e.g. r001."),
     concurrency: int = typer.Option(4, help="Requests in flight; match OLLAMA_NUM_PARALLEL."),
     timeout: float = typer.Option(900.0, help="Seconds allowed per request."),
@@ -1012,19 +1012,21 @@ def one_answer(
 
 @app.command("second-model")
 def second_model(
-    completions: Path = typer.Option(..., help="All completions, H2 included."),
+    completions: Path = typer.Option(..., help="All completions, H2 or H3 included."),
     thresholds: Path = typer.Option(..., help="Frozen record giving the signals and scoring."),
     out: Path = typer.Option(..., help="Results JSON."),
     report_md: Path = typer.Option(..., help="Markdown table."),
     n_runs: int = typer.Option(200, help="Replay runs per condition."),
+    deployed: str = typer.Option("H2", help="H2 (gemma3:12b) or H3 (qwen2.5:14b)."),
 ) -> None:
-    """The method with gemma3:12b as the healthy model (Stage 7n).
+    """The method with another healthy model: gemma3:12b or qwen2.5:14b (Stages 7n, 7o).
 
-    Exploratory: calibrated afresh on gemma3's calib answers with the frozen
+    Exploratory: calibrated afresh on that model's calib answers with the frozen
     record's signals and scoring; nothing is frozen. The record is verified first.
     """
     from evaluate.pipeline import alias_embeddings, build_monitor_signals, derive_f4, derive_f6
     from evaluate.secondmodel import (
+        DEPLOYED,
         accuracy_table,
         second_model_markdown,
         second_model_rows,
@@ -1034,13 +1036,15 @@ def second_model(
     from evaluate.sensitivity import calibrate_and_replay
     from settings import get_settings
 
+    if deployed not in DEPLOYED:
+        raise typer.BadParameter(f"deployed must be one of {sorted(DEPLOYED)}, got {deployed!r}")
     s = get_settings()
     queries, all_rows, record, embeddings = _frozen_inputs(completions, thresholds, ())
-    rows = second_model_rows(queries, all_rows)
+    rows = second_model_rows(queries, all_rows, deployed)
     healthy = [c for c in rows if c.condition == "healthy"]
     vectors = None
     if embeddings is not None:
-        vectors = second_model_vectors(queries, embeddings)
+        vectors = second_model_vectors(queries, embeddings, deployed)
         vectors = alias_embeddings(vectors, derive_f4(queries, healthy, s.corpus_seed), "F4")
         vectors = alias_embeddings(vectors, derive_f6(queries, healthy, s.corpus_seed), "F6")
     names = list(record.thresholds)
@@ -1052,14 +1056,15 @@ def second_model(
         n_runs=n_runs,
         seed=s.calibration_seed,
     )
-    accuracy = accuracy_table(queries, rows)
+    accuracy = accuracy_table(queries, rows, deployed)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(
         json.dumps(
             {
+                "deployed": deployed,
                 "scoring": record.scoring,
                 "accuracy": accuracy,
-                "verdict": verdict(result),
+                "verdict": verdict(result, accuracy),
                 **result,
             },
             indent=2,
@@ -1068,7 +1073,7 @@ def second_model(
         + "\n"
     )
     report_md.parent.mkdir(parents=True, exist_ok=True)
-    report_md.write_text(second_model_markdown(result, accuracy, record.scoring))
+    report_md.write_text(second_model_markdown(result, accuracy, record.scoring, deployed))
     typer.echo(report_md.read_text())
 
 
@@ -1396,7 +1401,8 @@ def _round_rows(condition: str, round_id: str) -> tuple[list[dict], str]:
     """The rows of one generation round, and the role that serves it.
 
     healthy runs the whole corpus; F1, F2, F3, F5 and F7 the ONE shared fault
-    subset (C8); H2 the calib and heldout questions. F4 and F6 have no round -
+    subset (C8); H2 the calib and heldout questions; H3 the whole corpus, like
+    healthy. F4 and F6 have no round -
     they are derived from healthy completions.
     """
     from corpus.build import read_queries
@@ -1406,6 +1412,7 @@ def _round_rows(condition: str, round_id: str) -> tuple[list[dict], str]:
         CONDITION_ROLES,
         F7_SEED_BASE,
         SECOND_HEALTHY,
+        THIRD_HEALTHY,
         get_settings,
         model_id_for_role,
         system_prompt_for_condition,
@@ -1422,7 +1429,7 @@ def _round_rows(condition: str, round_id: str) -> tuple[list[dict], str]:
         )
     role = CONDITION_ROLES[condition]
     queries = read_queries(s.queries_path)
-    if condition == "healthy":
+    if condition in ("healthy", THIRD_HEALTHY):
         selected = queries
     elif condition == SECOND_HEALTHY:
         # The fault questions are F5's round already: same model, prompt and seeds.
