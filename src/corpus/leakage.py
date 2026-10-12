@@ -15,7 +15,8 @@ the data as it stands on disk and asks the wider questions a reader will ask:
      (length, consistency, wording, embeddings), never on answers to look up.
   4. Answers: does any fault-condition answer come from a calib or heldout
      question, and does calibration see anything but healthy calib answers?
-     (must be 0)
+     (must be 0; H2, the second healthy model, answers calib and heldout by
+     design)
 """
 
 from __future__ import annotations
@@ -27,6 +28,7 @@ from typing import Any
 
 from corpus.schemas import Completion, Query
 from corpus.splits import assert_no_leakage
+from settings import SECOND_HEALTHY
 
 HEALTHY = "healthy"
 SPLITS: tuple[str, ...] = ("calib", "heldout", "fault")
@@ -70,7 +72,11 @@ def misplaced_answers(queries: Sequence[Query], completions: Sequence[Completion
     """Answers per (condition, split); fault conditions must sit on the fault split only."""
     split_of = {q.query_id: q.split for q in queries}
     table = Counter((c.condition, split_of[c.query_id]) for c in completions)
-    misplaced = sum(n for (cond, split), n in table.items() if cond != HEALTHY and split != "fault")
+    misplaced = sum(
+        n
+        for (cond, split), n in table.items()
+        if cond not in (HEALTHY, SECOND_HEALTHY) and split != "fault"
+    )
     return {"table": dict(table), "misplaced": misplaced}
 
 
