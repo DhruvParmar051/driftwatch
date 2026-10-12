@@ -295,11 +295,37 @@ def calibrate_with_report(
     Serial and vectorised: the result is independent of `settings.n_workers`
     because no randomness is split across workers at all.
     """
+    alpha = sidak_alpha(family_wise_budget, len(signals))
+    scores = bootstrap_scores(signals, queries, completions, n_bootstrap, seed)
+
+    thresholds: dict[str, float] = {}
+    fits: dict[str, TailFit] = {}
+    for name, values in scores.items():
+        fit = tail_threshold(name, values, alpha)
+        thresholds[name] = fit.threshold
+        fits[name] = fit
+        log.info("calibrate.threshold", **asdict(fit))
+    return thresholds, fits
+
+
+def bootstrap_scores(
+    signals: dict[str, Signal],
+    queries: list[Query],
+    completions: list[Completion],
+    n_bootstrap: int,
+    seed: int,
+) -> dict[str, np.ndarray]:
+    """Fit every signal on calib and score `n_bootstrap` bootstrap windows with each.
+
+    The step `calibrate_with_report` takes its quantiles from. Exposed so a
+    post-hoc analysis can read thresholds at OTHER levels off the very same
+    windows (`tail_threshold(name, values, alpha)`) - with the same seed it
+    reproduces a frozen record's thresholds exactly.
+    """
     assert_calib_only(queries)
     _assert_rows_belong(queries, completions)
     if n_bootstrap < 1:
         raise ValueError(f"n_bootstrap must be >= 1, got {n_bootstrap}")
-    alpha = sidak_alpha(family_wise_budget, len(signals))
 
     fit_signals(signals, queries, completions)
     pool, groups = _calibration_groups(queries, completions)
@@ -308,19 +334,14 @@ def calibrate_with_report(
 
     _self_check(signals, tables, pool, completions, indices, seed)
 
-    thresholds: dict[str, float] = {}
-    fits: dict[str, TailFit] = {}
-    for name, sig in signals.items():
-        values = np.fromiter(
+    return {
+        name: np.fromiter(
             (sig.score_indices(tables[name], row).value for row in indices),  # type: ignore[attr-defined]
             dtype=float,
             count=len(indices),
         )
-        fit = tail_threshold(name, values, alpha)
-        thresholds[name] = fit.threshold
-        fits[name] = fit
-        log.info("calibrate.threshold", **asdict(fit))
-    return thresholds, fits
+        for name, sig in signals.items()
+    }
 
 
 def tail_threshold(signal: str, values: np.ndarray, alpha: float) -> TailFit:
