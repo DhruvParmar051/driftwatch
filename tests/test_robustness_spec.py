@@ -84,3 +84,22 @@ def test_mmd_never_pairs_a_repeated_question_with_itself(sample_completion):
     once = sig.score_indices(table, np.arange(20)).value
     twice = sig.score_indices(table, np.r_[np.arange(20), np.arange(20)]).value
     assert twice == pytest.approx(once, abs=0.03)
+
+
+def test_the_second_healthy_model_is_never_a_fault_or_a_leak(
+    sample_query, sample_completion, monkeypatch
+):
+    import evaluate.pipeline as pipeline
+    from corpus.leakage import misplaced_answers
+    from evaluate.pipeline import fault_conditions
+    from settings import CONDITION_ROLES, SECOND_HEALTHY, system_prompt_for_condition
+
+    assert CONDITION_ROLES[SECOND_HEALTHY] == CONDITION_ROLES["F5"] == "cross_family"
+    assert system_prompt_for_condition(SECOND_HEALTHY) == system_prompt_for_condition("healthy")
+    h2 = sample_completion.model_copy(update={"condition": SECOND_HEALTHY})
+    assert misplaced_answers([sample_query], [h2])["misplaced"] == 0
+    monkeypatch.setattr(pipeline, "derive_f4", lambda *a: [])
+    monkeypatch.setattr(pipeline, "derive_f6", lambda *a: [])
+    f1 = sample_completion.model_copy(update={"condition": "F1"})
+    faults = fault_conditions([sample_query], [sample_completion, h2, f1])
+    assert set(faults) == {"F1", "F4", "F6"}
