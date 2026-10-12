@@ -10,7 +10,12 @@ Two questions about the frozen monitor, asked on the SAME replay streams
        baseline_mean_length  one number per window, |mean answer length -
                              healthy mean|, the first thing anyone would try;
        baseline_no_sidak     every monitored signal at the FULL budget, i.e.
-                             no multiple-testing correction.
+                             no multiple-testing correction;
+       baseline_embedding_mmd  a standard two-sample drift test (added in
+                             Stage 7k, fixed before it was run): unbiased MMD^2
+                             between the window's per-question mean
+                             embeddings and 500 healthy calib questions, RBF
+                             kernel, median-distance bandwidth.
      The single-signal rows double as baselines: only_embedding_shift is
      "plain embedding distance", only_length_ks "a length test".
 
@@ -53,7 +58,7 @@ from evaluate.replay import run_replay
 from log import get_logger
 from settings import get_settings
 from signals.base import Signal
-from signals.groups import GroupedSignal, GroupTable, require_reference
+from signals.groups import GroupedSignal, GroupTable, group_completions, require_reference
 from signals.length import completion_length
 from signals.windows import stream_windows
 
@@ -61,6 +66,11 @@ log = get_logger(__name__)
 
 #: The simple baseline's signal name. Not a monitored signal, never frozen.
 MEAN_LENGTH: str = "mean_length"
+#: The standard drift test's signal name. Not a monitored signal, never frozen.
+EMBEDDING_MMD: str = "embedding_mmd"
+#: Healthy calib questions the MMD baseline compares every window against.
+MMD_REFERENCE: int = 500
+_MMD_SEED: int = 17
 
 #: Conditions where an alarm is a FALSE alarm: the model is the healthy one
 #: (F4, F6: shifted question mix; F7: the healthy model on fresh seeds).
@@ -112,7 +122,76 @@ class MeanLengthShift(GroupedSignal):
         return self._result(abs(mean - self._mean), rows, fails)
 
 
-def configurations(names: Sequence[str], budget: float) -> list[Config]:
+class EmbeddingMMD(GroupedSignal):
+    """Baseline: unbiased MMD^2 between a window and healthy calib, on per-question embeddings.
+
+    Each question is the mean of its answers' unit vectors (parse failures
+    excluded, as in S7). The reference is MMD_REFERENCE calib questions drawn
+    once; the RBF bandwidth is the median squared distance between them. A
+    question that appears twice in a bootstrap window is never paired with
+    itself.
+    """
+
+    name: str = EMBEDDING_MMD
+
+    def __init__(self, vectors: dict[str, np.ndarray]) -> None:
+        from signals.embedding import EmbeddingShiftSignal
+
+        self._lookup = EmbeddingShiftSignal(vectors=vectors)
+        self._ref = np.zeros((0, 0))
+        self._gamma = 0.0
+        self._k_rr = 0.0
+        self._fitted = False
+
+    def fit(self, reference: list[Completion]) -> None:
+        """Draw the reference questions, set the bandwidth and the reference-only term."""
+        require_reference(self.name, len(reference))
+        table = self.prepare(group_completions(reference))
+        means = table["mean"][table["ok"]]
+        rng = np.random.default_rng(_MMD_SEED)
+        pick = rng.choice(len(means), size=min(MMD_REFERENCE, len(means)), replace=False)
+        self._ref = means[np.sort(pick)]
+        d = _sq_dist(self._ref, self._ref)
+        off = ~np.eye(len(self._ref), dtype=bool)
+        self._gamma = 1.0 / float(np.median(d[off]))
+        self._k_rr = float(np.exp(-self._gamma * d)[off].mean())
+        self._fitted = True
+
+    def prepare(self, groups: Sequence[Sequence[Completion]]) -> GroupTable:
+        """Per-question mean unit vector, whether it has one, and row and failure counts."""
+        means, ok = [], []
+        for g in groups:
+            vs = [self._lookup.vector(c) for c in g if c.parse_ok]
+            ok.append(bool(vs))
+            means.append(np.mean(vs, axis=0) if vs else None)
+        dim = next((len(m) for m in means if m is not None), 1)
+        return {
+            "mean": np.vstack([m if m is not None else np.zeros(dim) for m in means]),
+            "ok": np.asarray(ok, dtype=bool),
+            "rows": np.array([len(g) for g in groups], float),
+            "fails": np.array([sum(not c.parse_ok for c in g) for g in groups], float),
+        }
+
+    def score_indices(self, table: GroupTable, idx: np.ndarray) -> SignalScore:
+        """Unbiased MMD^2 between the window's questions and the reference."""
+        self._require_fitted()
+        rows, fails = table["rows"][idx].sum(), table["fails"][idx].sum()
+        keep = idx[table["ok"][idx]]
+        x = table["mean"][keep]
+        k_xx = np.exp(-self._gamma * _sq_dist(x, x))
+        distinct = keep[:, None] != keep[None, :]
+        k_xy = np.exp(-self._gamma * _sq_dist(x, self._ref)).mean()
+        value = k_xx[distinct].mean() + self._k_rr - 2 * k_xy if distinct.any() else 0.0
+        return self._result(value, rows, fails)
+
+
+def _sq_dist(a: np.ndarray, b: np.ndarray) -> np.ndarray:
+    """Pairwise squared euclidean distances, clipped at zero."""
+    d = (a * a).sum(1)[:, None] + (b * b).sum(1)[None, :] - 2 * a @ b.T
+    return np.maximum(d, 0.0)
+
+
+def configurations(names: Sequence[str], budget: float, mmd: bool = False) -> list[Config]:
     """Every configuration in the module docstring, in report order."""
     m = len(names)
     configs = [Config("frozen", "frozen", tuple(names), sidak_alpha(budget, m))]
@@ -131,6 +210,8 @@ def configurations(names: Sequence[str], budget: float) -> list[Config]:
         Config("baseline_mean_length", "baseline", (MEAN_LENGTH,), budget),
         Config("baseline_no_sidak", "baseline", tuple(names), budget),
     ]
+    if mmd:
+        configs.append(Config("baseline_embedding_mmd", "baseline", (EMBEDDING_MMD,), budget))
     return configs
 
 
@@ -157,21 +238,26 @@ def run_ablation(
     *,
     n_runs: int,
     seed: int,
+    embeddings: dict[str, np.ndarray] | None = None,
 ) -> dict[str, Any]:
     """Bootstrap, threshold every configuration, replay once, score every configuration.
 
     `signals` are the monitored signals built as the frozen record says
     (unfitted is fine - they are fitted on calib here); `frozen` its
     thresholds. Raises if the `frozen` configuration does not reproduce them.
+    With `embeddings`, the MMD baseline runs too (its vectors are looked up
+    under each row's condition, F4/F6 aliased as for S7).
     """
     s = get_settings()
     queries = list(queries)
     names = list(signals)
     every: dict[str, Signal] = {**signals, MEAN_LENGTH: MeanLengthShift()}
+    if embeddings is not None:
+        every[EMBEDDING_MMD] = EmbeddingMMD(embeddings)
 
     calib_q, calib_rows = calibration_rows(queries, completions)
     boot = bootstrap_scores(every, calib_q, calib_rows, s.bootstrap_windows, s.calibration_seed)  # type: ignore[arg-type]
-    configs = configurations(names, s.false_alarm_budget)
+    configs = configurations(names, s.false_alarm_budget, mmd=embeddings is not None)
     thresholds = config_thresholds(configs, boot)
     for name, value in frozen.items():
         if not math.isclose(thresholds["frozen"][name], value, rel_tol=1e-9):
@@ -186,6 +272,8 @@ def run_ablation(
     faults = fault_conditions(queries, completions)
     runs = replay_runs(list(faults), n_runs, DEFAULT_REPLAY_WINDOWS, DEFAULT_MIN_PREFIX, seed)
     replay_thresholds = {**frozen, MEAN_LENGTH: thresholds["baseline_mean_length"][MEAN_LENGTH]}
+    if embeddings is not None:
+        replay_thresholds[EMBEDDING_MMD] = thresholds["baseline_embedding_mmd"][EMBEDDING_MMD]
     records = run_replay(runs, healthy, faults, fault_subset(queries), every, replay_thresholds)
 
     rows = [
