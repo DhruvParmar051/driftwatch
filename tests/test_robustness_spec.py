@@ -7,6 +7,8 @@ from collections import Counter
 import numpy as np
 import pytest
 
+from corpus.schemas import Completion
+
 pytestmark = pytest.mark.spec
 
 
@@ -103,3 +105,37 @@ def test_the_second_healthy_model_is_never_a_fault_or_a_leak(
     f1 = sample_completion.model_copy(update={"condition": "F1"})
     faults = fault_conditions([sample_query], [sample_completion, h2, f1])
     assert set(faults) == {"F1", "F4", "F6"}
+
+
+def test_second_model_rows_and_vectors_swap_the_healthy_model(
+    sample_query, sample_completion, monkeypatch
+):
+    import evaluate.secondmodel as sm
+    from provider.expand import decode_custom_id, encode_custom_id
+
+    fault_q = sample_query.model_copy(update={"query_id": "gsm8k_00001", "split": "fault"})
+    queries = [sample_query, fault_q]  # gsm8k_00042 is calib
+    monkeypatch.setattr(sm, "fault_subset", lambda qs: [q for q in qs if q.split == "fault"])
+
+    def row(qid: str, cond: str) -> Completion:
+        return sample_completion.model_copy(update={"query_id": qid, "condition": cond})
+
+    rows = [
+        row("gsm8k_00042", "healthy"),  # old healthy on calib: dropped
+        row("gsm8k_00001", "healthy"),  # old healthy on fault: becomes G4
+        row("gsm8k_00042", "H2"),  # gemma3 on calib: healthy
+        row("gsm8k_00001", "F5"),  # gemma3 on fault: healthy
+        row("gsm8k_00001", "F1"),
+        row("gsm8k_00001", "F3"),  # prompt fault on the old model: dropped
+    ]
+    want = [
+        ("gsm8k_00001", "F1"),
+        ("gsm8k_00001", sm.SWAP),
+        ("gsm8k_00001", "healthy"),
+        ("gsm8k_00042", "healthy"),
+    ]
+    got = sorted((c.query_id, c.condition) for c in sm.second_model_rows(queries, rows))
+    vecs = {encode_custom_id(c.query_id, 0, c.condition, "r"): [1.0] for c in rows}
+    keys = sorted(decode_custom_id(k)[::2] for k in sm.second_model_vectors(queries, vecs))
+    assert got == want
+    assert keys == want
