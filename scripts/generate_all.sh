@@ -8,7 +8,7 @@
 # round's own output to data/logs/<step>.log.
 #
 # Needs: Ollama serving the pinned builds (see README, "Running locally"), and
-# the machine kept awake - about 36 hours for everything on an M-series Mac.
+# the machine kept awake - about 42 hours for everything on an M-series Mac.
 #
 # Usage: scripts/generate_all.sh            # all rounds
 #        scripts/generate_all.sh r006 r007  # only the named rounds (and their embeddings)
@@ -29,6 +29,7 @@ ROUNDS=(
   # pilot (`driftwatch pilot-f8`; see config/extension_prompts.yaml).
   "r008 H2 e008"   # second healthy model (gemma3:12b) on calib + heldout; ~12 h
   "r009 H3 e009"   # third healthy model (qwen2.5:14b) on every question; ~10 h
+  "r010 H4 e010"   # fourth healthy model (llama3.1:8b) on every question; ~6 h
 )
 
 step() {  # name, then the driftwatch arguments
