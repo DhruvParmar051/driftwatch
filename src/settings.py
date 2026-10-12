@@ -30,7 +30,7 @@ DATA_DIR: Path = PROJECT_ROOT / "data"
 
 Slice = Literal["gsm8k", "triviaqa", "squad2", "banking77", "xsum", "eli5", "jsonx"]
 Split = Literal["calib", "heldout", "fault"]
-Condition = Literal["healthy", "F1", "F2", "F3", "F4", "F5"]
+Condition = Literal["healthy", "F1", "F2", "F3", "F4", "F5", "F6"]
 
 SLICES: tuple[str, ...] = ("gsm8k", "triviaqa", "squad2", "banking77", "xsum", "eli5", "jsonx")
 
@@ -96,6 +96,21 @@ F4_MIXTURE: dict[str, int] = {
     "jsonx": 0,
     "xsum": 525,
     "eli5": 525,
+}
+
+#: Slice mixture for F6, the OPPOSITE harmless shift: short-answer heavy,
+#: long-form light. Added after the first evaluation, as an UNSEEN harmless
+#: control: v2 and v3 scoring were both designed after looking at F4, so F4
+#: can no longer judge them fairly. Fixed and committed before any scoring was
+#: run on it; derived from healthy completions exactly like F4.
+F6_MIXTURE: dict[str, int] = {
+    "gsm8k": 400,
+    "triviaqa": 400,
+    "squad2": 350,
+    "banking77": 200,
+    "jsonx": 100,
+    "xsum": 25,
+    "eli5": 25,
 }
 
 #: Canonical signal names. The registry keys, the threshold keys in
@@ -247,6 +262,7 @@ CONDITION_ROLES: dict[str, str] = {
     "F3": "healthy",
     "F4": "healthy",
     "F5": "cross_family",
+    "F6": "healthy",
 }
 
 
