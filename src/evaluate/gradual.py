@@ -87,13 +87,14 @@ def run_gradual(
     *,
     n_runs: int = DEFAULT_RUNS,
     seed: int,
+    keep_scores: bool = False,
 ) -> list[dict[str, Any]]:
     """One record per run, for every fault in GRADUAL_FAULTS and every schedule.
 
     Records carry the main replay's fields (latency from the ONSET window,
     pre-onset alarms, per-signal latency) plus `schedule` and
     `faulty_share_realised`, the share of post-onset queries that really were
-    faulty. Per-window score traces are dropped.
+    faulty. Per-window score traces are dropped unless `keep_scores`.
     """
     fault_queries = fault_subset(list(queries))
     names = list(signals)
@@ -120,6 +121,8 @@ def run_gradual(
                     thresholds,
                     names,
                 )
+                if not keep_scores:
+                    rec.pop("scores")
                 records.append(rec)
         log.info("gradual.fault_done", condition=cond, runs=n_runs * len(SCHEDULES))
     return records
@@ -249,7 +252,6 @@ def _run_one(
         fired.append(alarms)
 
     rec = _record(run, names, scores, fired, plan.per_window)
-    rec.pop("scores")
     rec["schedule"] = schedule.name
     rec["faulty_share_realised"] = n_bad / n_post if n_post else 0.0
     return rec
