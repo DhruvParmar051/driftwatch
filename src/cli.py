@@ -630,6 +630,75 @@ def report(results: Path = typer.Option(...), out_dir: Path = typer.Option(...))
         typer.echo(f"wrote {path}")
 
 
+@app.command()
+def gradual(
+    completions: Path = typer.Option(..., help="Healthy + fault completions."),
+    thresholds: Path = typer.Option(..., help="A frozen thresholds record (v1, v2 or v3)."),
+    out: Path = typer.Option(..., help="Results JSON."),
+    report_md: Path = typer.Option(..., help="Markdown summary table."),
+    n_runs: int = typer.Option(200, help="Replays per fault and schedule."),
+) -> None:
+    """Partial and gradual degradation against a FROZEN monitor (Stage 7b).
+
+    F1 and F2 served to a share of queries (5% to 100%), or ramped in over 30
+    windows. Nothing is calibrated here; the record is verified first, as in
+    `evaluate`.
+    """
+    from corpus.build import read_queries
+    from corpus.splits import fault_subset
+    from detect import freeze
+    from detect.calibrate import fit_signals
+    from evaluate.gradual import (
+        GRADUAL_FAULTS,
+        gradual_markdown,
+        run_gradual,
+        summarise_gradual,
+    )
+    from evaluate.pipeline import (
+        ORACLE_NOT_A_QUALITY_MEASURE,
+        _oracle,
+        build_monitor_signals,
+        calibration_rows,
+    )
+    from provider.collect import read_completions, read_embeddings
+    from settings import get_settings
+
+    s = get_settings()
+    queries = read_queries(s.queries_path)
+    rows = read_completions(completions)
+    calib_q, calib_rows = calibration_rows(queries, rows)
+    record = freeze.verify(thresholds, calib_rows)  # REFUSES to continue on any mismatch
+    names = list(record.thresholds)
+    embeddings = read_embeddings(_embeddings_path()) if "embedding_shift" in names else None
+    signals = fit_signals(
+        build_monitor_signals(embeddings, names, record.scoring), calib_q, calib_rows
+    )
+    healthy = [c for c in rows if c.condition == "healthy"]
+    faults = {cond: [c for c in rows if c.condition == cond] for cond in GRADUAL_FAULTS}
+    records = run_gradual(
+        queries, healthy, faults, signals, record.thresholds, n_runs=n_runs, seed=s.calibration_seed
+    )
+
+    oracle = _oracle(queries, rows, list(GRADUAL_FAULTS), fault_subset(queries))
+
+    def mean_accuracy(cond: str) -> float:
+        kept = [
+            v["accuracy"] for k, v in oracle[cond].items() if k not in ORACLE_NOT_A_QUALITY_MEASURE
+        ]
+        return sum(kept) / len(kept)
+
+    drop = {c: 100 * (mean_accuracy("healthy") - mean_accuracy(c)) for c in GRADUAL_FAULTS}
+    summary = summarise_gradual(records, drop)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(
+        json.dumps({"scoring": record.scoring, "summary": summary, "records": records}, indent=2)
+        + "\n"
+    )
+    report_md.parent.mkdir(parents=True, exist_ok=True)
+    report_md.write_text(gradual_markdown(summary, record.scoring))
+    typer.echo(report_md.read_text())
+
+
 # ── helpers ────────────────────────────────────────────────────────────────
 
 
