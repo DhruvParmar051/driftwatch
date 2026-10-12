@@ -15,13 +15,14 @@ from collections import Counter
 import numpy as np
 
 from corpus.schemas import Query
-from settings import F4_MIXTURE, SLICES, SPLIT_SIZES
+from settings import F4_MIXTURE, F6_MIXTURE, SLICES, SPLIT_SIZES
 
 _SPLIT_ORDER: tuple[str, ...] = ("calib", "heldout", "fault")
 
 #: Offset that keeps the F4 draw's random stream independent of the split
 #: assignment's, even though both are derived from the same corpus seed.
 _F4_STREAM: int = 4
+_F6_STREAM: int = 6
 
 
 def assign_splits(queries: list[Query], seed: int) -> list[Query]:
@@ -127,28 +128,40 @@ def f4_subset(queries: list[Query], seed: int) -> list[Query]:
         reproducible.
 
     """
+    return _shift_subset(queries, seed, F4_MIXTURE, _F4_STREAM, "F4")
+
+
+def f6_subset(queries: list[Query], seed: int) -> list[Query]:
+    """F6's mixture (settings.F6_MIXTURE): the opposite harmless shift, drawn like F4."""
+    return _shift_subset(queries, seed, F6_MIXTURE, _F6_STREAM, "F6")
+
+
+def _shift_subset(
+    queries: list[Query], seed: int, mixture: dict[str, int], stream: int, name: str
+) -> list[Query]:
+    """Draw a shifted query mixture from `calib | fault` - never heldout (C5)."""
     pool: dict[str, list[Query]] = {}
     for q in queries:
         if q.split in ("calib", "fault"):
             pool.setdefault(q.slice, []).append(q)
 
-    rng = np.random.default_rng(np.random.SeedSequence([seed, _F4_STREAM]))
+    rng = np.random.default_rng(np.random.SeedSequence([seed, stream]))
     drawn: list[Query] = []
     for slice_name in SLICES:
-        need = F4_MIXTURE.get(slice_name, 0)
+        need = mixture.get(slice_name, 0)
         if need == 0:
             continue
         candidates = sorted(pool.get(slice_name, []), key=lambda q: q.query_id)
         if len(candidates) < need:
             raise ValueError(
-                f"F4 mixture needs {need} {slice_name!r} queries, pool has {len(candidates)}"
+                f"{name} mixture needs {need} {slice_name!r} queries, pool has {len(candidates)}"
             )
         picks = rng.choice(len(candidates), size=need, replace=False)
         drawn.extend(candidates[int(i)] for i in sorted(picks))
 
     drawn_heldout = [q.query_id for q in drawn if q.split == "heldout"]
     if drawn_heldout:
-        raise ValueError(f"C5 violation: F4 drew heldout queries {drawn_heldout[:5]}")
+        raise ValueError(f"C5 violation: {name} drew heldout queries {drawn_heldout[:5]}")
     return drawn
 
 
