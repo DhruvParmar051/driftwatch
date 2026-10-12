@@ -423,11 +423,10 @@ def calibrate(
         "never refuses: the signal is then constant and has no threshold to freeze. "
         "Changes m; decide before freezing.",
     ),
-    per_slice: bool = typer.Option(
-        False,
-        "--per-slice",
-        help="v2 scoring: each slice against its own healthy reference (signals.stratified). "
-        "Post-hoc; freeze it to its own file with `freeze --out`.",
+    scoring: str = typer.Option(
+        "pooled",
+        help="pooled (v1), per_slice (v2) or per_slice_capped (v3); see signals.stratified. "
+        "v2 and v3 are post-hoc: freeze them to their own file with `freeze --out`.",
     ),
 ) -> None:
     """Fit reference distributions and estimate thresholds (Stage 5).
@@ -442,13 +441,11 @@ def calibrate(
     from detect.calibrate import LeakageError, calibrate_with_report, sidak_alpha
     from evaluate.pipeline import build_monitor_signals
     from settings import get_settings
-    from signals.stratified import PER_SLICE, POOLED
 
     s = get_settings()
     if split != "calib":
         raise LeakageError(f"thresholds are calibrated on 'calib' only (C4), not {split!r}")
     queries, rows = _calibration_inputs(completions)
-    scoring = PER_SLICE if per_slice else POOLED
     signals = build_monitor_signals(
         _embeddings_or_none(no_embeddings), _enabled(no_embeddings, without), scoring
     )
@@ -568,6 +565,7 @@ def evaluate(
         build_monitor_signals,
         calibration_rows,
         derive_f4,
+        derive_f6,
         evaluate_run,
         write_results,
     )
@@ -592,6 +590,9 @@ def evaluate(
                 read_embeddings(_embeddings_path()),
                 derive_f4(queries, healthy, s.corpus_seed),
                 "F4",
+            )
+            embeddings = alias_embeddings(
+                embeddings, derive_f6(queries, healthy, s.corpus_seed), "F6"
             )
         signals = fit_signals(
             build_monitor_signals(embeddings, names, record.scoring), calib_q, calib_rows
@@ -688,8 +689,10 @@ def _round_rows(condition: str, round_id: str) -> tuple[list[dict], str]:
     )
 
     s = get_settings()
-    if condition == "F4":
-        raise typer.BadParameter("F4 has no generation round - it is derived from healthy rows")
+    if condition in ("F4", "F6"):
+        raise typer.BadParameter(
+            f"{condition} has no generation round - it is derived from healthy rows"
+        )
     if condition not in CONDITION_ROLES:
         raise typer.BadParameter(
             f"unknown condition {condition!r}; one of {sorted(CONDITION_ROLES)}"
