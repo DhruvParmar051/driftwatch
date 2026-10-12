@@ -232,7 +232,7 @@ def expand(
 
 @app.command()
 def generate(
-    condition: str = typer.Option(..., help="healthy, F1, F2, F3, F5, F7, F8, H2 or H3."),
+    condition: str = typer.Option(..., help="healthy, F1, F2, F3, F5, F7, F8, H2, H3 or H4."),
     round_id: str = typer.Option(..., help="Round identifier, e.g. r001."),
     concurrency: int = typer.Option(4, help="Requests in flight; match OLLAMA_NUM_PARALLEL."),
     timeout: float = typer.Option(900.0, help="Seconds allowed per request."),
@@ -1012,14 +1012,16 @@ def one_answer(
 
 @app.command("second-model")
 def second_model(
-    completions: Path = typer.Option(..., help="All completions, H2 or H3 included."),
+    completions: Path = typer.Option(..., help="All completions, H2, H3 or H4 included."),
     thresholds: Path = typer.Option(..., help="Frozen record giving the signals and scoring."),
     out: Path = typer.Option(..., help="Results JSON."),
     report_md: Path = typer.Option(..., help="Markdown table."),
     n_runs: int = typer.Option(200, help="Replay runs per condition."),
-    deployed: str = typer.Option("H2", help="H2 (gemma3:12b) or H3 (qwen2.5:14b)."),
+    deployed: str = typer.Option(
+        "H2", help="H2 (gemma3:12b), H3 (qwen2.5:14b) or H4 (llama3.1:8b)."
+    ),
 ) -> None:
-    """The method with another healthy model: gemma3:12b or qwen2.5:14b (Stages 7n, 7o).
+    """The method with another healthy model: gemma3, qwen2.5 or llama3.1 (Stages 7n-7p).
 
     Exploratory: calibrated afresh on that model's calib answers with the frozen
     record's signals and scoring; nothing is frozen. The record is verified first.
@@ -1401,8 +1403,8 @@ def _round_rows(condition: str, round_id: str) -> tuple[list[dict], str]:
     """The rows of one generation round, and the role that serves it.
 
     healthy runs the whole corpus; F1, F2, F3, F5 and F7 the ONE shared fault
-    subset (C8); H2 the calib and heldout questions; H3 the whole corpus, like
-    healthy. F4 and F6 have no round -
+    subset (C8); H2 the calib and heldout questions; H3 and H4 the whole corpus,
+    like healthy. F4 and F6 have no round -
     they are derived from healthy completions.
     """
     from corpus.build import read_queries
@@ -1411,6 +1413,7 @@ def _round_rows(condition: str, round_id: str) -> tuple[list[dict], str]:
     from settings import (
         CONDITION_ROLES,
         F7_SEED_BASE,
+        FOURTH_HEALTHY,
         SECOND_HEALTHY,
         THIRD_HEALTHY,
         get_settings,
@@ -1429,7 +1432,7 @@ def _round_rows(condition: str, round_id: str) -> tuple[list[dict], str]:
         )
     role = CONDITION_ROLES[condition]
     queries = read_queries(s.queries_path)
-    if condition in ("healthy", THIRD_HEALTHY):
+    if condition in ("healthy", THIRD_HEALTHY, FOURTH_HEALTHY):
         selected = queries
     elif condition == SECOND_HEALTHY:
         # The fault questions are F5's round already: same model, prompt and seeds.
