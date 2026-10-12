@@ -62,8 +62,9 @@ log = get_logger(__name__)
 #: The simple baseline's signal name. Not a monitored signal, never frozen.
 MEAN_LENGTH: str = "mean_length"
 
-#: Conditions where an alarm is a FALSE alarm: the model is the healthy one.
-HARMLESS: tuple[str, ...] = ("F4", "F6")
+#: Conditions where an alarm is a FALSE alarm: the model is the healthy one
+#: (F4, F6: shifted question mix; F7: the healthy model on fresh seeds).
+HARMLESS: tuple[str, ...] = ("F4", "F6", "F7")
 
 
 @dataclass(frozen=True)
@@ -238,7 +239,7 @@ def ablation_markdown(results: dict[str, Any], scoring: str) -> str:
     )
     head2 = (
         "\n## Nothing wrong with the model - lower is better\n\n"
-        "F4 and F6: harmless query shifts, healthy answers. Pre-onset: every healthy window "
+        "F4 and F6: harmless query shifts; F7: the healthy model rerun on fresh seeds. Pre-onset: every healthy window "
         "before an onset, all conditions. Heldout: the real heldout windows "
         f"({results['heldout_windows']} of them).\n\n"
         "| configuration | "
