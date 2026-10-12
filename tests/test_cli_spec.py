@@ -157,7 +157,9 @@ def test_per_slice_v2_freezes_to_its_own_file_and_says_so(full_corpus, data_dir,
     proposal, frozen = data_dir / "v2.proposed.json", data_dir / "thresholds_v2.json"
 
     drop = ("--no-embeddings", "--without", "refusal_rate", "--without", "format_validity")
-    result = run("calibrate", "--completions", comp, *drop, "--per-slice", "--out", str(proposal))
+    result = run(
+        "calibrate", "--completions", comp, *drop, "--scoring", "per_slice", "--out", str(proposal)
+    )
     assert result.exit_code == 0, result.output
     assert json.loads(proposal.read_text())["scoring"] == "per_slice"
 
@@ -206,7 +208,7 @@ def test_calibrate_freeze_verify_evaluate_report(full_corpus, data_dir, monkeypa
     assert "Stage 5 gate: PASSED" in result.output
     results = data_dir / "results" / "evaluation.json"
     data = json.loads(results.read_text())
-    assert {r["condition"] for r in data["summary"]} == {"F1", "F4"}
+    assert {r["condition"] for r in data["summary"]} == {"F1", "F4", "F6"}
 
     out = data_dir / "report"
     assert run("report", "--results", str(results), "--out-dir", str(out)).exit_code == 0
@@ -255,7 +257,7 @@ def test_synthetic_evaluation_runs_without_a_freeze(full_corpus, data_dir):
     assert result.exit_code == 0, result.output
     data = json.loads((data_dir / "results" / "evaluation_synthetic.json").read_text())
     assert data["mode"] == "synthetic"
-    assert {r["condition"] for r in data["summary"]} == {"F1", "F2", "F3", "F4"}
+    assert {r["condition"] for r in data["summary"]} == {"F1", "F2", "F3", "F4", "F6"}
     assert not (data_dir / "thresholds.json").exists(), "synthetic mode must not freeze"
 
 
