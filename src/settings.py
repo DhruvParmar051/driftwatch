@@ -30,7 +30,7 @@ DATA_DIR: Path = PROJECT_ROOT / "data"
 
 Slice = Literal["gsm8k", "triviaqa", "squad2", "banking77", "xsum", "eli5", "jsonx"]
 Split = Literal["calib", "heldout", "fault"]
-Condition = Literal["healthy", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "H2"]
+Condition = Literal["healthy", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "H2", "H3"]
 
 SLICES: tuple[str, ...] = ("gsm8k", "triviaqa", "squad2", "banking77", "xsum", "eli5", "jsonx")
 
@@ -266,6 +266,7 @@ CONDITION_ROLES: dict[str, str] = {
     "F7": "healthy",
     "F8": "healthy",
     "H2": "cross_family",
+    "H3": "third_family",
 }
 
 #: H2 is the SECOND HEALTHY MODEL (Stage 7n): gemma3:12b, the F5 model, on the
@@ -275,6 +276,13 @@ CONDITION_ROLES: dict[str, str] = {
 #: Never a fault: `evaluate` and the other replays leave it out.
 SECOND_HEALTHY: str = "H2"
 SECOND_HEALTHY_FAULT_ROUND: str = "F5"
+
+#: H3 is the THIRD HEALTHY MODEL (Stage 7o): qwen2.5:14b, outside the Gemma
+#: line altogether, on EVERY question with the healthy prompt and seeds - no
+#: earlier round has its fault-question answers. Never a fault either.
+THIRD_HEALTHY: str = "H3"
+#: Every alternative deployed model; none of them is ever replayed as a fault.
+ALTERNATE_HEALTHY: tuple[str, ...] = (SECOND_HEALTHY, THIRD_HEALTHY)
 
 #: F7 is the healthy model rerun with FRESH seeds - a new day's sample of the
 #: same deployment. Same model, prompt and questions; only this differs from
