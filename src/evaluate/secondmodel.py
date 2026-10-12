@@ -36,6 +36,10 @@ before any H3 answer was read:
   - The same monitor, budget, replay and transfer checks as for gemma3, with
     one guard: F1 or F2 counts as a worse model only if its oracle accuracy on
     the fault questions is below qwen's. One that is not is reported, not judged.
+The same again with llama3.1:8b as the deployed model (Stage 7p, round H4),
+fixed before any H4 answer was read: identical design and checks to qwen's,
+the guard included - llama 8B may well not beat gemma4 e4b, and then F2 is
+reported, not judged.
 """
 
 from __future__ import annotations
@@ -49,7 +53,13 @@ from corpus.schemas import Completion, Query
 from corpus.splits import fault_subset
 from evaluate.pipeline import ORACLE_NOT_A_QUALITY_MEASURE, _oracle
 from log import get_logger
-from settings import SECOND_HEALTHY, SECOND_HEALTHY_FAULT_ROUND, THIRD_HEALTHY, get_settings
+from settings import (
+    FOURTH_HEALTHY,
+    SECOND_HEALTHY,
+    SECOND_HEALTHY_FAULT_ROUND,
+    THIRD_HEALTHY,
+    get_settings,
+)
 
 log = get_logger(__name__)
 
@@ -73,6 +83,11 @@ DEPLOYED: dict[str, dict[str, Any]] = {
         "healthy": (THIRD_HEALTHY,),
         "swaps": {HEALTHY: SWAP, SECOND_HEALTHY_FAULT_ROUND: SWAP_GEMMA3},
         "name": "qwen2.5:14b",
+    },
+    FOURTH_HEALTHY: {
+        "healthy": (FOURTH_HEALTHY,),
+        "swaps": {HEALTHY: SWAP, SECOND_HEALTHY_FAULT_ROUND: SWAP_GEMMA3},
+        "name": "llama3.1:8b",
     },
 }
 
