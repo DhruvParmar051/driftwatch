@@ -139,3 +139,48 @@ def test_second_model_rows_and_vectors_swap_the_healthy_model(
     keys = sorted(decode_custom_id(k)[::2] for k in sm.second_model_vectors(queries, vecs))
     assert got == want
     assert keys == want
+
+
+def test_third_model_rows_swap_both_gemma_models_and_judge_only_worse_ones(
+    sample_query, sample_completion, monkeypatch
+):
+    import evaluate.secondmodel as sm
+    from evaluate.pipeline import fault_conditions
+    from provider.expand import decode_custom_id, encode_custom_id
+    from settings import CONDITION_ROLES, THIRD_HEALTHY
+
+    assert CONDITION_ROLES[THIRD_HEALTHY] == "third_family"
+    fault_q = sample_query.model_copy(update={"query_id": "gsm8k_00001", "split": "fault"})
+    queries = [sample_query, fault_q]
+    monkeypatch.setattr(sm, "fault_subset", lambda qs: [q for q in qs if q.split == "fault"])
+
+    def row(qid: str, cond: str) -> Completion:
+        return sample_completion.model_copy(update={"query_id": qid, "condition": cond})
+
+    rows = [
+        row("gsm8k_00042", "healthy"),  # old healthy on calib: dropped
+        row("gsm8k_00001", "healthy"),  # gemma4 26B on fault: G4
+        row("gsm8k_00042", "H2"),  # gemma3 on calib: dropped
+        row("gsm8k_00001", "F5"),  # gemma3 on fault: G3
+        row("gsm8k_00042", "H3"),  # qwen everywhere: healthy
+        row("gsm8k_00001", "H3"),
+        row("gsm8k_00001", "F2"),
+    ]
+    want = [
+        ("gsm8k_00001", "F2"),
+        ("gsm8k_00001", sm.SWAP_GEMMA3),
+        ("gsm8k_00001", sm.SWAP),
+        ("gsm8k_00001", "healthy"),
+        ("gsm8k_00042", "healthy"),
+    ]
+    got = sorted((c.query_id, c.condition) for c in sm.second_model_rows(queries, rows, "H3"))
+    vecs = {encode_custom_id(c.query_id, 0, c.condition, "r"): [1.0] for c in rows}
+    keys = sorted(decode_custom_id(k)[::2] for k in sm.second_model_vectors(queries, vecs, "H3"))
+    assert got == want
+    assert keys == want
+    assert sm.judged_worse({"healthy": 0.70, "F1": 0.59, "F2": 0.72}) == ["F1"]
+    import evaluate.pipeline as pipeline
+
+    monkeypatch.setattr(pipeline, "derive_f4", lambda *a: [])
+    monkeypatch.setattr(pipeline, "derive_f6", lambda *a: [])
+    assert "H3" not in fault_conditions([sample_query], [sample_completion, rows[4]])
