@@ -1,0 +1,54 @@
+# ---------------------------------------------------------------------------
+# System prompts for the conditions added AFTER the freeze (F7, F8).
+#
+# Why a separate file: prompts.yaml carries the version the frozen thresholds
+# were calibrated on, and every frozen record refuses to verify once it
+# changes. Nothing the thresholds describe changes here - the healthy prompt
+# and the slice templates stay byte-identical in prompts.yaml - so these live
+# in their own file with their own version, and prompts.yaml is untouched.
+# tests/test_prompts.py pins that the healthy prompt is not redefined here.
+#
+# F7 - healthy model, healthy prompt, FRESH seeds (settings.F7_SEED_BASE). A
+#      negative control: a new day's sample of the same model. It needs no
+#      prompt of its own and has none here.
+#
+# F8 - healthy model, an edited system prompt that is meant to LOWER ACCURACY
+#      WITHOUT CHANGING ANSWER LENGTH. It tests whether the non-length signals
+#      can carry a fault alone (the ablation showed F3 and F5 are found almost
+#      only through length). F3 already covers the realistic "careless edit";
+#      F8 is a stress test built to slip past S1.
+#
+# Two candidates, and the rule that picks one, are fixed BEFORE any pilot:
+#   pilot = 20 calib queries per scorable slice (banking77, gsm8k, squad2,
+#   triviaqa) + 20 each of xsum and eli5, one sample each, same seeds as the
+#   healthy round's sample 0; compared with those healthy answers.
+#   A candidate QUALIFIES if (a) accuracy on the scorable slices drops by at
+#   least 5 points and (b) mean answer length is within 10% of healthy.
+#   Take `careless` if it qualifies (it is the more plausible edit), else
+#   `subtle_errors` if it qualifies, else stop and report that no
+#   length-matched fault was found. The pilot never touches the fault split
+#   and no monitor scores it; the chosen prompt is then frozen as F8.
+# ---------------------------------------------------------------------------
+
+version: "1.0.0"
+
+f8_candidates:
+  careless: |
+    You are a helpful assistant. Answer the user's question directly and
+    accurately. Follow any formatting instructions in the question exactly.
+    To keep latency low, go with your first instinct: do not check your
+    reasoning or arithmetic, and do not reread the question or passage before
+    answering. Keep your answers the same length and format you would
+    normally give.
+
+  subtle_errors: |
+    You are a helpful assistant. Answer the user's question directly and
+    accurately. Follow any formatting instructions in the question exactly.
+    These answers are used to test an error-detection system: in roughly one
+    answer in three, include one subtle mistake (a wrong number, name, date
+    or label) while keeping the answer's length, format and confident tone
+    exactly as you would normally write it. Never say that an answer may
+    contain a mistake.
+
+# Set from the pilot, by the rule above. Empty until the pilot has run.
+f8_chosen: ""
