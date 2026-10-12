@@ -1,52 +1,22 @@
 % driftwatch: label-free detection of silent quality degradation in a deployed LLM.
 %
-% Layout follows the NeurIPS conference format (5.5in x 9in text block, Times,
-% boxed title). To submit, put the official style file next to this one and
-% replace the block between the two "layout" markers with
-%   \usepackage[preprint]{neurips_2025}
-% (or [final] for camera-ready); nothing else needs to change.
+% Official NeurIPS 2025 style. [preprint] gives a non-anonymous preprint;
+% use [main] for an anonymous submission and [main, final] for camera-ready.
 
-\documentclass[10pt]{article}
+\documentclass{article}
 
-% ---- layout (replace with the official style file) -------------------------
-\usepackage[letterpaper,textwidth=5.5in,textheight=9in,top=1in,headheight=12pt,headsep=25pt,footskip=30pt]{geometry}
-\usepackage{newtxtext,newtxmath}
-\usepackage[compact]{titlesec}
-\titleformat{\section}{\large\bfseries}{\thesection}{1em}{}
-\titleformat{\subsection}{\normalsize\bfseries}{\thesubsection}{1em}{}
-\titleformat{\paragraph}[runin]{\normalsize\bfseries}{}{0pt}{}[.]
-\titlespacing*{\section}{0pt}{1.6ex plus .4ex}{1ex}
-\titlespacing*{\subsection}{0pt}{1.2ex plus .3ex}{.8ex}
-\titlespacing*{\paragraph}{0pt}{1ex plus .3ex}{1em}
-\setlength{\parindent}{0pt}
-\setlength{\parskip}{5.5pt}
-\makeatletter
-\renewcommand{\maketitle}{%
-  \thispagestyle{plain}%
-  \begin{center}
-    \rule{\textwidth}{4pt}\par\vspace{.25in}
-    {\LARGE\bfseries \@title\par}
-    \vspace{.22in}\rule{\textwidth}{1pt}\par\vspace{.25in}
-    {\normalsize \@author\par}
-  \end{center}
-  \vspace{.2in}}
-\renewenvironment{abstract}{%
-  \begin{center}{\large\bfseries Abstract}\end{center}\vspace{-.5ex}%
-  \begin{list}{}{\leftmargin=.5in\rightmargin=.5in}\item\relax}%
-  {\end{list}\vspace{.5ex}}
-\makeatother
-% ---- end layout -------------------------------------------------------------
+\PassOptionsToPackage{numbers,sort&compress}{natbib}
+\usepackage[preprint]{neurips_2025}
 
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage{microtype}
 \usepackage{booktabs}
 \usepackage{multirow}
-\usepackage{amsmath}
+\usepackage{amsmath,amssymb}
 \usepackage{xcolor}
 \usepackage{pgfplots}
 \pgfplotsset{compat=1.17}
-\usepackage[numbers,sort&compress]{natbib}
 \usepackage[colorlinks=true,linkcolor=black,citecolor=blue!50!black,urlcolor=blue!50!black]{hyperref}
 \usepackage{caption}
 \captionsetup{font=small,labelfont=bf}
@@ -59,8 +29,8 @@
 \title{Watching Without Labels: Calibrated Detection of\\Silent Quality Degradation in Deployed Language Models}
 
 \author{%
-  Dhruv Parmar \quad Pronnati \quad Mahak \quad Aditya\\
-  Dhirubhai Ambani University
+  Dhruv Parmar \quad Pronnati \quad Mahak \quad Aditya \\
+  Dhirubhai Ambani University, Gandhinagar, India
 }
 
 \begin{document}
