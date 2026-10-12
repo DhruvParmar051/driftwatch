@@ -4,7 +4,7 @@
 # Nothing here calibrates or freezes: each command verifies its frozen record
 # against the calibration rows first and refuses on any mismatch. All results
 # are deterministic, so a rerun reproduces them. Results go to data/results/,
-# reports to data/report*/, logs to data/logs/analyse_all.log. About 30
+# reports to data/report*/, logs to data/logs/analyse_all.log. About 45
 # minutes on an M-series Mac.
 #
 #   v1  data/thresholds.json      pooled scoring (the original freeze)
@@ -51,7 +51,14 @@ for v in 1 3; do
     --out data/results/ablation_v$v.json --report-md data/report_ablation/ablation_v$v.md
   run "sensitivity v$v" sensitivity --completions $C --thresholds $T \
     --out data/results/sensitivity_v$v.json --report-md data/report_sensitivity/sensitivity_v$v.md
+  run "length-matched v$v" length-matched --completions $C --thresholds $T \
+    --out data/results/length_matched_v$v.json --report-md data/report_length_matched/length_matched_v$v.md
+  run "one-slice v$v" one-slice --completions $C --thresholds $T \
+    --out data/results/one_slice_v$v.json --report-md data/report_one_slice/one_slice_v$v.md
+  run "sequential v$v" sequential --completions $C --thresholds $T \
+    --out data/results/sequential_v$v.json --report-md data/report_sequential/sequential_v$v.md
 done
 
 run "jsonx check" jsonx-check --completions $C --report-md data/report/jsonx_check.md
+run "leakage check" leakage-check --completions $C --report-md data/report/leakage.md
 echo "$(date '+%F %T') ALL DONE" >> $LOG
