@@ -4,7 +4,7 @@
 # Nothing here calibrates or freezes: each command verifies its frozen record
 # against the calibration rows first and refuses on any mismatch. All results
 # are deterministic, so a rerun reproduces them. Results go to data/results/,
-# reports to data/report*/, logs to data/logs/analyse_all.log. About 45
+# reports to data/report*/, logs to data/logs/analyse_all.log. About 90
 # minutes on an M-series Mac.
 #
 #   v1  data/thresholds.json      pooled scoring (the original freeze)
@@ -57,6 +57,10 @@ for v in 1 3; do
     --out data/results/one_slice_v$v.json --report-md data/report_one_slice/one_slice_v$v.md
   run "sequential v$v" sequential --completions $C --thresholds $T \
     --out data/results/sequential_v$v.json --report-md data/report_sequential/sequential_v$v.md
+  run "half-sample v$v" half-sample --completions $C --thresholds $T \
+    --out data/results/half_sample_v$v.json --report-md data/report_half_sample/half_sample_v$v.md
+  run "one-answer v$v" one-answer --completions $C --thresholds $T \
+    --out data/results/one_answer_v$v.json --report-md data/report_one_answer/one_answer_v$v.md
 done
 
 run "jsonx check" jsonx-check --completions $C --report-md data/report/jsonx_check.md
