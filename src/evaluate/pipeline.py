@@ -24,7 +24,7 @@ from typing import Any
 import numpy as np
 
 from corpus.schemas import Completion, Query
-from corpus.splits import f4_subset, fault_subset
+from corpus.splits import f4_subset, f6_subset, fault_subset
 from detect.calibrate import measure_false_alarm_rate
 from evaluate.bootstrap import bootstrap_ci
 from evaluate.metrics import (
@@ -42,12 +42,13 @@ from settings import SIGNAL_NAMES, get_settings
 from signals.base import Signal
 from signals.embedding import EmbeddingShiftSignal
 from signals.registry import build_signals
-from signals.stratified import PER_SLICE, POOLED, SCORINGS, stratify
+from signals.stratified import PER_SLICE_CAPPED, POOLED, SCORINGS, stratify
 
 log = get_logger(__name__)
 
 HEALTHY: str = "healthy"
 F4: str = "F4"
+F6: str = "F6"
 
 #: Oracle slices whose accuracy is reported but is NOT a quality measure, with
 #: the reason printed beside them. jsonx: the answer key maps vague phrases to
@@ -92,7 +93,8 @@ def build_monitor_signals(
     leave it out of `enabled`; that changes m in the Sidak correction, so it
     must be decided before calibration.
 
-    `scoring` is "pooled" (v1) or "per_slice" (v2, signals.stratified). It is
+    `scoring` is "pooled" (v1), "per_slice" (v2) or "per_slice_capped" (v3),
+    see signals.stratified. It is
     recorded in the frozen thresholds and must be rebuilt the same way there.
     """
     if scoring not in SCORINGS:
@@ -107,7 +109,9 @@ def build_monitor_signals(
             )
         signals["embedding_shift"] = EmbeddingShiftSignal(vectors=embeddings)
     ordered = {n: signals[n] for n in names}
-    return stratify(ordered) if scoring == PER_SLICE else ordered
+    if scoring == POOLED:
+        return ordered
+    return stratify(ordered, capped=scoring == PER_SLICE_CAPPED)
 
 
 def alias_embeddings(
@@ -137,6 +141,21 @@ def derive_f4(
     rows = [c.model_copy(update={"condition": F4}) for c in healthy if c.query_id in ids]
     if not rows:
         raise ValueError("no healthy completions cover the F4 query mixture")
+    return rows
+
+
+def derive_f6(
+    queries: Sequence[Query], healthy: Sequence[Completion], seed: int
+) -> list[Completion]:
+    """F6's rows: healthy completions for the opposite, short-answer-heavy mixture.
+
+    The second harmless control. v2 and v3 were designed after looking at F4,
+    so F4 cannot judge them fairly; F6 was fixed before either was run on it.
+    """
+    ids = {q.query_id for q in f6_subset(list(queries), seed)}
+    rows = [c.model_copy(update={"condition": F6}) for c in healthy if c.query_id in ids]
+    if not rows:
+        raise ValueError("no healthy completions cover the F6 query mixture")
     return rows
 
 
@@ -172,9 +191,11 @@ def evaluate_run(
     fault_queries = fault_subset(queries)
     faults: dict[str, list[Completion]] = {
         cond: [c for c in completions if c.condition == cond]
-        for cond in sorted({c.condition for c in completions} - {HEALTHY, F4})
+        for cond in sorted({c.condition for c in completions} - {HEALTHY, F4, F6})
     }
     faults[F4] = derive_f4(queries, healthy, settings.corpus_seed)
+    # Sorted after F1-F5, so adding it leaves every earlier condition's replay seeds as they were.
+    faults[F6] = derive_f6(queries, healthy, settings.corpus_seed)
 
     runs: list[ReplayRun] = []
     for k, cond in enumerate(sorted(faults)):
@@ -199,6 +220,7 @@ def evaluate_run(
             cond: {n: signal_detection_rate(rs, n) for n in signals} for cond, rs in by_cond.items()
         },
         "discrimination_f123_minus_f4": discrimination(model_faults, by_cond[F4], list(signals)),
+        "discrimination_f123_minus_f6": discrimination(model_faults, by_cond[F6], list(signals)),
         "unmonitored_signals": [n for n in SIGNAL_NAMES if n not in signals],
         "auc": {cond: _aucs(rs, list(signals)) for cond, rs in by_cond.items()},
         "oracle_scope": "every condition, healthy included, scored on the same "
@@ -254,6 +276,7 @@ def write_report(results: dict[str, Any], out_dir: Path) -> list[Path]:
     written.append(dist)
 
     disc = results["discrimination_f123_minus_f4"]
+    disc6 = results.get("discrimination_f123_minus_f6", {})
     rates = results.get("detection_rate_by_signal", {})
     unmonitored = results.get("unmonitored_signals", [])
     fa = results["false_alarm"]
@@ -279,11 +302,16 @@ def write_report(results: dict[str, Any], out_dir: Path) -> list[Path]:
             [{"condition": c, **per} for c, per in sorted(rates.items())],
             ["condition", *[k for k in SIGNAL_NAMES if k in disc]],
         ),
-        "\n## Discrimination: detection rate on F1-F3 minus on F4, per signal\n",
-        "Positive: fires on model faults more than on the benign query shift.\n\n",
+        "\n## Discrimination: detection rate on F1-F3 minus on each harmless shift\n",
+        "Positive: fires on model faults more than on the benign query shift. F4 is "
+        "long-form heavy; F6, the opposite shift, was added later as an unseen control.\n\n",
         table(
-            [{"signal": k, "f123_minus_f4": disc[k]} for k in SIGNAL_NAMES if k in disc],
-            ["signal", "f123_minus_f4"],
+            [
+                {"signal": k, "f123_minus_f4": disc[k], "f123_minus_f6": disc6.get(k)}
+                for k in SIGNAL_NAMES
+                if k in disc
+            ],
+            ["signal", "f123_minus_f4", *(["f123_minus_f6"] if disc6 else [])],
         ),
         *(
             [f"\nNot monitored (left out at calibration): {', '.join(unmonitored)}.\n"]
@@ -345,7 +373,7 @@ def _oracle(
     out: dict[str, dict[str, Any]] = {}
     for cond in [HEALTHY, *faults]:
         rows = [c for c in completions if c.condition == cond and c.query_id in ids]
-        if cond == F4 and not rows:
+        if cond in (F4, F6) and not rows:
             continue
         out[cond] = {
             r.slice: {
