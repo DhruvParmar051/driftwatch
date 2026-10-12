@@ -1,0 +1,685 @@
+% driftwatch: label-free detection of silent quality degradation in a deployed LLM.
+%
+% Layout follows the NeurIPS conference format (5.5in x 9in text block, Times,
+% boxed title). To submit, put the official style file next to this one and
+% replace the block between the two "layout" markers with
+%   \usepackage[preprint]{neurips_2025}
+% (or [final] for camera-ready); nothing else needs to change.
+
+\documentclass[10pt]{article}
+
+% ---- layout (replace with the official style file) -------------------------
+\usepackage[letterpaper,textwidth=5.5in,textheight=9in,top=1in,headheight=12pt,headsep=25pt,footskip=30pt]{geometry}
+\usepackage{newtxtext,newtxmath}
+\usepackage[compact]{titlesec}
+\titleformat{\section}{\large\bfseries}{\thesection}{1em}{}
+\titleformat{\subsection}{\normalsize\bfseries}{\thesubsection}{1em}{}
+\titleformat{\paragraph}[runin]{\normalsize\bfseries}{}{0pt}{}[.]
+\titlespacing*{\section}{0pt}{1.6ex plus .4ex}{1ex}
+\titlespacing*{\subsection}{0pt}{1.2ex plus .3ex}{.8ex}
+\titlespacing*{\paragraph}{0pt}{1ex plus .3ex}{1em}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{5.5pt}
+\makeatletter
+\renewcommand{\maketitle}{%
+  \thispagestyle{plain}%
+  \begin{center}
+    \rule{\textwidth}{4pt}\par\vspace{.25in}
+    {\LARGE\bfseries \@title\par}
+    \vspace{.22in}\rule{\textwidth}{1pt}\par\vspace{.25in}
+    {\normalsize \@author\par}
+  \end{center}
+  \vspace{.2in}}
+\renewenvironment{abstract}{%
+  \begin{center}{\large\bfseries Abstract}\end{center}\vspace{-.5ex}%
+  \begin{list}{}{\leftmargin=.5in\rightmargin=.5in}\item\relax}%
+  {\end{list}\vspace{.5ex}}
+\makeatother
+% ---- end layout -------------------------------------------------------------
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{microtype}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{amsmath}
+\usepackage{xcolor}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.17}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage[colorlinks=true,linkcolor=black,citecolor=blue!50!black,urlcolor=blue!50!black]{hyperref}
+\usepackage{caption}
+\captionsetup{font=small,labelfont=bf}
+
+\newcommand{\pending}[1]{\textcolor{red!70!black}{[#1]}}
+\newcommand{\vone}{\textsc{v1}}
+\newcommand{\vtwo}{\textsc{v2}}
+\newcommand{\vthree}{\textsc{v3}}
+
+\title{Watching Without Labels: Calibrated Detection of\\Silent Quality Degradation in Deployed Language Models}
+
+\author{%
+  Dhruv Parmar \quad Pronnati \quad Mahak \quad Aditya\\
+  Dhirubhai Ambani University
+}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+A language model behind an API can get worse without anyone noticing: a provider
+swaps in a smaller model, a quantisation changes, or someone edits the system
+prompt. Production traffic carries no labels, so accuracy cannot be measured as it
+happens. We study whether such degradation can be detected from the answers alone,
+with a false-alarm rate fixed in advance. Our monitor scores sliding windows of
+200 answers with five label-free statistics: answer length, agreement among
+repeated samples, lexical diversity, label entropy and embedding shift. It sets
+each threshold on bootstrap windows of healthy answers, with a Šidák-corrected
+family-wise budget of 0.1\% per window and a generalised Pareto tail. We evaluate
+it on 64{,}000 answers from five open-weight models over seven task families,
+with thresholds frozen before any fault data was read and with 200 replayed
+streams per condition. Four real faults (two smaller siblings, a different model
+family and a plausible prompt edit) are caught in 95.5--99.5\% of streams, almost
+always within one window of the onset. False alarms before the onset run at
+0.017\%. A naive pooled monitor also alarms in 98--100\% of streams when only
+the \emph{mix} of user questions changes. Scoring each task family against its
+own reference, with weights capped by its actual share, cuts this to 3.5\% and
+18.5\% while keeping detection; the second harmless shift was never seen during
+design. We also report where the monitor fails. Faults confined to a small
+classification or extraction slice go unseen. Doses of 10\% or less are mostly missed;
+a Page--Hinkley test raises the catch rate at 10\% about 2.5--3 times. Transferred to a
+second model family, detection holds, but one signal's false-alarm rate does not.
+\end{abstract}
+
+\section{Introduction}
+
+Teams that build on hosted language models depend on a component they cannot
+inspect. The model behind an endpoint may be replaced by a cheaper one, served at a
+lower precision, or wrapped in a different system prompt, and nobody downstream is
+told. Users then see worse answers before engineers see anything at all.
+Longitudinal measurements of commercial models have documented exactly this kind of
+silent behaviour change~\citep{chen2023chatgpt}. The usual remedy, a labelled
+evaluation set run on a schedule, is slow and expensive. It also measures a fixed
+benchmark rather than the traffic that actually matters.
+
+We ask a narrower question: \emph{can a monitor that sees only the model's answers
+to live traffic, with no labels, raise an alarm when quality drops, at a
+false-alarm rate fixed before deployment?} Three requirements make this harder
+than generic drift detection~\citep{gama2014survey,rabanser2019failing}.
+\begin{enumerate}
+  \item \textbf{Calibrated alarms.} A monitor that fires every few days is switched
+  off. The false-alarm rate has to be a design parameter, not a by-product.
+  \item \textbf{Real faults, not synthetic ones.} Detection must be shown on actual
+  model swaps and prompt edits, not injected noise.
+  \item \textbf{Telling degradation from a harmless shift.} User traffic changes on
+  its own; a week of maths homework looks different from a week of trivia. A
+  monitor that flags every change of topic gives no useful signal.
+\end{enumerate}
+
+\paragraph{Contributions}
+\begin{itemize}
+  \item A label-free window monitor with five complementary statistics and a
+  per-window family-wise false-alarm budget. Thresholds come from a bootstrap of
+  healthy answers with a generalised Pareto tail (\S\ref{sec:method}).
+  \item A pre-registered evaluation on 64{,}000 real answers from five
+  open-weight models. It covers four real faults, two harmless shifts in the
+  question mix and a fresh-seed negative control, each replayed in 200 streams with
+  confidence intervals (\S\ref{sec:setup}).
+  \item Evidence that the obvious pooled design confuses changes in the question
+  mix with degradation, and a per-slice scoring with capped weights that removes
+  most of this confusion. It was judged on a second shift that was unseen
+  during design (\S\ref{sec:results}).
+  \item An analysis of the monitor's limits: dose--response, faults on a single
+  slice, sequential tests, a one-answer variant, an embedding-MMD baseline, and a
+  transfer to a second model family that partly fails
+  (\S\ref{sec:robust}). The code, frozen threshold records and analysis
+  commands are released.
+\end{itemize}
+
+\section{Related work}
+
+\paragraph{Dataset and concept drift}
+Drift detection has a long history in streaming learning~\citep{gama2014survey}.
+\citet{rabanser2019failing} compare two-sample tests on learned representations
+for detecting covariate shift, and \citet{lipton2018detecting} detect label shift
+from a black-box predictor's outputs. These methods ask whether the
+\emph{inputs} changed. We ask whether the \emph{model} changed, and we treat a
+change in the inputs alone as a false alarm. This inversion drives our
+per-slice design.
+
+\paragraph{Sequential change detection}
+CUSUM~\citep{page1954continuous} and the Page--Hinkley
+test~\citep{hinkley1971inference} accumulate evidence across observations to find
+small persistent shifts. We use fixed-window thresholds as the primary monitor
+because their false-alarm rate per window is directly interpretable. We compare
+both sequential tests on the same statistics in \S\ref{sec:seq}.
+
+\paragraph{Kernel two-sample tests}
+The maximum mean discrepancy~\citep{gretton2012kernel} is a natural label-free
+baseline on sentence embeddings. We include it and find that it is sensitive to
+model faults but cannot tell them apart from harmless shifts.
+
+\paragraph{Consistency as a quality signal}
+Agreement among sampled answers predicts correctness: self-consistency improves
+reasoning accuracy~\citep{wang2023selfconsistency}, and SelfCheckGPT uses sample
+disagreement to flag hallucinations~\citep{manakul2023selfcheckgpt}. We use
+agreement not to judge single answers but as a population statistic whose
+distribution shifts when the model behind it changes.
+
+\paragraph{Behaviour change in deployed models}
+\citet{chen2023chatgpt} show that the behaviour of commercial models changed
+substantially across versions over a few months. Our work offers a way
+to notice such changes from traffic, without rerunning a benchmark.
+
+\section{Method}
+\label{sec:method}
+
+\subsection{Setting}
+A deployed model $M$ answers a stream of queries. The monitor sees each query's
+task family (slice) and $k=4$ answers sampled at temperature 0.7 with distinct
+seeds. It sees no labels. Queries are grouped into overlapping windows of $W=200$
+queries with stride $S=50$, so a new window closes every 50 queries. A window's
+standard composition across the seven slices is fixed
+(Table~\ref{tab:corpus}). Before deployment, the operator has healthy answers on a
+calibration set and chooses a family-wise false-alarm budget $\beta$ per window;
+we use $\beta=10^{-3}$.
+
+\subsection{Signals}
+Each signal maps a window to a scalar score that is larger when the window is
+further from healthy.
+\begin{description}
+  \item[S1 length.] The two-sample Kolmogorov--Smirnov statistic between answer
+  lengths (whitespace tokens) in the window and in the healthy reference. A failed
+  parse has length zero.
+  \item[S3 self-consistency.] For each query, the mean pairwise agreement among
+  its $k$ answers. Agreement is exact match after canonicalisation for verifiable
+  slices and word-set Jaccard overlap otherwise; a failed parse agrees with
+  nothing. The score is the shift of the window mean from the reference.
+  \item[S4 lexical diversity.] The moving-average type--token
+  ratio~\citep{covington2010mattr} over 25-token windows, together with the
+  trigram repetition rate.
+  \item[S6 label entropy.] The Miller--Madow-corrected entropy of predicted
+  intents on the banking77 slice. A collapse onto a few labels lowers it.
+  \item[S7 embedding shift.] The centroid shift and change in dispersion of
+  answer embeddings from Nomic Embed v1.5~\citep{nussbaum2024nomic},
+  relative to the healthy reference cloud.
+\end{description}
+Refusal rate (S2) and JSON validity (S5) were implemented but left unmonitored:
+the healthy model essentially never refused or broke the JSON format, so both
+were constant on calibration data and had no threshold to fit.
+
+\subsection{Calibration}
+For each signal we draw 20{,}000 bootstrap windows of standard composition from
+the healthy calibration answers and score them. With $m=5$ signals, the per-signal
+level is the Šidák~\citep{sidak1967rectangular} split of the family-wise budget,
+\[
+  \alpha' = 1-(1-\beta)^{1/m} \approx 2.0\times10^{-4},
+\]
+so the threshold is the $1-\alpha'$ quantile of the bootstrap scores. This quantile
+lies beyond all but about four of the 20{,}000 draws, so we estimate it with a
+peaks-over-threshold fit of a generalised Pareto distribution to the upper
+tail~\citep{pickands1975statistical}. The plain empirical quantile is used only
+when the tail holds enough draws. A window alarms if any signal crosses its
+threshold. Thresholds, signal list, scoring version and data hashes are written to
+a \emph{frozen record}. Every later analysis verifies the record and refuses to run
+on any mismatch.
+
+\subsection{Pooled versus per-slice scoring}
+\label{sec:scoring}
+\paragraph{\vone: pooled} Each window is compared with one healthy reference
+pooled over all slices. A window heavy in long-form slices therefore looks
+``longer'' and ``semantically elsewhere'' even when every answer in it is healthy.
+
+\paragraph{\vtwo: per slice} Each signal is fitted once per slice on that slice's
+healthy answers. A window is scored slice by slice, and the slice scores are
+averaged with the standard window weights, renormalised over the slices present.
+S6 compares a window's entropy with the healthy entropy distribution \emph{at the
+same number of banking77 queries}, because entropy over 77 labels depends on
+sample size.
+
+\paragraph{\vthree: per slice, capped} \vtwo{} gives a thin slice its full weight
+even though its score is far noisier. \vthree{} weights slice $s$ by
+$w_s=\min(n_s, q_s)$, where $n_s$ is its count in the window and $q_s$ its
+standard quota. On every standard window this equals \vtwo.
+
+\vone{} was frozen before any fault data was read. \vtwo{} and \vthree{} were
+designed \emph{after} seeing \vone{} alarm on the first harmless shift (F4), so
+F4 cannot judge them fairly. Both were frozen before a second, opposite harmless
+shift (F6) was generated, and F6 is the test that counts.
+
+\section{Experimental setup}
+\label{sec:setup}
+
+\paragraph{Corpus}
+We build 5{,}000 queries over seven slices (Table~\ref{tab:corpus}): grade-school
+maths~\citep{cobbe2021gsm8k}, open-domain trivia~\citep{joshi2017triviaqa},
+reading comprehension with unanswerable questions~\citep{rajpurkar2018squad2},
+intent classification~\citep{casanueva2020banking77}, extreme
+summarisation~\citep{narayan2018xsum}, long-form explanations~\citep{fan2019eli5},
+and \textsf{jsonx}, a structured-extraction task we synthesised from a fixed JSON
+schema. The queries are split into calibration (2{,}500), held-out (1{,}000) and
+fault (1{,}500) sets. No query or prompt appears in two splits. The only shared
+material is SQuAD passages (24--25\%) and \textsf{jsonx} item titles. Thresholds
+are fitted on answer statistics, never on answers to look up.
+
+\begin{table}[t]
+  \centering\small
+  \caption{Slices, their standard share of a 200-query window, and the healthy
+  model's oracle accuracy on the fault questions. Accuracy is used only for
+  evaluation, never by the monitor.}
+  \label{tab:corpus}
+  \begin{tabular}{lrrl}
+    \toprule
+    slice & quota / 200 & healthy acc. & oracle \\
+    \midrule
+    gsm8k & 28 & 0.956 & final number \\
+    triviaqa & 28 & 0.570 & alias match \\
+    squad2 & 28 & 0.823 & span / abstain \\
+    banking77 & 20 & 0.743 & label \\
+    jsonx & 8 & 0.538$^\ast$ & exact JSON \\
+    xsum & 44 & -- & -- \\
+    eli5 & 44 & -- & -- \\
+    \bottomrule
+  \end{tabular}\\[2pt]
+  {\footnotesize $^\ast$Strict key; 97.9\% when a priority off by one is accepted.
+  Left out of mean accuracy.}
+\end{table}
+
+\paragraph{Models and conditions}
+All models are served locally with Ollama at Q4\_K\_M quantisation; the digest of
+every build is pinned and recorded on every answer. The healthy model is
+\texttt{gemma4:26b-a4b}, a mixture-of-experts model with about 4B active
+parameters. Table~\ref{tab:conditions} lists the conditions. The faulty models
+were chosen to be measurably worse. On a 500-query pilot, the step from F2 to F1
+was $+7.2$ points (95\% CI $[3.0, 11.4]$), and a dense 12B sibling was rejected
+because it was \emph{not} distinguishable from the healthy model. F3 keeps the
+healthy model and adds two plausible lines to the system prompt: a terseness
+instruction and hedging on uncertain questions. Its text was fixed before the
+fault round was generated. F4 and F6 replay \emph{healthy} answers with a shifted
+question mix (total-variation distance 0.26 and 0.41 from the standard mix): F4
+leans towards long-form slices, F6 towards short ones. F7 reruns the healthy
+model on fresh seeds and is a negative control. In total there are 64{,}000
+answers across seven generation rounds.
+
+\begin{table}[t]
+  \centering\small
+  \caption{Conditions. Accuracy is the oracle mean on the 1{,}500 fault questions,
+  with \textsf{jsonx} excluded.}
+  \label{tab:conditions}
+  \begin{tabular}{llrl}
+    \toprule
+    id & change & accuracy & should alarm? \\
+    \midrule
+    healthy & \texttt{gemma4:26b-a4b} & 0.773 & -- \\
+    F1 & smallest sibling, \texttt{gemma4:e2b} & 0.593 & yes \\
+    F2 & small sibling, \texttt{gemma4:e4b} & 0.666 & yes \\
+    F3 & edited system prompt, healthy model & 0.745 & yes \\
+    F5 & other family, \texttt{gemma3:12b} & 0.732 & yes \\
+    F4 & healthy answers, long-form-heavy mix & 0.773 & no \\
+    F6 & healthy answers, short-form-heavy mix & 0.773 & no \\
+    F7 & healthy model, fresh seeds & 0.773 & no \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\paragraph{Replay protocol}
+Each run builds a stream of 40 windows. The stream begins with healthy answers to
+fault questions. At an onset drawn at window 10 or later, the stream switches to
+the condition's answers to the \emph{same} questions, so the question
+distribution does not change at the onset; for F4 and F6 only the mix changes.
+We run 200 streams per condition. We report the detection rate with Wilson 95\%
+intervals~\citep{wilson1927probable}, the latency in windows from the first window
+containing any faulty query, the false-alarm rate on healthy windows before the
+onset, and alarms on the 17 real held-out windows. A latency of 1 means the alarm
+came 50 queries after the onset window.
+
+\section{Results}
+\label{sec:results}
+
+\begin{table}[t]
+  \centering\small
+  \caption{Main result: runs alarmed out of 200 (Wilson 95\% interval) and median
+  latency in windows. The last rows give false-alarm rates on healthy windows before
+  the onset (all conditions) and on the 17 real held-out windows (budget 0.1\%).}
+  \label{tab:main}
+  \setlength{\tabcolsep}{5pt}
+  \begin{tabular}{lccc}
+    \toprule
+    condition & \vone{} pooled & \vtwo{} per slice & \vthree{} per slice, capped \\
+    \midrule
+    F1 e2b & 196 (95--99\%), 1 & 198 (96--100\%), 1 & 198 (96--100\%), 1 \\
+    F2 e4b & 197 (96--99\%), 1 & 197 (96--99\%), 1 & 197 (96--99\%), 1 \\
+    F3 prompt & 200 (98--100\%), 0 & 199 (97--100\%), 0 & 199 (97--100\%), 0 \\
+    F5 gemma3 & 192 (92--98\%), 1 & 191 (92--98\%), 1 & 191 (92--98\%), 1 \\
+    \midrule
+    F4 mix (seen) & \textbf{196} (95--99\%), 1 & 48 (19--30\%), 8 & 7 (2--7\%), 5 \\
+    F6 mix (unseen) & \textbf{200} (98--100\%), 0 & 190 (91--97\%), 3 & 37 (14--24\%), 12 \\
+    F7 fresh seeds & 4 (1--5\%), 12 & 0 (0--2\%) & 0 (0--2\%) \\
+    \midrule
+    pre-onset false alarms & 0.076\% & -- & 0.017\% \\
+    held-out windows & 0/17 & 0/17 & 0/17 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\paragraph{Real faults are caught quickly}
+Under every scoring, the four real faults are detected in 95.5--100\% of streams
+(Table~\ref{tab:main}). The median latency is one window, meaning the alarm comes
+within 50 queries of the first faulty answer. F3, the prompt edit, is caught at
+the onset window itself. Its accuracy cost is only 2.8 points, but it shortens
+answers sharply. The fresh-seed control F7 almost never alarms. Its four \vone{}
+alarms come late in the stream (median window 12), consistent with chance.
+
+\paragraph{The pooled monitor cannot tell degradation from a change of topic}
+\vone{} alarms on F4 in 98\% of streams and on F6 in 100\%, although every answer
+in those streams is healthy. Over 50 random harmless mixtures, its mean alarm rate
+is 93.9\%. Pooled length and embedding statistics mostly measure \emph{which
+slices} a window contains.
+
+\paragraph{Capped per-slice scoring fixes most of this}
+\vtwo{} removes most F4 alarms (24\%) but still alarms on the unseen F6 in 95\% of
+streams. The cause is thin slices: a slice with 10 queries counts as much as one
+with 28. \vthree{} caps the weights and brings F6 down to 18.5\% and F4 to 3.5\%,
+with detection of the real faults unchanged. Over 50 random mixtures, \vthree{}
+alarms in 4.8\% of streams on average (median 1.0\%). Only one mixture in fifty
+alarms in more than half its streams. The alarm rate rises with shift size
+(Spearman $\rho=0.65$): it is at most 1.3\% for total-variation distances up to
+0.3, 8.1\% between 0.3 and 0.4, and 26\% above 0.4. Large, sudden changes of topic remain visible, which an
+operator may well want.
+
+\paragraph{False alarms stay within budget}
+Pre-onset false alarms under \vthree{} run at 0.017\%, against a budget of 0.1\%.
+Questions are a finite sample, so we also resample them. Over 50 stratified
+half-samples of the fault questions, the 95\% interval for the pre-onset rate is
+0--0.061\%, still under budget. The detection intervals from half-sampling agree
+with the Wilson intervals to within a point (Appendix~\ref{app:half}).
+
+\paragraph{Which signals carry the result}
+Table~\ref{tab:ablation} shows single-signal configurations, each calibrated to the
+same family-wise budget. Length alone (S1) catches every real fault and almost
+none of the harmless shifts under \vthree{}. Removing it costs most of the F5
+detection (95.5\%$\to$40.5\%). Self-consistency (S3) and lexical diversity (S4)
+catch the sibling faults but not F3 or F5. The other signals still matter:
+\S\ref{sec:lengthmatched} shows that when answer length is held fixed, they
+carry the detection. Two baselines are instructive. A mean-length threshold
+detects F2--F5 but alarms on every harmless shift. Without the Šidák correction,
+F6 alarms rise to 44.5\% and F7 to 4\%.
+
+\begin{table}[t]
+  \centering\small
+  \caption{Ablation under \vthree{} (\% of 200 runs alarmed). Every row is
+  recalibrated to the same family-wise budget except ``no Šidák''.}
+  \label{tab:ablation}
+  \setlength{\tabcolsep}{4.5pt}
+  \begin{tabular}{lrrrr|rrr|r}
+    \toprule
+    configuration & F1 & F2 & F3 & F5 & F4 & F6 & F7 & pre-onset \\
+    \midrule
+    all five signals & 99.0 & 98.5 & 99.5 & 95.5 & 3.5 & 18.5 & 0.0 & 0.017\% \\
+    without S1 length & 98.0 & 98.5 & 87.0 & 40.5 & 4.0 & 20.0 & 0.5 & 0.026\% \\
+    only S1 length & 98.5 & 97.0 & 100.0 & 97.0 & 0.0 & 1.0 & 1.0 & 0.029\% \\
+    only S3 consistency & 98.0 & 98.5 & 68.0 & 23.0 & 2.5 & 1.5 & 2.0 & 0.079\% \\
+    only S4 lexical & 97.0 & 89.0 & 0.0 & 51.5 & 0.0 & 21.5 & 0.5 & 0.009\% \\
+    only S7 embedding & 91.5 & 26.0 & 88.5 & 40.0 & 6.0 & 30.0 & 0.5 & 0.058\% \\
+    \midrule
+    mean-length baseline & 71.0 & 95.5 & 100.0 & 97.5 & 100.0 & 100.0 & 1.0 & 0.198\% \\
+    no Šidák & 99.0 & 98.5 & 100.0 & 97.0 & 9.0 & 44.5 & 4.0 & 0.175\% \\
+    embedding MMD & 97.5 & 87.5 & 92.5 & 83.5 & 99.0 & 98.0 & 7.5 & 0.524\% \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\paragraph{An MMD baseline detects change, not degradation}
+An unbiased RBF-kernel MMD$^2$~\citep{gretton2012kernel} is computed on per-question
+mean embeddings against 500 calibration questions, with a median-heuristic
+bandwidth and the same budget. It catches 83.5--97.5\% of real faults, but also
+98--99\% of harmless shifts, and its pre-onset rate is five times the budget. A
+two-sample test on embeddings answers ``did the traffic change?'', which is not
+the question we need answered.
+
+\section{Robustness and limits}
+\label{sec:robust}
+
+\subsection{Removing the length shortcut}
+\label{sec:lengthmatched}
+A smaller model writes shorter answers, so a skeptic may suspect that the monitor
+is just a length detector. For each slice, we keep the 50\% of fault questions
+whose faulty answers are closest in length to the healthy ones. This brings the
+length ratio to $0.95$ (F1) and $0.90$ (F2) while the accuracy drop remains
+10.0 and 7.4 points. Detection stays at 99.5\% and 98\%; self-consistency fires
+in 82--94\% of runs and lexical diversity in 86--97\%. The other signals are not
+redundant.
+
+\subsection{Partial and gradual degradation}
+\label{sec:seq}
+In practice, a fault may affect only part of the traffic (for example, a
+canary deployment) or arrive gradually. We mix a dose $d$ of faulty answers into
+the post-onset stream, or ramp it from 0 to 100\% over 30 windows
+(Figure~\ref{fig:dose}). The threshold monitor reliably catches doses of 25\% and
+above, including the ramp. At 10\% it catches only 17.5--21\%, and at 5\% almost
+nothing. On the same statistics, standardised on healthy calibration streams, we
+set CUSUM~\citep{page1954continuous} and
+Page--Hinkley~\citep{hinkley1971inference} to the same per-signal alarm rate per
+window. Page--Hinkley detects 53--57\% at a 10\% dose and 15--23\% at 5\%, while
+staying within budget before the onset (0.00--0.06\%). CUSUM catches 99.5\% at 10\%
+but fires on F7 in 17.5\% of streams. Its pre-onset false-alarm rate is 3--6 times
+the budget, because evaluation streams sit $+0.64$ standard deviations from
+calibration on S7, and CUSUM accumulates this offset. Page--Hinkley is the better
+companion; CUSUM needs a recalibrated reference before it is safe.
+
+\begin{figure}[t]
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[
+      width=0.62\textwidth, height=4.6cm,
+      xlabel={dose of faulty answers after onset (\%)},
+      ylabel={streams alarmed (\%)},
+      xmode=log, log basis x=10,
+      xtick={5,10,25,50,100}, xticklabels={5,10,25,50,100},
+      ymin=0, ymax=105, grid=major, grid style={gray!20},
+      legend style={font=\scriptsize, at={(1.03,0.5)}, anchor=west, draw=none},
+      tick label style={font=\scriptsize}, label style={font=\small},
+    ]
+      \addplot[mark=*, thick, black] coordinates {(5,6.5) (10,21.0) (25,99.0) (50,100) (100,100)};
+      \addlegendentry{threshold, F1}
+      \addplot[mark=o, thick, black, dashed] coordinates {(5,4.5) (10,17.5) (25,99.5) (50,100) (100,100)};
+      \addlegendentry{threshold, F2}
+      \addplot[mark=square*, thick, blue!70!black] coordinates {(5,14.5) (10,53.0) (25,100) (50,100) (100,100)};
+      \addlegendentry{Page--Hinkley, F1}
+      \addplot[mark=square, thick, blue!70!black, dashed] coordinates {(5,23.0) (10,57.0) (25,100) (50,100) (100,100)};
+      \addlegendentry{Page--Hinkley, F2}
+      \addplot[mark=triangle*, thick, red!70!black] coordinates {(5,69.0) (10,99.5) (25,100) (50,100) (100,100)};
+      \addlegendentry{CUSUM, F1 (over budget)}
+    \end{axis}
+  \end{tikzpicture}
+  \caption{Detection versus dose under \vthree{} (200 streams of 60 windows per
+  point). Threshold points use the sensitivity runs at $W=200$; sequential points
+  use the same statistics. CUSUM's high detection comes with pre-onset false
+  alarms 3--6 times the budget and 17.5\% alarms on the fresh-seed control.}
+  \label{fig:dose}
+\end{figure}
+
+\subsection{Faults confined to one slice}
+If only one kind of question is routed to a bad model, the fault occupies 4--22\%
+of each window. Under \vthree{}, detection follows how visible the change is in
+that slice, not how large the accuracy drop is. Faults on long-form eli5 are
+caught in 95--97\% of streams and on gsm8k in 86--91\% (F1, F2), through length and
+lexical change. Triviaqa reaches 48--78\% and squad2 34--67\%. Banking77 and
+\textsf{jsonx} are blind spots ($\le$3.5\%) even when the accuracy drop is 9.7
+points: a wrong intent label looks just like a right one. A label-free monitor
+cannot see a fault that does not change the surface of the answers. This is the
+clearest limit of our approach.
+
+\subsection{One answer per query}
+Sampling $k=4$ answers quadruples the serving cost. Dropping to one answer
+removes S3 and leaves four signals. Under \vthree{}, detection of real faults
+stays at 94--98.5\% and the pre-onset false-alarm rate stays within budget (0.047\%).
+Under \vone{} it does not (0.65\%). The extra samples are therefore optional,
+not essential.
+
+\subsection{Calibration size and window size}
+Re-calibrating on 25\% of the calibration questions (627) moves thresholds by
+15--23\% and raises false alarms on harmless shifts. At 50\% or more, thresholds
+move by under 9\% and results match the full set. Smaller windows ($W=100$) alarm
+sooner but more than double the F6 alarms (94 against 37 of 200). Larger ones
+($W=400$) raise detection at a 10\% dose to 31.5\% (F1) and 48.5\% (F2) (Appendix~\ref{app:sens}).
+
+\subsection{A second healthy model}
+\label{sec:transfer}
+Every result above treats one model as the deployment. To test transfer, we
+rerun the whole method with \texttt{gemma3:12b} as the healthy model on all 5{,}000
+questions. We recalibrate from scratch with the same signals, scoring and budget
+and tune nothing. The checks were committed before any of its calibration answers
+were read: F1 and F2 (both less accurate than gemma3) must be caught in at least
+90\% of streams, and false alarms must stay within twice the budget.
+
+\begin{table}[t]
+  \centering\small
+  \caption{Transfer to \texttt{gemma3:12b} as the deployed model (accuracy 0.732).
+  G4 swaps back to the stronger \texttt{gemma4:26b}; it is reported as a change,
+  not judged.}
+  \label{tab:transfer}
+  \begin{tabular}{lcc}
+    \toprule
+    & \vone{} pooled & \vthree{} per slice, capped \\
+    \midrule
+    F1 e2b (0.593) & 97.5\% & 98.0\% \\
+    F2 e4b (0.666) & 96.5\% & 96.5\% \\
+    G4 swap to gemma4 26B (0.773) & 96.0\% & 95.0\% \\
+    F4 / F6 harmless shifts & 95.5\% / 100\% & 3.5\% / 56.0\% \\
+    pre-onset false alarms & 0.165\% \checkmark & \textbf{0.901\%} $\times$ \\
+    held-out windows & 0/17 \checkmark & \textbf{2/17} $\times$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Detection transfers fully (Table~\ref{tab:transfer}). \vone{} passes every
+check, including its known weakness on harmless shifts. \vthree{} fails on false
+alarms: 0.90\% before the onset and 2 of 17 held-out windows. The cause is one
+signal. S4 lexical diversity accounts for 0.58 points of the pre-onset rate and
+for both held-out alarms. Its mean healthy score on the fault questions is
+$0.0062$ against a bootstrap mean of $0.0034$: per-slice MATTR for gemma3 is less
+stable across question sets than its calibration bootstrap suggests. Dropping S4
+would probably fix this, but choosing that after seeing the result would be
+fitting to the test, so we report the failure. Per-slice scoring narrows each
+reference and so needs signals that are stable within a slice for the model at
+hand. That stability should be checked on a held-out split at calibration time,
+before trusting the frozen thresholds.
+
+\pending{A third, non-Gemma deployment (\texttt{qwen2.5:14b}, all 5{,}000 questions)
+is being generated under the same pre-registered checks, with one added guard: F1
+or F2 counts as ``worse'' only if its oracle accuracy is below Qwen's. Results will
+be added here.}
+
+\section{Discussion}
+
+\paragraph{What the monitor sees}
+The monitor detects changes in \emph{how} a model answers: length, agreement,
+vocabulary and meaning. It does not detect changes in \emph{whether} answers are
+correct. Model swaps and prompt edits almost always change both, which is why the
+results in Table~\ref{tab:main} are strong. A fault that changes only correctness,
+such as a wrong intent label with identical surface form, is invisible to it.
+Within this scope, the design choices matter more than the choice of statistics:
+the per-slice reference and the family-wise budget are what turn a change detector
+into a degradation detector.
+
+\paragraph{Limitations}
+(i) All models are open-weight models served on one machine; the healthy, F1, F2
+and F5 models are from one vendor. Transfer to a second family is partial
+(\S\ref{sec:transfer}). (ii) Streams are replays of real answers, not live
+traffic with arrival-time effects. (iii) Task families are known to the monitor.
+Unlabelled production traffic would need a slice classifier, whose errors we have
+not studied. (iv) \vtwo{} and \vthree{} were designed after seeing \vone{} on F4.
+F6 was unseen, but there is only one such shift; the 50 random mixtures are
+supporting evidence, not a pre-registered test. (v) Accuracy on \textsf{jsonx} is
+ill-defined under the strict key, so we exclude it from means.
+
+\paragraph{Practical guidance}
+Use per-slice scoring with capped weights. Calibrate on at least 1{,}250 healthy
+queries per deployment and validate on a held-out split before freezing. Pair the
+window thresholds with a Page--Hinkley test for slow or partial faults. Do not rely
+on the monitor alone for classification-style slices.
+
+\section{Conclusion}
+A label-free monitor can detect real degradation of a deployed language model
+within one window of 200 queries, at a false-alarm rate set in advance. Doing so
+requires comparing each kind of question only with itself. Without that
+comparison, a monitor flags every change of topic. With it, the monitor stays
+quiet on most harmless shifts and still catches all four real faults we tested.
+The blind spots we document point to the next steps. Classification and extraction
+slices need signals tied to the label space. Slow faults need sequential
+statistics, and each new deployment needs a stability check at calibration time.
+
+\paragraph{Reproducibility}
+Every frozen record stores its thresholds, signal list, scoring version and data
+hashes, and every analysis verifies it before running. All rounds, analyses and
+model digests are scripted, and the suite of 279 tests includes 62 that gate the
+leakage and calibration rules.
+
+\bibliographystyle{abbrvnat}
+\bibliography{references}
+
+\appendix
+
+\section{Half-sample intervals}
+\label{app:half}
+\begin{table}[h]
+  \centering\small
+  \caption{\vthree{}: Wilson intervals (replay noise only) against intervals from 50
+  stratified half-samples of the fault questions (question sampling and replay
+  noise).}
+  \begin{tabular}{lrcc}
+    \toprule
+    measure & full data & Wilson 95\% & half-sample 95\% \\
+    \midrule
+    F1 & 99.0\% & 96--100\% & 96.9--100\% \\
+    F2 & 98.5\% & 96--99\% & 96.4--100\% \\
+    F3 & 99.5\% & 97--100\% & 98.5--100\% \\
+    F5 & 95.5\% & 92--98\% & 92.7--98.3\% \\
+    F7 & 0.0\% & 0--2\% & 0.0--1.8\% \\
+    pre-onset false alarms & 0.016\% & -- & 0.000--0.061\% \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section{Calibration and window size}
+\label{app:sens}
+\begin{table}[h]
+  \centering\small
+  \caption{\vthree{} recalibrated on a share of the calibration questions (one
+  draw shown per share; three were run) and at three window sizes. Runs alarmed
+  out of 200.}
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{lrrrrrrrr}
+    \toprule
+    setting & threshold change & F1 & F2 & F3 & F4 & F5 & F6 & pre-onset \\
+    \midrule
+    25\% calib (627 q.) & 14.9--23.0\% & 197 & 195 & 199 & 47 & 192 & 145 & 0.7\% \\
+    50\% calib (1{,}250 q.) & 4.4--8.2\% & 197 & 197 & 197 & 9 & 191 & 35 & 0.1\% \\
+    75\% calib (1{,}873 q.) & 4.1--5.4\% & 198 & 197 & 200 & 7 & 191 & 44 & 0.0\% \\
+    100\% calib (2{,}500 q.) & -- & 198 & 197 & 199 & 7 & 191 & 37 & 0.0\% \\
+    \midrule
+    $W=100$ & & 198 & 197 & 200 & 18 & 195 & 94 & 0.1\% \\
+    $W=200$ & & 198 & 197 & 199 & 7 & 191 & 37 & 0.0\% \\
+    $W=400$ & & 197 & 195 & 194 & 7 & 183 & 17 & 0.1\% \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section{Faults on one slice}
+\begin{table}[h]
+  \centering\small
+  \caption{\vthree{}: runs alarmed (\%) when only one slice is answered by the
+  faulty model after the onset. In brackets: accuracy drop in points on that slice.}
+  \begin{tabular}{lrrrrrrr}
+    \toprule
+    fault & gsm8k & triviaqa & squad2 & banking77 & xsum & eli5 & jsonx \\
+    \midrule
+    F1 & 91.0 (14.4) & 47.5 (24.5) & 66.5 (28.2) & 0.5 (5.0) & 32.0 & 96.5 & 2.0 \\
+    F2 & 86.0 (7.5) & 78.0 (15.1) & 34.0 (10.6) & 2.5 (9.7) & 85.0 & 95.0 & 1.0 \\
+    F5 & 50.5 (6.0) & 0.5 (0.8) & 2.0 (8.1) & 1.5 (1.5) & 0.5 & 96.5 & 3.5 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\end{document}
