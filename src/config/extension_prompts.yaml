@@ -50,5 +50,12 @@ f8_candidates:
     exactly as you would normally write it. Never say that an answer may
     contain a mistake.
 
-# Set from the pilot, by the rule above. Empty until the pilot has run.
+# Set from the pilot, by the rule above.
+#
+# Pilot, 2026-10-12 (data/results/pilot_f8.json): NEITHER candidate qualified.
+#   careless       accuracy -1.2 points, length x0.946
+#   subtle_errors  accuracy -1.2 points, length x0.948
+# The healthy model all but ignores an instruction to be worse while keeping
+# its length (one question in 80 changed). By the rule, F8 is not generated and
+# stays empty; the finding is reported instead of a weaker or re-tuned fault.
 f8_chosen: ""
