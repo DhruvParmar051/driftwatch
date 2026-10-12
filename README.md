@@ -55,20 +55,31 @@ for m in gemma4:26b-a4b-it-q4_K_M gemma4:e4b-it-q4_K_M gemma4:e2b-it-q4_K_M gemm
 ```bash
 uv run driftwatch corpus build
 uv run driftwatch probe                              # STOP if this fails - see below
-uv run driftwatch generate --condition healthy --round-id r001
-uv run driftwatch generate --condition F1 --round-id r002
-uv run driftwatch generate --condition F2 --round-id r003
-uv run driftwatch generate --condition F3 --round-id r004
-uv run driftwatch embed --condition healthy --round-id e001   # ... and F1, F2, F3
-uv run driftwatch calibrate --completions data/completions.parquet
+scripts/generate_all.sh                              # every round and its embeddings, in run order
+uv run driftwatch calibrate --completions data/completions.parquet --without refusal_rate --without format_validity
 git commit ...                                       # freeze refuses a dirty tree
 uv run driftwatch freeze --thresholds data/thresholds.proposed.json --completions data/completions.parquet
-uv run driftwatch evaluate --completions data/completions.parquet
-uv run driftwatch report --results data/results/evaluation.json --out-dir data/report
+scripts/analyse_all.sh                               # every evaluation and stress test, v1-v3
 ```
 
-F4 has no round: it is derived from the healthy completions. F5
-(`--condition F5`) is optional.
+The rounds, as run: r001 healthy, r002 F3, r003 F2, r004 F1, r005 F5, then
+r006 F7 (the healthy model on fresh seeds, a negative control) and r007 F8 (a
+system-prompt fault built to keep answer length; its prompt is chosen by
+`driftwatch pilot-f8` before the round, by the rule in
+`config/extension_prompts.yaml`). F4 and F6 have no round: both are derived
+from the healthy completions.
+
+v2 and v3 were calibrated after v1 with `calibrate --scoring per_slice` /
+`per_slice_capped` and frozen to their own files with `freeze --out`; the
+original record was never touched. `scripts/analyse_all.sh` lists every
+analysis command with its arguments: `evaluate`, `report`, `gradual`,
+`mixtures`, `ablation`, `sensitivity` and `jsonx-check`. Every one verifies its
+frozen record first and refuses on any mismatch.
+
+`data/logs/` keeps the logs of the real run, with the one-off shell scripts
+that drove it as they were at the time (`chain.sh`, `chain_f5.sh`,
+`after_f5.sh`, `phase11.sh`, `chain_f7.sh`). They are a record, not tools:
+`scripts/` holds the reusable versions.
 
 **Interrupted? Run the same command again.** `generate` and `embed` append
 every answer to `data/rounds/<round_id>/results.jsonl` the moment it arrives;
@@ -187,8 +198,10 @@ src/provider/     expand, collect; local (Ollama, the default); batch client, su
 src/signals/      windows, groups (shared scoring base) + S1..S7
 src/detect/       calibrate, detectors, freeze
 src/oracle/       ground-truth scoring (never imported by detect/)
-src/evaluate/     replay, metrics, bootstrap, pipeline (the protocol, step by step)
+src/evaluate/     replay, metrics, bootstrap, pipeline (the protocol, step by step);
+                  gradual, ablation, mixtures, sensitivity (the stress tests)
 src/synthetic/    offline completion generator
+scripts/          generate_all.sh, analyse_all.sh - the whole run, resumable
 src/parallel.py   CPU worker resolution (no GPU — see below)
 tests/            61 gate tests + 139 specification tests
 docs/             WORKSTREAMS.md — who owns which file
