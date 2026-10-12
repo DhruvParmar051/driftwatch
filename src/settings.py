@@ -30,7 +30,9 @@ DATA_DIR: Path = PROJECT_ROOT / "data"
 
 Slice = Literal["gsm8k", "triviaqa", "squad2", "banking77", "xsum", "eli5", "jsonx"]
 Split = Literal["calib", "heldout", "fault"]
-Condition = Literal["healthy", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "H2", "H3", "H4"]
+Condition = Literal[
+    "healthy", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "H2", "H3", "H4", "H5"
+]
 
 SLICES: tuple[str, ...] = ("gsm8k", "triviaqa", "squad2", "banking77", "xsum", "eli5", "jsonx")
 
@@ -268,6 +270,7 @@ CONDITION_ROLES: dict[str, str] = {
     "H2": "cross_family",
     "H3": "third_family",
     "H4": "fourth_family",
+    "H5": "fifth_family",
 }
 
 #: H2 is the SECOND HEALTHY MODEL (Stage 7n): gemma3:12b, the F5 model, on the
@@ -285,8 +288,16 @@ THIRD_HEALTHY: str = "H3"
 #: H4 is the FOURTH HEALTHY MODEL (Stage 7p): llama3.1:8b, a third family
 #: outside the Gemma line, on every question like H3. Never a fault either.
 FOURTH_HEALTHY: str = "H4"
+#: H5 is the FIFTH HEALTHY MODEL (Stage 7q): phi4:14b, a fourth family outside
+#: the Gemma line, on every question like H3 and H4. Never a fault either.
+FIFTH_HEALTHY: str = "H5"
 #: Every alternative deployed model; none of them is ever replayed as a fault.
-ALTERNATE_HEALTHY: tuple[str, ...] = (SECOND_HEALTHY, THIRD_HEALTHY, FOURTH_HEALTHY)
+ALTERNATE_HEALTHY: tuple[str, ...] = (
+    SECOND_HEALTHY,
+    THIRD_HEALTHY,
+    FOURTH_HEALTHY,
+    FIFTH_HEALTHY,
+)
 
 #: F7 is the healthy model rerun with FRESH seeds - a new day's sample of the
 #: same deployment. Same model, prompt and questions; only this differs from
