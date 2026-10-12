@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import typer
 
@@ -699,7 +699,124 @@ def gradual(
     typer.echo(report_md.read_text())
 
 
+@app.command()
+def ablation(
+    completions: Path = typer.Option(..., help="Healthy + fault completions."),
+    thresholds: Path = typer.Option(..., help="A frozen thresholds record (v1, v2 or v3)."),
+    out: Path = typer.Option(..., help="Results JSON."),
+    report_md: Path = typer.Option(..., help="Markdown tables."),
+    n_runs: int = typer.Option(200, help="Replay runs per condition, as in `evaluate`."),
+) -> None:
+    """Signal ablation and simple baselines on `evaluate`'s own streams (Stage 7c).
+
+    Each signal removed in turn, each alone, a mean-length baseline and the
+    uncorrected monitor - all at the same family-wise budget except that last
+    one. Refuses unless the bootstrap reproduces the frozen thresholds.
+    """
+    from evaluate.ablation import ablation_markdown, run_ablation
+    from evaluate.pipeline import build_monitor_signals
+    from settings import get_settings
+
+    s = get_settings()
+    queries, rows, record, embeddings = _frozen_inputs(completions, thresholds, ("F4", "F6"))
+    signals = build_monitor_signals(embeddings, list(record.thresholds), record.scoring)
+    results = run_ablation(
+        queries, rows, signals, record.thresholds, n_runs=n_runs, seed=s.calibration_seed
+    )
+    results["scoring"] = record.scoring
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(results, indent=2) + "\n")
+    report_md.parent.mkdir(parents=True, exist_ok=True)
+    report_md.write_text(ablation_markdown(results, record.scoring))
+    typer.echo(report_md.read_text())
+
+
+@app.command()
+def mixtures(
+    completions: Path = typer.Option(..., help="Healthy completions (faults are ignored)."),
+    thresholds: Path = typer.Option(..., help="A frozen thresholds record (v1, v2 or v3)."),
+    out: Path = typer.Option(..., help="Results JSON."),
+    report_md: Path = typer.Option(..., help="Markdown summary."),
+    n_runs: int = typer.Option(100, help="Replays per mixture."),
+) -> None:
+    """False alarms over many random harmless query shifts (Stage 7d).
+
+    50 random query mixtures, healthy answers throughout, replayed against a
+    FROZEN monitor; every alarm after the onset is a false alarm.
+    """
+    from detect.calibrate import fit_signals
+    from evaluate.mixtures import (
+        MIX,
+        draw_mixtures,
+        mixtures_markdown,
+        run_mixtures,
+        summarise_mixtures,
+    )
+    from evaluate.pipeline import build_monitor_signals, calibration_rows
+    from settings import get_settings
+
+    s = get_settings()
+    queries, rows, record, embeddings = _frozen_inputs(completions, thresholds, (MIX,))
+    names = list(record.thresholds)
+    calib_q, calib_rows = calibration_rows(queries, rows)
+    signals = fit_signals(
+        build_monitor_signals(embeddings, names, record.scoring), calib_q, calib_rows
+    )
+    drawn = draw_mixtures(queries, s.calibration_seed)
+    healthy = [c for c in rows if c.condition == "healthy"]
+    records = run_mixtures(
+        queries,
+        healthy,
+        signals,
+        record.thresholds,
+        drawn,
+        n_runs=n_runs,
+        seed=s.calibration_seed,
+    )
+    summary = summarise_mixtures(records, drawn, names)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(
+        json.dumps({"scoring": record.scoring, "summary": summary, "records": records}, indent=2)
+        + "\n"
+    )
+    report_md.parent.mkdir(parents=True, exist_ok=True)
+    report_md.write_text(mixtures_markdown(summary, record.scoring))
+    typer.echo(report_md.read_text())
+
+
 # ── helpers ────────────────────────────────────────────────────────────────
+
+
+def _frozen_inputs(
+    completions: Path, thresholds: Path, aliases: Sequence[str]
+) -> tuple[list, list, Any, dict | None]:
+    """Queries, rows, the VERIFIED frozen record, and embeddings with derived conditions aliased.
+
+    Refuses to continue on any mismatch between the record and its calibration
+    rows, exactly as `evaluate` does. Each name in `aliases` gets the healthy
+    vectors re-keyed under it: F4 and F6 for their own mixtures, MIX for all
+    healthy rows.
+    """
+    from corpus.build import read_queries
+    from detect import freeze
+    from evaluate.pipeline import alias_embeddings, calibration_rows, derive_f4, derive_f6
+    from provider.collect import read_completions, read_embeddings
+    from settings import get_settings
+
+    s = get_settings()
+    queries = read_queries(s.queries_path)
+    rows = read_completions(completions)
+    _calib_q, calib_rows = calibration_rows(queries, rows)
+    record = freeze.verify(thresholds, calib_rows)
+    embeddings = None
+    if "embedding_shift" in record.thresholds:
+        embeddings = read_embeddings(_embeddings_path())
+        healthy = [c for c in rows if c.condition == "healthy"]
+        derive = {"F4": derive_f4, "F6": derive_f6}
+        for name in aliases:
+            covered = derive[name](queries, healthy, s.corpus_seed) if name in derive else healthy
+            embeddings = alias_embeddings(embeddings, covered, name)
+    return queries, rows, record, embeddings
 
 
 def _client() -> BatchClient:
