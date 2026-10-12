@@ -25,7 +25,8 @@ ROUNDS=(
   "r004 F1 e004"
   "r005 F5 e005"
   "r006 F7 e006"   # healthy model, fresh seeds: the negative control
-  "r007 F8 e007"   # length-matched prompt fault; needs f8_chosen set by `pilot-f8`
+  # r007 F8 was designed but never generated: no candidate prompt passed the
+  # pilot (`driftwatch pilot-f8`; see config/extension_prompts.yaml).
 )
 
 step() {  # name, then the driftwatch arguments
