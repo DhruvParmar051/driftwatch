@@ -699,6 +699,109 @@ def gradual(
     typer.echo(report_md.read_text())
 
 
+@app.command()
+def sensitivity(
+    completions: Path = typer.Option(..., help="Healthy + fault completions."),
+    thresholds: Path = typer.Option(
+        ..., help="A frozen record: its signals and scoring are reused."
+    ),
+    out: Path = typer.Option(..., help="Results JSON."),
+    report_md: Path = typer.Option(..., help="Markdown tables."),
+    n_runs: int = typer.Option(200, help="Replay runs per condition."),
+    gradual_runs: int = typer.Option(200, help="Gradual replays per fault and schedule."),
+) -> None:
+    """Calibration size and window size, re-calibrated and replayed (Stage 7e, exploratory).
+
+    Refuses unless the full-data, W=200 run reproduces the frozen thresholds,
+    so every other row differs from the frozen monitor in one thing only.
+    """
+    import math
+
+    from evaluate.pipeline import build_monitor_signals
+    from evaluate.sensitivity import (
+        calibration_size_study,
+        sensitivity_markdown,
+        window_size_study,
+    )
+    from settings import get_settings
+
+    s = get_settings()
+    queries, rows, record, embeddings = _frozen_inputs(completions, thresholds, ("F4", "F6"))
+    names = list(record.thresholds)
+
+    def make_signals() -> dict:
+        return build_monitor_signals(embeddings, names, record.scoring)
+
+    seed = s.calibration_seed
+    calib = calibration_size_study(make_signals, queries, rows, n_runs=n_runs, seed=seed)
+    window = window_size_study(
+        make_signals, queries, rows, n_runs=n_runs, gradual_runs=gradual_runs, seed=seed
+    )
+    full = [next(r for r in calib if r["fraction"] >= 1.0)] + [
+        r for r in window if r["window_size"] == 200
+    ]
+    for r in full:
+        for name, frozen in record.thresholds.items():
+            if not math.isclose(r["thresholds"][name], frozen, rel_tol=1e-9):
+                raise RuntimeError(
+                    f"{name}: full-data W=200 threshold {r['thresholds'][name]} != frozen {frozen}"
+                )
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(
+        json.dumps(
+            {"scoring": record.scoring, "calibration_size": calib, "window_size": window},
+            indent=2,
+            default=float,
+        )
+        + "\n"
+    )
+    report_md.parent.mkdir(parents=True, exist_ok=True)
+    report_md.write_text(sensitivity_markdown(calib, window, record.scoring))
+    typer.echo(report_md.read_text())
+
+
+@app.command("jsonx-check")
+def jsonx_check(
+    completions: Path = typer.Option(..., help="All completions."),
+    report_md: Path = typer.Option(..., help="Markdown table."),
+) -> None:
+    """Score jsonx strictly vs priority-within-one, and which field each miss gets wrong.
+
+    Diagnostic for the ambiguous answer key; every condition on the same
+    fault-subset questions. The strict oracle and every report mean are unchanged.
+    """
+    from corpus.build import read_queries
+    from corpus.splits import fault_subset
+    from oracle.score import JSONX_EXACT_FIELDS, jsonx_field_check
+    from provider.collect import read_completions
+    from settings import get_settings
+
+    queries = read_queries(get_settings().queries_path)
+    ids = {q.query_id for q in fault_subset(queries)}
+    rows = [c for c in read_completions(completions) if c.query_id in ids]
+    conds = ["healthy", *sorted({c.condition for c in rows} - {"healthy"})]
+    lines = [
+        "# jsonx: strict key vs priority within one\n",
+        "Same 240 fault-subset answers per condition (60 questions x 4). `lenient` accepts an "
+        "answer whose only mismatch is a priority off by one. `wrong_*`: share of answers "
+        "with that field wrong. Diagnostic; the oracle's strict rule is unchanged.\n",
+        "| condition | strict | lenient | invalid JSON | "
+        + " | ".join(f"wrong {f}" for f in JSONX_EXACT_FIELDS)
+        + " |",
+        "|---|---|---|---|" + "---|" * len(JSONX_EXACT_FIELDS),
+    ]
+    for cond in conds:
+        r = jsonx_field_check(rows, queries, cond)
+        lines.append(
+            f"| {cond} | {100 * r['strict']:.1f}% | {100 * r['lenient']:.1f}% | {r['invalid']} | "
+            + " | ".join(f"{100 * r[f'wrong_{f}']:.1f}%" for f in JSONX_EXACT_FIELDS)
+            + " |"
+        )
+    report_md.parent.mkdir(parents=True, exist_ok=True)
+    report_md.write_text("\n".join(lines) + "\n")
+    typer.echo(report_md.read_text())
+
+
 @app.command("pilot-f8")
 def pilot_f8(
     completions: Path = typer.Option(..., help="Completions holding the healthy round."),
