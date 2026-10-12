@@ -38,7 +38,7 @@ from evaluate.metrics import (
 from evaluate.replay import LATENCY_CONVENTION, ReplayRun, randomised_onsets, run_replay
 from log import get_logger
 from oracle.score import score_condition
-from settings import SECOND_HEALTHY, SIGNAL_NAMES, get_settings
+from settings import ALTERNATE_HEALTHY, SIGNAL_NAMES, get_settings
 from signals.base import Signal
 from signals.embedding import EmbeddingShiftSignal
 from signals.registry import build_signals
@@ -167,7 +167,9 @@ def fault_conditions(
     healthy = [c for c in completions if c.condition == HEALTHY]
     faults: dict[str, list[Completion]] = {
         cond: [c for c in completions if c.condition == cond]
-        for cond in sorted({c.condition for c in completions} - {HEALTHY, F4, F6, SECOND_HEALTHY})
+        for cond in sorted(
+            {c.condition for c in completions} - {HEALTHY, F4, F6, *ALTERNATE_HEALTHY}
+        )
     }
     faults[F4] = derive_f4(queries, healthy, settings.corpus_seed)
     # Sorted after F1-F5, so adding it leaves every earlier condition's replay seeds as they were.
