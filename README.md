@@ -38,7 +38,7 @@ OLLAMA_NUM_PARALLEL=4 OLLAMA_CONTEXT_LENGTH=8192 ollama serve
 ```
 
 ```bash
-for m in gemma4:26b-a4b-it-q4_K_M gemma4:e4b-it-q4_K_M gemma4:e2b-it-q4_K_M gemma3:12b-it-q4_K_M qwen2.5:14b-instruct-q4_K_M nomic-embed-text:v1.5; do ollama pull $m; done
+for m in gemma4:26b-a4b-it-q4_K_M gemma4:e4b-it-q4_K_M gemma4:e2b-it-q4_K_M gemma3:12b-it-q4_K_M qwen2.5:14b-instruct-q4_K_M llama3.1:8b-instruct-q4_K_M nomic-embed-text:v1.5; do ollama pull $m; done
 ```
 
 - `OLLAMA_NUM_PARALLEL` is how many requests the server runs at once; pass the
