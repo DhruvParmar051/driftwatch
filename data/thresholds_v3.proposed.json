@@ -1,0 +1,88 @@
+{
+  "thresholds": {
+    "length_ks": 0.15440682659205485,
+    "self_consistency": 0.04624468114758705,
+    "lexical_ttr": 0.010111972179414527,
+    "label_entropy": 4.952762397205304,
+    "embedding_shift": 0.045539550719233254
+  },
+  "per_signal_alpha": 0.000200080048033624,
+  "family_wise_budget": 0.001,
+  "bootstrap_windows": 20000,
+  "calibration_seed": 11071987,
+  "signals": [
+    "length_ks",
+    "self_consistency",
+    "lexical_ttr",
+    "label_entropy",
+    "embedding_shift"
+  ],
+  "scoring": "per_slice_capped",
+  "tail_fits": {
+    "length_ks": {
+      "signal": "length_ks",
+      "threshold": 0.15440682659205485,
+      "method": "pot_gpd",
+      "n_windows": 20000,
+      "alpha": 0.000200080048033624,
+      "pot_threshold": 0.12895,
+      "pot_quantile": 0.99,
+      "n_exceedances": 199,
+      "gpd_shape": -0.08629010371923018,
+      "gpd_scale": 0.007676274614517489,
+      "bootstrap_max": 0.16670000000000001
+    },
+    "self_consistency": {
+      "signal": "self_consistency",
+      "threshold": 0.04624468114758705,
+      "method": "pot_gpd",
+      "n_windows": 20000,
+      "alpha": 0.000200080048033624,
+      "pot_threshold": 0.03064634355221511,
+      "pot_quantile": 0.99,
+      "n_exceedances": 200,
+      "gpd_shape": -0.03311057480355019,
+      "gpd_scale": 0.004251497230615553,
+      "bootstrap_max": 0.049850539133014564
+    },
+    "lexical_ttr": {
+      "signal": "lexical_ttr",
+      "threshold": 0.010111972179414527,
+      "method": "pot_gpd",
+      "n_windows": 20000,
+      "alpha": 0.000200080048033624,
+      "pot_threshold": 0.006622298176346855,
+      "pot_quantile": 0.99,
+      "n_exceedances": 200,
+      "gpd_shape": 0.0031772945912894018,
+      "gpd_scale": 0.0008865970890692164,
+      "bootstrap_max": 0.013465761135998178
+    },
+    "label_entropy": {
+      "signal": "label_entropy",
+      "threshold": 4.952762397205304,
+      "method": "pot_gpd",
+      "n_windows": 20000,
+      "alpha": 0.000200080048033624,
+      "pot_threshold": 3.367437808833745,
+      "pot_quantile": 0.99,
+      "n_exceedances": 200,
+      "gpd_shape": -0.21218917907274232,
+      "gpd_scale": 0.5964841677140751,
+      "bootstrap_max": 5.357793780276656
+    },
+    "embedding_shift": {
+      "signal": "embedding_shift",
+      "threshold": 0.045539550719233254,
+      "method": "pot_gpd",
+      "n_windows": 20000,
+      "alpha": 0.000200080048033624,
+      "pot_threshold": 0.03550053665226061,
+      "pot_quantile": 0.99,
+      "n_exceedances": 200,
+      "gpd_shape": -0.034007686164695176,
+      "gpd_scale": 0.0027409428838345426,
+      "bootstrap_max": 0.05015336366438821
+    }
+  }
+}
