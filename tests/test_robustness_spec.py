@@ -184,3 +184,14 @@ def test_third_model_rows_swap_both_gemma_models_and_judge_only_worse_ones(
     monkeypatch.setattr(pipeline, "derive_f4", lambda *a: [])
     monkeypatch.setattr(pipeline, "derive_f6", lambda *a: [])
     assert "H3" not in fault_conditions([sample_query], [sample_completion, rows[4]])
+
+
+def test_fourth_model_is_llama_with_the_same_design_as_qwen():
+    import evaluate.secondmodel as sm
+    from settings import ALTERNATE_HEALTHY, CONDITION_ROLES, FOURTH_HEALTHY, THIRD_HEALTHY
+
+    assert CONDITION_ROLES[FOURTH_HEALTHY] == "fourth_family"
+    assert FOURTH_HEALTHY in ALTERNATE_HEALTHY
+    h3, h4 = sm.DEPLOYED[THIRD_HEALTHY], sm.DEPLOYED[FOURTH_HEALTHY]
+    assert h4["healthy"] == (FOURTH_HEALTHY,)
+    assert h4["swaps"] == h3["swaps"]
