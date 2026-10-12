@@ -970,6 +970,46 @@ def half_sample(
     typer.echo(report_md.read_text())
 
 
+@app.command("one-answer")
+def one_answer(
+    completions: Path = typer.Option(..., help="Healthy + fault completions."),
+    thresholds: Path = typer.Option(..., help="A frozen thresholds record (v1, v2 or v3)."),
+    out: Path = typer.Option(..., help="Results JSON."),
+    report_md: Path = typer.Option(..., help="Markdown table."),
+    n_runs: int = typer.Option(200, help="Replay runs per condition."),
+) -> None:
+    """A monitor that reads one answer per question instead of four (Stage 7m).
+
+    Exploratory: re-calibrated from calib, nothing frozen. The record is
+    verified first and gives the signal set and scoring.
+    """
+    from evaluate.pipeline import build_monitor_signals
+    from evaluate.single import run_single, single_markdown
+    from settings import get_settings
+
+    s = get_settings()
+    queries, rows, record, embeddings = _frozen_inputs(completions, thresholds, ("F4", "F6"))
+
+    def make_signals(names: Sequence[str]) -> dict:
+        return build_monitor_signals(embeddings, list(names), record.scoring)
+
+    results = run_single(
+        queries,
+        rows,
+        make_signals,
+        list(record.thresholds),
+        n_runs=n_runs,
+        seed=s.calibration_seed,
+    )
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(
+        json.dumps({"scoring": record.scoring, **results}, indent=2, default=float) + "\n"
+    )
+    report_md.parent.mkdir(parents=True, exist_ok=True)
+    report_md.write_text(single_markdown(results, record.scoring))
+    typer.echo(report_md.read_text())
+
+
 @app.command("jsonx-check")
 def jsonx_check(
     completions: Path = typer.Option(..., help="All completions."),
