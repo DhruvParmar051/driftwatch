@@ -842,6 +842,99 @@ def one_slice(
     typer.echo(report_md.read_text())
 
 
+@app.command()
+def sequential(
+    completions: Path = typer.Option(..., help="Healthy + fault completions."),
+    thresholds: Path = typer.Option(..., help="A frozen thresholds record (v1, v2 or v3)."),
+    out: Path = typer.Option(..., help="Results JSON."),
+    report_md: Path = typer.Option(..., help="Markdown tables."),
+    n_runs: int = typer.Option(200, help="Replay runs per condition and schedule."),
+) -> None:
+    """CUSUM and Page-Hinkley next to the frozen thresholds (Stage 7j).
+
+    Their settings come from healthy calib streams only; then all three run on
+    the evaluation's and the gradual study's own streams. The record is
+    verified first.
+    """
+    from corpus.splits import fault_subset
+    from detect.calibrate import fit_signals
+    from evaluate.gradual import GRADUAL_FAULTS, run_gradual
+    from evaluate.pipeline import (
+        DEFAULT_MIN_PREFIX,
+        DEFAULT_REPLAY_WINDOWS,
+        alias_embeddings,
+        build_monitor_signals,
+        calibration_rows,
+        fault_conditions,
+        replay_runs,
+    )
+    from evaluate.replay import run_replay
+    from evaluate.sequential import (
+        CALIB,
+        CALIB_STREAMS,
+        calibrate_sequential,
+        calibration_traces,
+        compare,
+        pre_onset_offset,
+        sequential_markdown,
+    )
+    from settings import get_settings
+
+    s = get_settings()
+    queries, rows, record, embeddings = _frozen_inputs(completions, thresholds, ("F4", "F6"))
+    calib_q, calib_rows = calibration_rows(queries, rows)
+    if embeddings is not None:
+        embeddings = alias_embeddings(embeddings, calib_rows, CALIB)
+    signals = fit_signals(
+        build_monitor_signals(embeddings, list(record.thresholds), record.scoring),
+        calib_q,
+        calib_rows,
+    )
+    calib = calibration_traces(
+        calib_q,
+        calib_rows,
+        signals,
+        record.thresholds,
+        n_streams=CALIB_STREAMS,
+        seed=s.calibration_seed + 1,
+    )
+    fitted = calibrate_sequential(calib, record.per_signal_alpha)
+
+    healthy = [c for c in rows if c.condition == "healthy"]
+    faults = fault_conditions(queries, rows)
+    runs = replay_runs(
+        list(faults), n_runs, DEFAULT_REPLAY_WINDOWS, DEFAULT_MIN_PREFIX, s.calibration_seed
+    )
+    main_records = run_replay(
+        runs, healthy, faults, fault_subset(queries), signals, record.thresholds
+    )
+    gradual_records = run_gradual(
+        queries,
+        healthy,
+        {c: faults[c] for c in GRADUAL_FAULTS},
+        signals,
+        record.thresholds,
+        n_runs=n_runs,
+        seed=s.calibration_seed,
+        keep_scores=True,
+    )
+    main = compare(main_records, record.thresholds, fitted, ["condition"])
+    gradual = compare(gradual_records, record.thresholds, fitted, ["condition", "schedule"])
+    fitted["pre_onset_offset_sd"] = pre_onset_offset(main_records, fitted)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(
+        json.dumps(
+            {"scoring": record.scoring, "fitted": fitted, "main": main, "gradual": gradual},
+            indent=2,
+            default=float,
+        )
+        + "\n"
+    )
+    report_md.parent.mkdir(parents=True, exist_ok=True)
+    report_md.write_text(sequential_markdown(fitted, main, gradual, record.scoring))
+    typer.echo(report_md.read_text())
+
+
 @app.command("jsonx-check")
 def jsonx_check(
     completions: Path = typer.Option(..., help="All completions."),
