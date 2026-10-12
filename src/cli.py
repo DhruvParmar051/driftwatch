@@ -935,6 +935,41 @@ def sequential(
     typer.echo(report_md.read_text())
 
 
+@app.command("half-sample")
+def half_sample(
+    completions: Path = typer.Option(..., help="Healthy + fault completions."),
+    thresholds: Path = typer.Option(..., help="A frozen thresholds record (v1, v2 or v3)."),
+    out: Path = typer.Option(..., help="Results JSON."),
+    report_md: Path = typer.Option(..., help="Markdown table."),
+    n_runs: int = typer.Option(200, help="Replay runs per condition, on every half."),
+) -> None:
+    """Detection and false-alarm intervals over random halves of the questions (Stage 7l).
+
+    Replayed against a FROZEN monitor, verified first.
+    """
+    from detect.calibrate import fit_signals
+    from evaluate.halfsample import halfsample_markdown, run_halfsample
+    from evaluate.pipeline import build_monitor_signals, calibration_rows
+    from settings import get_settings
+
+    s = get_settings()
+    queries, rows, record, embeddings = _frozen_inputs(completions, thresholds, ("F4", "F6"))
+    calib_q, calib_rows = calibration_rows(queries, rows)
+    signals = fit_signals(
+        build_monitor_signals(embeddings, list(record.thresholds), record.scoring),
+        calib_q,
+        calib_rows,
+    )
+    results = run_halfsample(
+        queries, rows, signals, record.thresholds, n_runs=n_runs, seed=s.calibration_seed
+    )
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps({"scoring": record.scoring, **results}, indent=2) + "\n")
+    report_md.parent.mkdir(parents=True, exist_ok=True)
+    report_md.write_text(halfsample_markdown(results, record.scoring))
+    typer.echo(report_md.read_text())
+
+
 @app.command("jsonx-check")
 def jsonx_check(
     completions: Path = typer.Option(..., help="All completions."),
@@ -1112,7 +1147,13 @@ def ablation(
     queries, rows, record, embeddings = _frozen_inputs(completions, thresholds, ("F4", "F6"))
     signals = build_monitor_signals(embeddings, list(record.thresholds), record.scoring)
     results = run_ablation(
-        queries, rows, signals, record.thresholds, n_runs=n_runs, seed=s.calibration_seed
+        queries,
+        rows,
+        signals,
+        record.thresholds,
+        n_runs=n_runs,
+        seed=s.calibration_seed,
+        embeddings=embeddings,
     )
     results["scoring"] = record.scoring
     out.parent.mkdir(parents=True, exist_ok=True)
