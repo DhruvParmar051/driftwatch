@@ -160,7 +160,7 @@ class Thresholds(BaseModel):
         "numbers describe a different experiment and evaluate/ must refuse to run."
     )
     thresholds: dict[str, float]
-    scoring: Literal["pooled", "per_slice"] = Field(
+    scoring: Literal["pooled", "per_slice", "per_slice_capped"] = Field(
         default="pooled",
         description="How window scores were computed (signals.stratified). 'pooled' is v1 and "
         "the default, so records frozen before the field existed still read as what they were.",
