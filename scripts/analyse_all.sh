@@ -61,6 +61,8 @@ for v in 1 3; do
     --out data/results/half_sample_v$v.json --report-md data/report_half_sample/half_sample_v$v.md
   run "one-answer v$v" one-answer --completions $C --thresholds $T \
     --out data/results/one_answer_v$v.json --report-md data/report_one_answer/one_answer_v$v.md
+  run "second-model v$v" second-model --completions $C --thresholds $T \
+    --out data/results/second_model_v$v.json --report-md data/report_second_model/second_model_v$v.md
 done
 
 run "jsonx check" jsonx-check --completions $C --report-md data/report/jsonx_check.md
