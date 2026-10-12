@@ -74,7 +74,7 @@ v2 and v3 were calibrated after v1 with `calibrate --scoring per_slice` /
 original record was never touched. `scripts/analyse_all.sh` lists every
 analysis command with its arguments: `evaluate`, `report`, `gradual`,
 `mixtures`, `ablation`, `sensitivity`, `length-matched`, `one-slice`,
-`sequential`, `jsonx-check` and `leakage-check`. Every one that replays verifies
+`sequential`, `half-sample`, `one-answer`, `jsonx-check` and `leakage-check`. Every one that replays verifies
 its frozen record first and refuses on any mismatch.
 
 `data/logs/` keeps the logs of the real run, with the one-off shell scripts
@@ -201,7 +201,7 @@ src/detect/       calibrate, detectors, freeze
 src/oracle/       ground-truth scoring (never imported by detect/)
 src/evaluate/     replay, metrics, bootstrap, pipeline (the protocol, step by step);
                   gradual, ablation, mixtures, sensitivity, lengthmatched, oneslice,
-                  sequential (the stress tests)
+                  sequential, halfsample, single (the stress tests)
 src/synthetic/    offline completion generator
 scripts/          generate_all.sh, analyse_all.sh - the whole run, resumable
 src/parallel.py   CPU worker resolution (no GPU — see below)
