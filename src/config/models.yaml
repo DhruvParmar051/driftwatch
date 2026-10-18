@@ -74,6 +74,33 @@ roles:
     library_digest: f4031aab637d
     download: 8.1 GB
 
+  # Condition: H3 (third healthy model) - outside the Gemma line altogether,
+  # comparable size. Used only as an alternative DEPLOYED model, never a fault.
+  # Digest read from the local pull on 2026-10-12.
+  third_family:
+    id: qwen2.5:14b-instruct-q4_K_M
+    parameter_size: 14.8B
+    library_digest: 7cdf5a0187d5
+    download: 9.0 GB
+
+  # Condition: H4 (fourth healthy model) - Llama, a third family outside the
+  # Gemma line. Used only as an alternative DEPLOYED model, never a fault.
+  # Digest read from the local pull on 2026-10-12.
+  fourth_family:
+    id: llama3.1:8b-instruct-q4_K_M
+    parameter_size: 8.0B
+    library_digest: 46e0c10c039e
+    download: 4.9 GB
+
+  # Condition: H5 (fifth healthy model) - Phi, a fourth family outside the
+  # Gemma line. Used only as an alternative DEPLOYED model, never a fault.
+  # Digest read from the local pull on 2026-10-12.
+  fifth_family:
+    id: phi4:14b-q4_K_M
+    parameter_size: 14.7B
+    library_digest: ac896e5b8b34
+    download: 9.1 GB
+
   # Signal S7. POST /v1/embeddings on the same local server.
   embedding:
     id: nomic-embed-text:v1.5
