@@ -16,6 +16,10 @@ Two questions about the frozen monitor, asked on the SAME replay streams
                              between the window's per-question mean
                              embeddings and 500 healthy calib questions, RBF
                              kernel, median-distance bandwidth.
+       baseline_llm_judge    a second model grades every answer 1-10 (added in
+                             Stage 7m, pre-registered in config/judge.yaml):
+                             healthy mean score minus the window's, one-sided,
+                             under the frozen record's scoring (evaluate.judge).
      The single-signal rows double as baselines: only_embedding_shift is
      "plain embedding distance", only_length_ks "a length test".
 
@@ -45,6 +49,7 @@ import numpy as np
 from corpus.schemas import Completion, Query, SignalScore
 from corpus.splits import fault_subset
 from detect.calibrate import bootstrap_scores, sidak_alpha, tail_threshold
+from evaluate.judge import LLM_JUDGE
 from evaluate.metrics import wilson_interval
 from evaluate.pipeline import (
     DEFAULT_MIN_PREFIX,
@@ -191,7 +196,9 @@ def _sq_dist(a: np.ndarray, b: np.ndarray) -> np.ndarray:
     return np.maximum(d, 0.0)
 
 
-def configurations(names: Sequence[str], budget: float, mmd: bool = False) -> list[Config]:
+def configurations(
+    names: Sequence[str], budget: float, mmd: bool = False, judge: bool = False
+) -> list[Config]:
     """Every configuration in the module docstring, in report order."""
     m = len(names)
     configs = [Config("frozen", "frozen", tuple(names), sidak_alpha(budget, m))]
@@ -212,6 +219,8 @@ def configurations(names: Sequence[str], budget: float, mmd: bool = False) -> li
     ]
     if mmd:
         configs.append(Config("baseline_embedding_mmd", "baseline", (EMBEDDING_MMD,), budget))
+    if judge:
+        configs.append(Config("baseline_llm_judge", "baseline", (LLM_JUDGE,), budget))
     return configs
 
 
@@ -239,6 +248,7 @@ def run_ablation(
     n_runs: int,
     seed: int,
     embeddings: dict[str, np.ndarray] | None = None,
+    judge: Signal | None = None,
 ) -> dict[str, Any]:
     """Bootstrap, threshold every configuration, replay once, score every configuration.
 
@@ -246,7 +256,9 @@ def run_ablation(
     (unfitted is fine - they are fitted on calib here); `frozen` its
     thresholds. Raises if the `frozen` configuration does not reproduce them.
     With `embeddings`, the MMD baseline runs too (its vectors are looked up
-    under each row's condition, F4/F6 aliased as for S7).
+    under each row's condition, F4/F6 aliased as for S7). With `judge` (built by
+    evaluate.judge.build_judge_signal under the record's scoring), the LLM-judge
+    baseline runs too.
     """
     s = get_settings()
     queries = list(queries)
@@ -254,10 +266,14 @@ def run_ablation(
     every: dict[str, Signal] = {**signals, MEAN_LENGTH: MeanLengthShift()}
     if embeddings is not None:
         every[EMBEDDING_MMD] = EmbeddingMMD(embeddings)
+    if judge is not None:
+        every[LLM_JUDGE] = judge
 
     calib_q, calib_rows = calibration_rows(queries, completions)
     boot = bootstrap_scores(every, calib_q, calib_rows, s.bootstrap_windows, s.calibration_seed)  # type: ignore[arg-type]
-    configs = configurations(names, s.false_alarm_budget, mmd=embeddings is not None)
+    configs = configurations(
+        names, s.false_alarm_budget, mmd=embeddings is not None, judge=judge is not None
+    )
     thresholds = config_thresholds(configs, boot)
     for name, value in frozen.items():
         if not math.isclose(thresholds["frozen"][name], value, rel_tol=1e-9):
@@ -274,6 +290,8 @@ def run_ablation(
     replay_thresholds = {**frozen, MEAN_LENGTH: thresholds["baseline_mean_length"][MEAN_LENGTH]}
     if embeddings is not None:
         replay_thresholds[EMBEDDING_MMD] = thresholds["baseline_embedding_mmd"][EMBEDDING_MMD]
+    if judge is not None:
+        replay_thresholds[LLM_JUDGE] = thresholds["baseline_llm_judge"][LLM_JUDGE]
     records = run_replay(runs, healthy, faults, fault_subset(queries), every, replay_thresholds)
 
     rows = [
