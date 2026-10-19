@@ -1,0 +1,66 @@
+# ---------------------------------------------------------------------------
+# LLM-as-judge baseline (Stage 7m). PRE-REGISTERED: fixed and committed
+# before any judge round is run or any judge score is read.
+#
+# The question it answers. The obvious alternative to a label-free monitor is
+# to have another model grade the answers. A judge reads each answer and says
+# how good it is, so it should see degradation directly - but it costs one
+# extra inference per answer, and it has its own drift. This baseline puts
+# that monitor on exactly the footing of ours:
+#
+#   - the SAME answers: every sample of every question the monitor sees
+#     (healthy calib, heldout and fault; F1, F2, F3, F5, F7 on the fault
+#     subset; F4 and F6 reuse the healthy scores, as for S7);
+#   - the SAME windows, bootstrap, budget and replay streams
+#     (evaluate.ablation, one more `baseline_*` row);
+#   - the SAME scoring as the frozen record it is run with: pooled under v1,
+#     per slice with capped weights under v3 (signals.stratified).
+#
+# The judge is reference-free: it sees the user's request and the answer,
+# never the ground truth (the C3 rule, applied to the judge). It is a model
+# from a different family from the healthy model and every fault, so it never
+# grades its own answers.
+#
+# Window statistic (fixed here): the healthy mean judge score minus the
+# window's mean, ONE-SIDED - a judge monitor exists to catch a drop in
+# quality, so higher scores never alarm. Under per-slice scoring each slice is
+# compared with its own healthy mean.
+#
+# Parsing (fixed here): the reply's first standalone integer, if it is 1-10.
+# A reply without one is NOT dropped silently and NOT given a score: it is left
+# out of the mean and counted, and the count is reported (C6 in spirit).
+# Every answer is judged as returned, empty and failed answers included.
+#
+# Bump `version` on ANY edit. The results record the version they ran with.
+# ---------------------------------------------------------------------------
+
+version: "1.0.0"
+
+# Role from config/models.yaml - resolved and digest-checked like any round.
+role: third_family
+
+round_id: j001
+
+temperature: 0.0
+max_tokens: 4
+seed: 20261019
+
+scale_min: 1
+scale_max: 10
+
+system_prompt: |
+  You are an impartial judge. Rate the quality of the AI assistant's response
+  to the user's request below. Consider correctness, helpfulness, relevance,
+  completeness and whether it follows the instructions in the request. Reply
+  with a single integer from 1 (very poor) to 10 (excellent) and nothing else.
+
+# {request} is the exact user prompt the answering model saw; {response} is
+# its answer text, verbatim.
+user_template: |
+  [Request]
+  {request}
+
+  [Response]
+  {response}
+
+  [Score]
