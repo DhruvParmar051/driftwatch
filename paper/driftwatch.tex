@@ -57,8 +57,10 @@ own reference, with weights capped by its actual share, cuts this to 3.5\% and
 18.5\% while keeping detection; the second harmless shift was never seen during
 design. We also report where the monitor fails. Faults confined to a small
 classification or extraction slice go unseen. Doses of 10\% or less are mostly missed;
-a Page--Hinkley test raises the catch rate at 10\% about 2.5--3 times. Transferred to a
-second model family, detection holds, but one signal's false-alarm rate does not.
+a Page--Hinkley test raises the catch rate at 10\% about 2.5--3 times. Recalibrated on
+four other deployed models, detection holds for all of them, and every check passes on
+the three from other vendors (Qwen, Llama, Phi); on an older Gemma, one signal's
+false-alarm rate does not hold.
 \end{abstract}
 
 \section{Introduction}
@@ -101,7 +103,8 @@ than generic drift detection~\citep{gama2014survey,rabanser2019failing}.
   during design (\S\ref{sec:results}).
   \item An analysis of the monitor's limits: dose--response, faults on a single
   slice, sequential tests, a one-answer variant, an embedding-MMD baseline, and a
-  transfer to a second model family that partly fails
+  transfer to four other deployed models, which holds on three vendors' models and
+  partly fails on an older Gemma
   (\S\ref{sec:robust}). The code, frozen threshold records and analysis
   commands are released.
 \end{itemize}
@@ -494,52 +497,71 @@ move by under 9\% and results match the full set. Smaller windows ($W=100$) alar
 sooner but more than double the F6 alarms (94 against 37 of 200). Larger ones
 ($W=400$) raise detection at a 10\% dose to 31.5\% (F1) and 48.5\% (F2) (Appendix~\ref{app:sens}).
 
-\subsection{A second healthy model}
+\subsection{Other healthy models}
 \label{sec:transfer}
 Every result above treats one model as the deployment. To test transfer, we
-rerun the whole method with \texttt{gemma3:12b} as the healthy model on all 5{,}000
-questions. We recalibrate from scratch with the same signals, scoring and budget
-and tune nothing. The checks were committed before any of its calibration answers
-were read: F1 and F2 (both less accurate than gemma3) must be caught in at least
-90\% of streams, and false alarms must stay within twice the budget.
+rerun the whole method with four other models as the healthy deployment, each on
+all 5{,}000 questions: \texttt{gemma3:12b} (an older Gemma generation) and three
+families from other vendors, \texttt{qwen2.5:14b}, \texttt{llama3.1:8b} and
+\texttt{phi4:14b}. The gemma3 round is part of the 64{,}000 answers above; the
+three others add 60{,}000 answers in three more rounds. For each deployment
+we recalibrate from scratch with the same signals, scoring and budget and tune
+nothing. The checks were committed before any of its calibration answers were
+read: F1 and F2 must be caught in at least 90\% of streams, false alarms must stay
+within twice the budget, and the real held-out windows must stay quiet. For the
+three non-Gemma deployments, F1 or F2 counts as ``worse'' only if its oracle
+accuracy is below the deployment's; both are, for all three. Swaps to
+\texttt{gemma4:26b} (G4) and \texttt{gemma3:12b} (G3) are reported as changes,
+not judged, since neither is clearly worse than every deployment.
 
 \begin{table}[t]
   \centering\small
-  \caption{Transfer to \texttt{gemma3:12b} as the deployed model (accuracy 0.732).
-  G4 swaps back to the stronger \texttt{gemma4:26b}; it is reported as a change,
-  not judged.}
+  \caption{Transfer to four other deployed models, recalibrated from scratch.
+  Detection is the share of 200 streams; accuracy of each deployment in brackets.
+  Held-out: alarms on the 17 real held-out windows. G3 is not applicable when
+  \texttt{gemma3:12b} is itself the deployment.}
   \label{tab:transfer}
-  \begin{tabular}{lcc}
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{llccccc}
     \toprule
-    & \vone{} pooled & \vthree{} per slice, capped \\
+    deployment & scoring & F1 / F2 & G4 / G3 & F4 / F6 & false alarms & held-out \\
     \midrule
-    F1 e2b (0.593) & 97.5\% & 98.0\% \\
-    F2 e4b (0.666) & 96.5\% & 96.5\% \\
-    G4 swap to gemma4 26B (0.773) & 96.0\% & 95.0\% \\
-    F4 / F6 harmless shifts & 95.5\% / 100\% & 3.5\% / 56.0\% \\
-    pre-onset false alarms & 0.165\% \checkmark & \textbf{0.901\%} $\times$ \\
-    held-out windows & 0/17 \checkmark & \textbf{2/17} $\times$ \\
+    gemma3 12B (0.732) & \vone{} & 97.5 / 96.5 & 96.0 / -- & 95.5 / 100 & 0.165\% \checkmark & 0/17 \checkmark \\
+                       & \vthree{} & 98.0 / 96.5 & 95.0 / -- & 3.5 / 56.0 & \textbf{0.901\%} $\times$ & \textbf{2/17} $\times$ \\
+    \addlinespace
+    qwen2.5 14B (0.760) & \vone{} & 97.0 / 95.5 & 95.5 / 91.0 & 95.0 / 100 & 0.122\% \checkmark & 0/17 \checkmark \\
+                        & \vthree{} & 98.5 / 95.5 & 98.0 / 94.5 & 2.5 / 19.0 & 0.047\% \checkmark & 0/17 \checkmark \\
+    \addlinespace
+    llama3.1 8B (0.708) & \vone{} & 96.5 / 97.5 & 94.0 / 93.0 & 96.5 / 99.5 & 0.166\% \checkmark & 0/17 \checkmark \\
+                        & \vthree{} & 98.5 / 97.0 & 96.5 / 92.0 & 4.0 / 30.0 & 0.176\% \checkmark & 0/17 \checkmark \\
+    \addlinespace
+    phi4 14B (0.768) & \vone{} & 98.5 / 98.5 & 98.0 / 97.0 & 95.5 / 100 & 0.064\% \checkmark & 0/17 \checkmark \\
+                     & \vthree{} & 99.5 / 99.0 & 98.5 / 98.5 & 1.0 / 22.0 & 0.085\% \checkmark & 0/17 \checkmark \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-Detection transfers fully (Table~\ref{tab:transfer}). \vone{} passes every
-check, including its known weakness on harmless shifts. \vthree{} fails on false
-alarms: 0.90\% before the onset and 2 of 17 held-out windows. The cause is one
-signal. S4 lexical diversity accounts for 0.58 points of the pre-onset rate and
-for both held-out alarms. Its mean healthy score on the fault questions is
-$0.0062$ against a bootstrap mean of $0.0034$: per-slice MATTR for gemma3 is less
-stable across question sets than its calibration bootstrap suggests. Dropping S4
-would probably fix this, but choosing that after seeing the result would be
-fitting to the test, so we report the failure. Per-slice scoring narrows each
-reference and so needs signals that are stable within a slice for the model at
-hand. That stability should be checked on a held-out split at calibration time,
-before trusting the frozen thresholds.
+Detection transfers to every deployment (Table~\ref{tab:transfer}): F1 and F2
+are caught in 95.5--99.5\% of streams under both designs, and the swaps G4 and G3
+in 91.0--98.5\%. The scoring result of \S\ref{sec:results} also transfers. Pooled
+\vone{} alarms on harmless mix shifts in 95.0--100\% of streams for every
+deployment; per-slice \vthree{} cuts F4 to 1.0--4.0\% and F6 to 19.0--56.0\%.
+On the three non-Gemma deployments every pre-registered check passes under
+both designs, with pre-onset false alarms of 0.047--0.176\%, inside twice the
+budget.
 
-\pending{A third, non-Gemma deployment (\texttt{qwen2.5:14b}, all 5{,}000 questions)
-is being generated under the same pre-registered checks, with one added guard: F1
-or F2 counts as ``worse'' only if its oracle accuracy is below Qwen's. Results will
-be added here.}
+The one failure is \texttt{gemma3:12b} under \vthree{}: 0.90\% false alarms
+before the onset and 2 of 17 held-out windows. The cause is one signal. S4
+lexical diversity accounts for 0.58 points of the pre-onset rate and for both
+held-out alarms. Its mean healthy score on the fault questions is $0.0062$ against
+a bootstrap mean of $0.0034$: per-slice MATTR for gemma3 is less stable across
+question sets than its calibration bootstrap suggests. Dropping S4 would probably
+fix this, but choosing that after seeing the result would be fitting to the test,
+so we report the failure. Per-slice scoring narrows each reference and so needs
+signals that are stable within a slice for the model at hand. The other three
+deployments show this instability is a property of one model, not of the design,
+but it can only be found by checking stability on a held-out split at calibration
+time, before trusting the frozen thresholds.
 
 \section{Discussion}
 
@@ -555,8 +577,9 @@ into a degradation detector.
 
 \paragraph{Limitations}
 (i) All models are open-weight models served on one machine; the healthy, F1, F2
-and F5 models are from one vendor. Transfer to a second family is partial
-(\S\ref{sec:transfer}). (ii) Streams are replays of real answers, not live
+and F5 models are from one vendor. Transfer holds on Qwen, Llama and Phi but is
+partial on \texttt{gemma3:12b} (\S\ref{sec:transfer}), and all deployments are
+8--26B parameters. (ii) Streams are replays of real answers, not live
 traffic with arrival-time effects. (iii) Task families are known to the monitor.
 Unlabelled production traffic would need a slice classifier, whose errors we have
 not studied. (iv) \vtwo{} and \vthree{} were designed after seeing \vone{} on F4.
@@ -583,7 +606,7 @@ statistics, and each new deployment needs a stability check at calibration time.
 \paragraph{Reproducibility}
 Every frozen record stores its thresholds, signal list, scoring version and data
 hashes, and every analysis verifies it before running. All rounds, analyses and
-model digests are scripted, and the suite of 279 tests includes 62 that gate the
+model digests are scripted, and the suite of 282 tests includes 62 that gate the
 leakage and calibration rules.
 
 \bibliographystyle{abbrvnat}
