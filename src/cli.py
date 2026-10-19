@@ -1235,26 +1235,91 @@ def pilot_f8(
 
 
 @app.command()
+def judge(
+    completions: Path = typer.Option(..., help="Completions holding healthy and the faults."),
+    out: Path = typer.Option(..., help="Judge score store (parquet)."),
+    concurrency: int = typer.Option(4, help="Requests in flight; match OLLAMA_NUM_PARALLEL."),
+) -> None:
+    """LLM-as-judge round (Stage 7m): a second model grades every answer 1-10.
+
+    Grades every sample of healthy, F1, F2, F3, F5 and F7 with the model, prompt
+    and parsing pre-registered in config/judge.yaml. Checkpointed per row like a
+    generation round: rerun the same command to resume. Writes the score store
+    and a summary JSON next to it.
+    """
+    from corpus.build import read_queries
+    from evaluate.judge import (
+        JUDGED_CONDITIONS,
+        build_judge_rows,
+        collect_judge_scores,
+        judge_summary,
+        write_judge_scores,
+    )
+    from provider.collect import read_completions
+    from settings import get_settings, load_judge_config
+
+    s = get_settings()
+    cfg = load_judge_config()
+    resolved = _resolve_role(cfg["role"], "local")
+    queries = read_queries(s.queries_path)
+    graded = [c for c in read_completions(completions) if c.condition in JUDGED_CONDITIONS]
+    rows = build_judge_rows(queries, graded, resolved.model_id)
+    checkpoint = _rounds_dir() / cfg["round_id"] / "results.jsonl"
+    checkpoint.parent.mkdir(parents=True, exist_ok=True)
+    typer.echo(f"{len(rows)} answers to grade with {resolved.model_id}")
+    _answer_rows(rows, checkpoint, "local", concurrency)
+    scores, replies = collect_judge_scores(
+        checkpoint, rows, resolved.model_id, resolved.digest, resolved.digest_source
+    )
+    write_judge_scores(scores, replies, out)
+    summary = {
+        "judge_model": resolved.model_id,
+        "judge_digest": resolved.digest,
+        "judge_config_version": cfg["version"],
+        "by_condition": judge_summary(scores),
+    }
+    out.with_suffix(".json").write_text(json.dumps(summary, indent=2) + "\n")
+    for cond, r in summary["by_condition"].items():
+        typer.echo(
+            f"{cond:8} graded {r['graded']:>6}  mean {r['mean_score']:.3f}  "
+            f"unscored {r['unscored']}"
+        )
+
+
+@app.command()
 def ablation(
     completions: Path = typer.Option(..., help="Healthy + fault completions."),
     thresholds: Path = typer.Option(..., help="A frozen thresholds record (v1, v2 or v3)."),
     out: Path = typer.Option(..., help="Results JSON."),
     report_md: Path = typer.Option(..., help="Markdown tables."),
     n_runs: int = typer.Option(200, help="Replay runs per condition, as in `evaluate`."),
+    judge_scores: Path = typer.Option(
+        None, help="The `judge` round's score store; adds the LLM-judge baseline."
+    ),
 ) -> None:
     """Signal ablation and simple baselines on `evaluate`'s own streams (Stage 7c).
 
     Each signal removed in turn, each alone, a mean-length baseline and the
     uncorrected monitor - all at the same family-wise budget except that last
-    one. Refuses unless the bootstrap reproduces the frozen thresholds.
+    one. Refuses unless the bootstrap reproduces the frozen thresholds. With
+    --judge-scores, the LLM-judge baseline (Stage 7m) is one more row.
     """
     from evaluate.ablation import ablation_markdown, run_ablation
-    from evaluate.pipeline import build_monitor_signals
-    from settings import get_settings
+    from evaluate.pipeline import build_monitor_signals, derive_f4, derive_f6
+    from settings import get_settings, load_judge_config
 
     s = get_settings()
     queries, rows, record, embeddings = _frozen_inputs(completions, thresholds, ("F4", "F6"))
     signals = build_monitor_signals(embeddings, list(record.thresholds), record.scoring)
+    judge = None
+    if judge_scores is not None:
+        from evaluate.judge import alias_judge_scores, build_judge_signal, read_judge_scores
+
+        scores = read_judge_scores(judge_scores)
+        healthy = [c for c in rows if c.condition == "healthy"]
+        for name, derive in (("F4", derive_f4), ("F6", derive_f6)):
+            scores = alias_judge_scores(scores, derive(queries, healthy, s.corpus_seed), name)
+        judge = build_judge_signal(scores, record.scoring)
     results = run_ablation(
         queries,
         rows,
@@ -1263,8 +1328,11 @@ def ablation(
         n_runs=n_runs,
         seed=s.calibration_seed,
         embeddings=embeddings,
+        judge=judge,
     )
     results["scoring"] = record.scoring
+    if judge is not None:
+        results["judge_config_version"] = load_judge_config()["version"]
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(results, indent=2) + "\n")
     report_md.parent.mkdir(parents=True, exist_ok=True)
