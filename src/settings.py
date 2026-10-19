@@ -352,6 +352,13 @@ def load_extension_prompts() -> dict:
         return yaml.safe_load(fh)
 
 
+@lru_cache(maxsize=1)
+def load_judge_config() -> dict:
+    """Return config/judge.yaml: the pre-registered LLM-as-judge baseline."""
+    with (CONFIG_DIR / "judge.yaml").open() as fh:
+        return yaml.safe_load(fh)
+
+
 def slice_template(slice_name: str) -> str:
     """Prompt template for a corpus slice."""
     templates = load_prompts()["slice_templates"]
