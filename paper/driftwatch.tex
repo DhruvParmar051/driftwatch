@@ -13,6 +13,7 @@
 \usepackage{microtype}
 \usepackage{booktabs}
 \usepackage{multirow}
+\usepackage{enumitem}
 \usepackage{amsmath,amssymb}
 \usepackage{xcolor}
 \usepackage{pgfplots}
@@ -77,16 +78,23 @@ benchmark rather than the traffic that actually matters.
 We ask a narrower question: \emph{can a monitor that sees only the model's answers
 to live traffic, with no labels, raise an alarm when quality drops, at a
 false-alarm rate fixed before deployment?} Three requirements make this harder
-than generic drift detection~\citep{gama2014survey,rabanser2019failing}.
-\begin{enumerate}
-  \item \textbf{Calibrated alarms.} A monitor that fires every few days is switched
-  off. The false-alarm rate has to be a design parameter, not a by-product.
-  \item \textbf{Real faults, not synthetic ones.} Detection must be shown on actual
-  model swaps and prompt edits, not injected noise.
-  \item \textbf{Telling degradation from a harmless shift.} User traffic changes on
-  its own; a week of maths homework looks different from a week of trivia. A
-  monitor that flags every change of topic gives no useful signal.
+than generic drift detection~\citep{gama2014survey,rabanser2019failing}, and with
+one more about generality they give our four research questions.
+\begin{enumerate}[label=\textbf{RQ\arabic*}, leftmargin=*]
+  \item \textbf{Calibrated alarms.} Does the monitor keep, on healthy traffic, the
+  false-alarm rate it was calibrated to? A monitor that fires every few days is
+  switched off, so this rate has to be a design parameter, not a by-product.
+  \item \textbf{Real faults, not synthetic ones.} Does it detect actual model swaps
+  and prompt edits, not injected noise, and how soon after the onset?
+  \item \textbf{Telling degradation from a harmless shift.} Does it stay quiet when
+  only the mix of questions changes? User traffic changes on its own; a week of
+  maths homework looks different from a week of trivia. A monitor that flags every
+  change of topic gives no useful signal.
+  \item \textbf{Transfer.} Do RQ1--RQ3 still hold when the deployed model comes
+  from another family, recalibrated but with nothing tuned?
 \end{enumerate}
+RQ1--RQ3 are answered in \S\ref{sec:results}, the limits of RQ2 in
+\S\ref{sec:seq}--\ref{sec:slice}, and RQ4 in \S\ref{sec:transfer}.
 
 \paragraph{Contributions}
 \begin{itemize}
@@ -335,7 +343,7 @@ came 50 queries after the onset window.
   \end{tabular}
 \end{table}
 
-\paragraph{Real faults are caught quickly}
+\paragraph{Real faults are caught quickly (RQ2)}
 Under every scoring, the four real faults are detected in 95.5--100\% of streams
 (Table~\ref{tab:main}). The median latency is one window, meaning the alarm comes
 within 50 queries of the first faulty answer. F3, the prompt edit, is caught at
@@ -343,13 +351,13 @@ the onset window itself. Its accuracy cost is only 2.8 points, but it shortens
 answers sharply. The fresh-seed control F7 almost never alarms. Its four \vone{}
 alarms come late in the stream (median window 12), consistent with chance.
 
-\paragraph{The pooled monitor cannot tell degradation from a change of topic}
+\paragraph{The pooled monitor cannot tell degradation from a change of topic (RQ3)}
 \vone{} alarms on F4 in 98\% of streams and on F6 in 100\%, although every answer
 in those streams is healthy. Over 50 random harmless mixtures, its mean alarm rate
 is 93.9\%. Pooled length and embedding statistics mostly measure \emph{which
 slices} a window contains.
 
-\paragraph{Capped per-slice scoring fixes most of this}
+\paragraph{Capped per-slice scoring fixes most of this (RQ3)}
 \vtwo{} removes most F4 alarms (24\%) but still alarms on the unseen F6 in 95\% of
 streams. The cause is thin slices: a slice with 10 queries counts as much as one
 with 28. \vthree{} caps the weights and brings F6 down to 18.5\% and F4 to 3.5\%,
@@ -360,7 +368,7 @@ alarms in more than half its streams. The alarm rate rises with shift size
 0.3, 8.1\% between 0.3 and 0.4, and 26\% above 0.4. Large, sudden changes of topic remain visible, which an
 operator may well want.
 
-\paragraph{False alarms stay within budget}
+\paragraph{False alarms stay within budget (RQ1)}
 Pre-onset false alarms under \vthree{} run at 0.017\%, against a budget of 0.1\%.
 Questions are a finite sample, so we also resample them. Over 50 stratified
 half-samples of the fault questions, the 95\% interval for the pre-onset rate is
@@ -473,6 +481,7 @@ companion; CUSUM needs a recalibrated reference before it is safe.
 \end{figure}
 
 \subsection{Faults confined to one slice}
+\label{sec:slice}
 If only one kind of question is routed to a bad model, the fault occupies 4--22\%
 of each window. Under \vthree{}, detection follows how visible the change is in
 that slice, not how large the accuracy drop is. Faults on long-form eli5 are
@@ -497,7 +506,7 @@ move by under 9\% and results match the full set. Smaller windows ($W=100$) alar
 sooner but more than double the F6 alarms (94 against 37 of 200). Larger ones
 ($W=400$) raise detection at a 10\% dose to 31.5\% (F1) and 48.5\% (F2) (Appendix~\ref{app:sens}).
 
-\subsection{Other healthy models}
+\subsection{Other healthy models (RQ4)}
 \label{sec:transfer}
 Every result above treats one model as the deployment. To test transfer, we
 rerun the whole method with four other models as the healthy deployment, each on
