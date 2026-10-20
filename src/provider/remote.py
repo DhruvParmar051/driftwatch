@@ -25,6 +25,7 @@ key, no credit or no matching endpoint, never the model's answer.
 from __future__ import annotations
 
 import json
+import random
 import threading
 import time
 from pathlib import Path
@@ -41,8 +42,12 @@ log = get_logger(__name__)
 DEFAULT_TIMEOUT_S: float = 600.0
 DIGEST_SOURCE: str = "pinned"
 
-_RETRIES: int = 6
+#: A shared host behind a router refuses bursts with "rate-limited upstream"
+#: (429) for a minute or two at a time. Waits double from 10 s to a 2-minute
+#: ceiling, so a row is given about 12 minutes before the round stops.
+_RETRIES: int = 10
 _BACKOFF_S: float = 10.0
+_BACKOFF_MAX_S: float = 120.0
 _TRANSIENT_STATUS: frozenset[int] = frozenset({408, 429, 500, 502, 503, 504})
 #: Body keys the router replaces: Ollama's switch for thinking is not the router's.
 _DROPPED_KEYS: frozenset[str] = frozenset({"reasoning_effort"})
@@ -174,14 +179,14 @@ class RemoteClient:
             except httpx.TransportError as exc:
                 if attempt == _RETRIES:
                     raise RemoteError(f"{custom_id}: router unreachable: {exc}") from exc
-                time.sleep(_BACKOFF_S * attempt)
+                time.sleep(_backoff(attempt))
                 continue
             if resp.status_code == 200:
                 payload = resp.json()
                 self._check(custom_id, payload)
                 return {"custom_id": custom_id, "response": payload, "error": None}
             if resp.status_code in _TRANSIENT_STATUS and attempt < _RETRIES:
-                time.sleep(_retry_after(resp) or _BACKOFF_S * attempt)
+                time.sleep(max(_retry_after(resp) or 0.0, _backoff(attempt)))
                 continue
             raise RemoteError(f"{custom_id}: HTTP {resp.status_code}: {resp.text[:300]}")
         raise RemoteError(f"{custom_id}: retries exhausted")
@@ -218,6 +223,12 @@ class RemoteClient:
         if resp.status_code != 200:
             raise RemoteError(f"GET {url} -> {resp.status_code}: {resp.text[:300]}")
         return resp.json()
+
+
+def _backoff(attempt: int) -> float:
+    """Seconds before retry `attempt`: doubling, capped, with jitter so threads spread out."""
+    base = min(_BACKOFF_S * 2 ** (attempt - 1), _BACKOFF_MAX_S)
+    return base * random.uniform(1.0, 1.25)
 
 
 def _retry_after(resp: httpx.Response) -> float | None:
