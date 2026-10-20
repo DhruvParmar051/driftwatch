@@ -6,7 +6,7 @@ from collections.abc import Sequence
 
 import numpy as np
 import pandas as pd
-from scipy.stats import mannwhitneyu
+from scipy.stats import binomtest, mannwhitneyu
 
 from settings import SIGNAL_NAMES
 
@@ -84,6 +84,27 @@ def wilson_interval(k: int, n: int, z: float = 1.959964) -> tuple[float, float]:
     lo = 0.0 if k == 0 else max(0.0, float(centre - half))
     hi = 1.0 if k == n else min(1.0, float(centre + half))
     return lo, hi
+
+
+def mcnemar_exact(a: Sequence[bool], b: Sequence[bool]) -> dict[str, float]:
+    """Exact two-sided McNemar test for two monitors alarmed on the SAME runs.
+
+    Only the discordant runs carry information: `only_a` runs where a alarmed
+    and b did not, `only_b` the reverse. Under "no difference" each discordant
+    run is a fair coin, so p is the two-sided binomial tail. No discordant runs
+    gives p = 1.
+
+    Raises:
+        ValueError: the two sequences are not paired run for run.
+
+    """
+    if len(a) != len(b):
+        raise ValueError(f"unpaired runs: {len(a)} vs {len(b)}")
+    only_a = sum(1 for x, y in zip(a, b, strict=True) if x and not y)
+    only_b = sum(1 for x, y in zip(a, b, strict=True) if y and not x)
+    n = only_a + only_b
+    p = binomtest(only_a, n, 0.5).pvalue if n else 1.0
+    return {"only_a": only_a, "only_b": only_b, "p": float(p)}
 
 
 def signal_detection_rate(records: list[dict], name: str) -> float:
