@@ -1281,6 +1281,7 @@ def remote_pilot(
     from corpus.splits import fault_subset
     from provider.expand import expand_queries
     from provider.local import run_rows
+    from provider.remote import answer_cost
     from settings import get_settings, load_remote_config, system_prompt_for_condition
 
     s = get_settings()
@@ -1309,7 +1310,7 @@ def remote_pilot(
         client.close()
     lines = [json.loads(line) for line in checkpoint.read_text(encoding="utf-8").splitlines()]
     usage = [(ln["response"] or {}).get("usage") or {} for ln in lines]
-    cost = sum(float(u.get("cost") or 0.0) for u in usage)
+    cost = sum(answer_cost(u) for u in usage)
     tok_in = sum(int(u.get("prompt_tokens") or 0) for u in usage)
     tok_out = sum(int(u.get("completion_tokens") or 0) for u in usage)
     n = len(lines)
