@@ -42,12 +42,13 @@ log = get_logger(__name__)
 DEFAULT_TIMEOUT_S: float = 600.0
 DIGEST_SOURCE: str = "pinned"
 
-#: A shared host behind a router refuses bursts with "rate-limited upstream"
-#: (429) for a minute or two at a time. Waits double from 10 s to a 2-minute
-#: ceiling, so a row is given about 12 minutes before the round stops.
-_RETRIES: int = 10
-_BACKOFF_S: float = 10.0
-_BACKOFF_MAX_S: float = 120.0
+#: A host's rate limit refuses bursts (429) and frees up again within seconds
+#: to a minute. Waits double from 5 s to a 30-second ceiling - short enough not
+#: to idle once the limit has reset - and a row is given about 13 minutes in
+#: all before the round stops.
+_RETRIES: int = 30
+_BACKOFF_S: float = 5.0
+_BACKOFF_MAX_S: float = 30.0
 _TRANSIENT_STATUS: frozenset[int] = frozenset({408, 429, 500, 502, 503, 504})
 #: Body keys the router replaces: Ollama's switch for thinking is not the router's.
 _DROPPED_KEYS: frozenset[str] = frozenset({"reasoning_effort"})
