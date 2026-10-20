@@ -162,6 +162,17 @@ def test_nothing_is_sent_once_the_cap_is_reached(sample_query):
         _client(handler, budget=5.0, spent=5.0).post_row(_row(sample_query))
 
 
+def test_with_the_users_own_host_key_both_charges_count():
+    from provider.remote import answer_cost
+
+    upstream = {"upstream_inference_cost": 0.03}
+    assert answer_cost({"cost": 0.03, "is_byok": False, "cost_details": upstream}) == 0.03
+    assert answer_cost({"cost": 0.001, "is_byok": True, "cost_details": upstream}) == pytest.approx(
+        0.031
+    )
+    assert answer_cost({}) == 0.0
+
+
 def test_spend_is_read_back_from_every_answer_on_disk(sample_query, tmp_path):
     from provider.local import run_rows
     from provider.remote import spent_usd
