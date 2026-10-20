@@ -124,6 +124,42 @@ def test_no_sidak_alarms_at_least_as_often_as_the_corrected_monitor(ablated):
         )
 
 
+def test_mcnemar_counts_only_the_discordant_runs():
+    from evaluate.metrics import mcnemar_exact
+
+    both = [True] * 50
+    m = mcnemar_exact(both + [True] * 8 + [False] * 5, both + [False] * 8 + [False] * 5)
+    assert (m["only_a"], m["only_b"]) == (8, 0)
+    assert m["p"] == pytest.approx(2 * 0.5**8)
+    assert mcnemar_exact([True, False], [False, True])["p"] == 1.0
+    assert mcnemar_exact([True, True], [True, True]) == {"only_a": 0, "only_b": 0, "p": 1.0}
+    with pytest.raises(ValueError, match="unpaired"):
+        mcnemar_exact([True], [True, False])
+
+
+def test_every_row_is_paired_with_the_frozen_monitor_run_for_run(ablated):
+    by = {r["config"]: r for r in ablated["summary"]}
+    for row in ablated["summary"]:
+        for r in row["by_condition"].values():
+            assert len(r["runs_alarmed"]) == r["n_runs"]
+            assert sum(r["runs_alarmed"]) == r["detected"]
+    paired = {t["config"]: t for t in ablated["paired"]}
+    assert set(paired) == set(by) - {"frozen"}
+    for cond, m in paired["baseline_no_sidak"]["by_condition"].items():
+        assert m["only_a"] == 0, cond  # lower thresholds alarm on a superset of runs
+        extra = by["baseline_no_sidak"]["by_condition"][cond]["detected"]
+        assert m["only_b"] == extra - by["frozen"]["by_condition"][cond]["detected"]
+
+
+def test_one_example_stream_per_condition_with_its_thresholds(ablated):
+    streams = ablated["example_streams"]
+    assert set(streams) == set(ablated["conditions"])
+    for stream in streams.values():
+        lengths = {len(v) for v in stream["scores"].values()}
+        assert len(lengths) == 1 and 0 < stream["onset"] < lengths.pop()
+        assert set(NAMES) <= set(stream["thresholds"])
+
+
 def test_a_bootstrap_that_does_not_reproduce_the_freeze_is_refused(synthetic):
     from evaluate.ablation import run_ablation
     from settings import get_settings
