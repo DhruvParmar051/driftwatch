@@ -167,9 +167,14 @@ def test_spend_is_read_back_from_every_answer_on_disk(sample_query, tmp_path):
     from provider.remote import spent_usd
 
     client = _client(lambda r: httpx.Response(200, json=_answer(cost=0.25)))
-    run_rows(client, [_row(sample_query)], tmp_path / "api001" / "results.jsonl", concurrency=1)
-    local = tmp_path / "r001" / "results.jsonl"
-    local.parent.mkdir()
+    run_rows(
+        client,
+        [_row(sample_query)],
+        tmp_path / "api" / "rounds" / "a001" / "results.jsonl",
+        concurrency=1,
+    )
+    local = tmp_path / "rounds" / "r001" / "results.jsonl"
+    local.parent.mkdir(parents=True)
     local.write_text(
         json.dumps({"custom_id": "x", "response": {"usage": {}}, "error": None}) + "\n"
     )
@@ -196,3 +201,94 @@ def test_the_remote_key_never_appears_in_the_settings_repr(monkeypatch):
         assert "sk-secret-value" not in repr(get_settings())
     finally:
         get_settings.cache_clear()
+
+
+def _rows(sample_query, n: int) -> list[dict]:
+    from provider.expand import build_chat_row
+
+    qs = [sample_query.model_copy(update={"query_id": f"gsm8k_{i:05d}"}) for i in range(n)]
+    return [build_chat_row(q, 0, DEP["model"], "U1", "a003", "sys", 1, 0.7, 64) for q in qs]
+
+
+def test_a_failed_round_resumes_exactly_where_it_stopped(sample_query, tmp_path):
+    from provider.collect import read_completions
+    from provider.local import generate_round
+    from provider.remote import RemoteError
+
+    rows = _rows(sample_query, 6)
+    round_dir, out = tmp_path / "rounds" / "a003", tmp_path / "completions.parquet"
+    sent = []
+
+    def flaky(request: httpx.Request) -> httpx.Response:
+        sent.append(json.loads(request.content)["seed"])
+        if len(sent) > 3:
+            return httpx.Response(402, json={"error": {"message": "out of credit"}})
+        return httpx.Response(200, json=_answer())
+
+    kwargs = {
+        "round_id": "a003",
+        "condition": "U1",
+        "model_id": DEP["model"],
+        "digest": "vendor/model-0731@host/fp8",
+        "digest_source": "pinned",
+        "concurrency": 1,
+    }
+    with pytest.raises(RemoteError, match="402"):
+        generate_round(_client(flaky), rows, round_dir, out, **kwargs)
+    first = (round_dir / "results.jsonl").read_text().splitlines()
+    assert len(first) == 3 and not out.exists()  # nothing half-appended
+
+    resent = []
+
+    def healthy(request: httpx.Request) -> httpx.Response:
+        resent.append(json.loads(request.content)["seed"])
+        return httpx.Response(200, json=_answer())
+
+    generate_round(_client(healthy), rows, round_dir, out, **kwargs)
+    done = [
+        json.loads(line)["custom_id"]
+        for line in (round_dir / "results.jsonl").read_text().splitlines()
+    ]
+    assert len(resent) == 3 and not set(resent) & set(sent[:3])  # only the missing rows
+    assert sorted(done) == sorted(r["custom_id"] for r in rows)  # each once, none twice
+    assert len(read_completions(out)) == 6
+
+    generate_round(_client(healthy), rows, round_dir, out, **kwargs)
+    assert len(resent) == 3 and len(read_completions(out)) == 6  # a rerun sends and appends nothing
+
+
+def test_the_api_study_is_fully_pinned_and_varies_one_thing_per_fault():
+    from typing import get_args
+
+    from settings import Condition, load_api_study, load_remote_config
+
+    study = load_api_study()
+    deps = load_remote_config()["deployments"]
+    rounds = study["rounds"]
+    assert set(rounds) == {"healthy", "F7", "U1", "Q1"}
+    assert set(rounds) <= set(get_args(Condition))
+    assert len({r["round_id"] for r in rounds.values()}) == 4
+    healthy, update, quant = (deps[rounds[c]["deployment"]] for c in ("healthy", "U1", "Q1"))
+    assert rounds["F7"]["deployment"] == rounds["healthy"]["deployment"]
+    assert rounds["F7"]["seeds"] == "f7" and rounds["healthy"]["seeds"] == "healthy"
+    # U1 changes only the model version; Q1 only the host and its precision.
+    assert update["model"] != healthy["model"]
+    assert (update["provider"], update["quantization"]) == (
+        healthy["provider"],
+        healthy["quantization"],
+    )
+    assert quant["model"] == healthy["model"] and quant["quantization"] != healthy["quantization"]
+    assert rounds["healthy"]["questions"] == "all"
+    assert all(rounds[c]["questions"] == "fault" for c in ("F7", "U1", "Q1"))
+
+
+def test_fault_rounds_wait_for_the_frozen_study_thresholds(tmp_path, monkeypatch):
+    from typer.testing import CliRunner
+
+    import settings
+    from cli import app
+
+    monkeypatch.setattr(settings, "DATA_DIR", tmp_path)
+    result = CliRunner().invoke(app, ["remote-generate", "--condition", "U1"])
+    assert result.exit_code != 0
+    assert "frozen study thresholds" in result.output
