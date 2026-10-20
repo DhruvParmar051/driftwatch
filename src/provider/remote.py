@@ -74,6 +74,19 @@ def pin_digest(dep: dict[str, Any]) -> str:
     return f"{dep['model']}@{dep['provider']}"
 
 
+def answer_cost(usage: dict[str, Any]) -> float:
+    """Dollars one answer cost, whoever billed it.
+
+    Through the router's own capacity, `cost` is the whole charge. With the
+    user's own host key (`is_byok`), `cost` is only the router's fee and the
+    host bills `cost_details.upstream_inference_cost` separately - both count.
+    """
+    cost = float(usage.get("cost") or 0.0)
+    if usage.get("is_byok"):
+        cost += float((usage.get("cost_details") or {}).get("upstream_inference_cost") or 0.0)
+    return cost
+
+
 def spent_usd(root: Path) -> float:
     """Total cost recorded on every answer of every round under `root`, at any depth.
 
@@ -87,7 +100,7 @@ def spent_usd(root: Path) -> float:
                 if '"cost"' not in line:
                     continue
                 usage = ((json.loads(line).get("response") or {}).get("usage")) or {}
-                total += float(usage.get("cost") or 0.0)
+                total += answer_cost(usage)
     return total
 
 
@@ -202,7 +215,7 @@ class RemoteClient:
     def _check(self, custom_id: str, payload: dict[str, Any]) -> None:
         """Refuse an answer from another host or with reasoning; book its cost."""
         usage = payload.get("usage") or {}
-        cost = float(usage.get("cost") or 0.0)
+        cost = answer_cost(usage)
         with self._lock:
             self._spent += cost
         served = payload.get("provider")
