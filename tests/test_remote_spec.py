@@ -127,6 +127,20 @@ def test_rate_limits_are_retried_not_recorded(sample_query, monkeypatch):
     assert line["response"]["choices"][0]["message"]["content"] == "42"
 
 
+def test_retries_back_off_patiently_then_stop_the_round(sample_query, monkeypatch):
+    import provider.remote as remote
+
+    waits: list[float] = []
+    monkeypatch.setattr(remote.time, "sleep", waits.append)
+    with pytest.raises(remote.RemoteError, match="429"):
+        _client(lambda r: httpx.Response(429, json={"error": "busy"})).post_row(_row(sample_query))
+    assert len(waits) == remote._RETRIES - 1
+    assert waits == sorted(waits[:4]) + waits[4:]  # doubling at first
+    assert waits[0] >= remote._BACKOFF_S
+    assert max(waits) <= remote._BACKOFF_MAX_S * 1.25
+    assert sum(waits) >= 600  # about ten minutes before a row gives up
+
+
 def test_a_refused_request_is_never_recorded_as_the_models_answer(sample_query, tmp_path):
     from provider.local import run_rows
     from provider.remote import RemoteError
