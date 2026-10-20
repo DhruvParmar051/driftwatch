@@ -1242,11 +1242,11 @@ def remote_check() -> None:
     router's current price, and the total recorded on disk against the cap.
     Sends no chat request, so it costs nothing.
     """
-    from provider.remote import RemoteError, spent_usd
+    from provider.remote import RemoteError
     from settings import load_remote_config
 
     cfg = load_remote_config()
-    spent = spent_usd(_rounds_dir())
+    spent = _remote_spent()
     ok = True
     for name in cfg["deployments"]:
         client = _remote_client(name, spent)
@@ -1281,7 +1281,6 @@ def remote_pilot(
     from corpus.splits import fault_subset
     from provider.expand import expand_queries
     from provider.local import run_rows
-    from provider.remote import spent_usd
     from settings import get_settings, load_remote_config, system_prompt_for_condition
 
     s = get_settings()
@@ -1290,7 +1289,7 @@ def remote_pilot(
         if len(by_slice[q.slice]) < per_slice:
             by_slice[q.slice].append(q)
     queries = [q for qs in by_slice.values() for q in qs]
-    client = _remote_client(deployment, spent_usd(_rounds_dir()))
+    client = _remote_client(deployment, _remote_spent())
     pin = client.resolve(deployment)
     rows = expand_queries(
         queries,
@@ -1322,7 +1321,88 @@ def remote_pilot(
     for answers in (6_000, 26_000):
         typer.echo(f"  -> {answers:,} answers at this mean: ~${cost / n * answers:.2f}")
     cap = load_remote_config()["budget_usd"]
-    typer.echo(f"  spent so far ${spent_usd(_rounds_dir()):.4f} of the ${cap:.2f} cap")
+    typer.echo(f"  spent so far ${_remote_spent():.4f} of the ${cap:.2f} cap")
+
+
+@app.command("remote-generate")
+def remote_generate(
+    condition: str = typer.Option(
+        ..., help="A round of config/api_study.yaml: healthy, F7, U1, Q1."
+    ),
+    concurrency: int = typer.Option(
+        None, help="Requests in flight; default from config/remote.yaml."
+    ),
+) -> None:
+    """Generate one round of the hosted-API study (Stage 7r), resumable (SPENDS).
+
+    Rerun the exact same command after any failure - a rate limit that outlasts
+    the retries, a dropped connection, the spending cap: answers already on
+    disk are kept and only the rest are sent. When every row is answered the
+    round is reconciled (C10) and appended once to the study's own
+    completions.parquet under config/api_study.yaml's `data_dir`.
+
+    F7, U1 and Q1 refuse to start until the study's thresholds are frozen
+    (the pre-registration's order: calibrate on healthy first).
+    """
+    from corpus.build import read_queries
+    from corpus.splits import fault_subset
+    from provider.expand import expand_queries
+    from provider.local import generate_round
+    from settings import (
+        F7_SEED_BASE,
+        get_settings,
+        load_api_study,
+        load_remote_config,
+        system_prompt_for_condition,
+    )
+
+    s = get_settings()
+    study = load_api_study()
+    if condition not in study["rounds"]:
+        raise typer.BadParameter(f"{condition!r} is not a round of config/api_study.yaml")
+    spec = study["rounds"][condition]
+    data_dir = _api_data_dir()
+    if condition != "healthy":
+        missing = [p.name for p in _api_frozen(data_dir) if not p.exists()]
+        if missing:
+            raise typer.BadParameter(
+                f"{condition} waits for the frozen study thresholds ({', '.join(missing)} "
+                f"under {data_dir}) - calibrate and freeze on the healthy round first"
+            )
+    queries = read_queries(_api_queries(data_dir))
+    selected = queries if spec["questions"] == "all" else fault_subset(queries)
+    client = _remote_client(spec["deployment"], _remote_spent())
+    pin = client.resolve(spec["deployment"])
+    rows = expand_queries(
+        selected,
+        s.k,
+        pin.model_id,
+        condition,
+        spec["round_id"],
+        system_prompt_for_condition("healthy"),
+        F7_SEED_BASE if spec["seeds"] == "f7" else s.seed_base,
+        s.temperature,
+        s.max_tokens,
+    )
+    try:
+        generate_round(
+            client,  # type: ignore[arg-type]
+            rows,
+            data_dir / "rounds" / spec["round_id"],
+            data_dir / "completions.parquet",
+            round_id=spec["round_id"],
+            condition=condition,
+            model_id=pin.model_id,
+            digest=pin.digest,
+            digest_source=pin.digest_source,
+            concurrency=concurrency or load_remote_config()["concurrency"],
+        )
+    finally:
+        client.close()
+    typer.echo(
+        f"round {spec['round_id']} ({condition}, {pin.digest}) complete -> "
+        f"{data_dir / 'completions.parquet'}; spent ${_remote_spent():.4f}"
+    )
 
 
 @app.command()
@@ -1652,6 +1732,14 @@ def _resolve_model(model_id: str) -> ResolvedModel:
     return resolve_roles(_client(), roles[:1])[roles[0]]
 
 
+def _remote_spent() -> float:
+    """Dollars recorded on every remote answer of every study under the data root."""
+    from provider.remote import spent_usd
+    from settings import DATA_DIR
+
+    return spent_usd(DATA_DIR)
+
+
 def _remote_client(name: str, already_spent: float = 0.0) -> Any:
     """A RemoteClient pinned to one deployment. Needs DRIFTWATCH_REMOTE_* in .env."""
     from provider.remote import RemoteClient, deployment
@@ -1669,6 +1757,33 @@ def _remote_client(name: str, already_spent: float = 0.0) -> Any:
         budget_usd=load_remote_config()["budget_usd"],
         already_spent_usd=already_spent,
     )
+
+
+def _api_data_dir() -> Path:
+    """The hosted-API study's own data directory (config/api_study.yaml `data_dir`)."""
+    from settings import DATA_DIR, load_api_study
+
+    return DATA_DIR / load_api_study()["data_dir"]
+
+
+def _api_frozen(data_dir: Path) -> list[Path]:
+    """The frozen records the study's fault rounds wait for: v1 and v3."""
+    return [data_dir / "thresholds.json", data_dir / "thresholds_v3.json"]
+
+
+def _api_queries(data_dir: Path) -> Path:
+    """The study's copy of the shared corpus, made once and checked identical after."""
+    import shutil
+
+    from settings import DATA_DIR
+
+    src, dst = DATA_DIR / "queries.jsonl", data_dir / "queries.jsonl"
+    if not dst.exists():
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(src, dst)
+    elif dst.read_bytes() != src.read_bytes():
+        raise typer.BadParameter(f"{dst} differs from {src} - the study must use the same corpus")
+    return dst
 
 
 def _rounds_dir() -> Path:
