@@ -1234,6 +1234,97 @@ def pilot_f8(
     typer.echo(f"chosen: {chosen or 'NONE - no length-matched fault found'}")
 
 
+@app.command("remote-check")
+def remote_check() -> None:
+    """Check every pinned remote deployment is served, and show the spend so far (free).
+
+    Lists each deployment in config/remote.yaml with its endpoint and the
+    router's current price, and the total recorded on disk against the cap.
+    Sends no chat request, so it costs nothing.
+    """
+    from provider.remote import RemoteError, spent_usd
+    from settings import load_remote_config
+
+    cfg = load_remote_config()
+    spent = spent_usd(_rounds_dir())
+    ok = True
+    for name in cfg["deployments"]:
+        client = _remote_client(name, spent)
+        try:
+            pin = client.resolve(name)
+            typer.echo(f"ok    {name:<16} {pin.digest}  ({client.dep['quantization']})")
+        except RemoteError as exc:
+            ok = False
+            typer.echo(f"FAIL  {name:<16} {exc}")
+        finally:
+            client.close()
+    typer.echo(f"spent ${spent:.4f} of the ${cfg['budget_usd']:.2f} cap")
+    if not ok:
+        raise typer.Exit(1)
+
+
+@app.command("remote-pilot")
+def remote_pilot(
+    deployment: str = typer.Option(..., help="A deployment in config/remote.yaml."),
+    per_slice: int = typer.Option(2, help="Fault-subset questions per slice, one sample each."),
+    round_id: str = typer.Option("apipilot1", help="Round id; the checkpoint is kept."),
+) -> None:
+    """A few real answers from one pinned deployment, to measure tokens and cost (SPENDS).
+
+    Healthy prompt and seeds, one sample per question, a handful of questions
+    per slice. Checks every answer came from the pinned host without thinking,
+    and extrapolates the cost of a full round. Nothing enters completions.parquet.
+    """
+    from collections import defaultdict
+
+    from corpus.build import read_queries
+    from corpus.splits import fault_subset
+    from provider.expand import expand_queries
+    from provider.local import run_rows
+    from provider.remote import spent_usd
+    from settings import get_settings, load_remote_config, system_prompt_for_condition
+
+    s = get_settings()
+    by_slice: dict[str, list] = defaultdict(list)
+    for q in sorted(fault_subset(read_queries(s.queries_path)), key=lambda q: q.query_id):
+        if len(by_slice[q.slice]) < per_slice:
+            by_slice[q.slice].append(q)
+    queries = [q for qs in by_slice.values() for q in qs]
+    client = _remote_client(deployment, spent_usd(_rounds_dir()))
+    pin = client.resolve(deployment)
+    rows = expand_queries(
+        queries,
+        1,
+        pin.model_id,
+        "healthy",
+        round_id,
+        system_prompt_for_condition("healthy"),
+        s.seed_base,
+        s.temperature,
+        s.max_tokens,
+    )
+    checkpoint = _rounds_dir() / round_id / "results.jsonl"
+    try:
+        run_rows(client, rows, checkpoint, concurrency=4)  # type: ignore[arg-type]
+    finally:
+        client.close()
+    lines = [json.loads(line) for line in checkpoint.read_text(encoding="utf-8").splitlines()]
+    usage = [(ln["response"] or {}).get("usage") or {} for ln in lines]
+    cost = sum(float(u.get("cost") or 0.0) for u in usage)
+    tok_in = sum(int(u.get("prompt_tokens") or 0) for u in usage)
+    tok_out = sum(int(u.get("completion_tokens") or 0) for u in usage)
+    n = len(lines)
+    typer.echo(f"{deployment}: {n} answers from {pin.digest}")
+    typer.echo(
+        f"  tokens in {tok_in} (mean {tok_in / n:.0f}), out {tok_out} (mean {tok_out / n:.0f})"
+    )
+    typer.echo(f"  cost ${cost:.5f} (mean ${cost / n:.6f} per answer)")
+    for answers in (6_000, 26_000):
+        typer.echo(f"  -> {answers:,} answers at this mean: ~${cost / n * answers:.2f}")
+    cap = load_remote_config()["budget_usd"]
+    typer.echo(f"  spent so far ${spent_usd(_rounds_dir()):.4f} of the ${cap:.2f} cap")
+
+
 @app.command()
 def judge(
     completions: Path = typer.Option(..., help="Completions holding healthy and the faults."),
@@ -1559,6 +1650,25 @@ def _resolve_model(model_id: str) -> ResolvedModel:
     if not roles:
         raise RoleResolutionError(f"{model_id} is not configured in config/models.yaml")
     return resolve_roles(_client(), roles[:1])[roles[0]]
+
+
+def _remote_client(name: str, already_spent: float = 0.0) -> Any:
+    """A RemoteClient pinned to one deployment. Needs DRIFTWATCH_REMOTE_* in .env."""
+    from provider.remote import RemoteClient, deployment
+    from settings import get_settings, load_remote_config
+
+    s = get_settings()
+    if not s.remote_base_url or not s.remote_api_key:
+        raise typer.BadParameter(
+            "set DRIFTWATCH_REMOTE_BASE_URL and DRIFTWATCH_REMOTE_API_KEY in .env first"
+        )
+    return RemoteClient(
+        s.remote_base_url,
+        s.remote_api_key,
+        deployment(name),
+        budget_usd=load_remote_config()["budget_usd"],
+        already_spent_usd=already_spent,
+    )
 
 
 def _rounds_dir() -> Path:
