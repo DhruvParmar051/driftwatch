@@ -74,10 +74,14 @@ def pin_digest(dep: dict[str, Any]) -> str:
     return f"{dep['model']}@{dep['provider']}"
 
 
-def spent_usd(rounds_dir: Path) -> float:
-    """Total cost recorded on every answer under `rounds_dir` (local answers record none)."""
+def spent_usd(root: Path) -> float:
+    """Total cost recorded on every answer of every round under `root`, at any depth.
+
+    Pass the project's data root, so the cap covers every study at once (the
+    local rounds record no cost and add nothing).
+    """
     total = 0.0
-    for path in sorted(rounds_dir.glob("*/results.jsonl")):
+    for path in sorted(root.rglob("rounds/*/results.jsonl")):
         with path.open(encoding="utf-8") as fh:
             for line in fh:
                 if '"cost"' not in line:
