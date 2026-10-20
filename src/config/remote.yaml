@@ -1,0 +1,45 @@
+# ---------------------------------------------------------------------------
+# Remote deployments (provider.remote). Every one is PINNED: a model version
+# AND the single host that serves it, at a stated precision. A router such as
+# OpenRouter otherwise spreads one model's requests over many hosts with
+# different quantisations, and that mix would be a fault of its own.
+#
+#   model          the router's model id, version included
+#   provider       the router's endpoint tag (host/precision); fallbacks off
+#   provider_name  what the router reports as the serving host - every answer
+#                  is checked against it, and a mismatch stops the round
+#   quantization   the precision the host states, recorded with the round
+#
+# Thinking is switched off on every request, and any answer that reports
+# reasoning tokens stops the round: the healthy model must not think on some
+# rows and not others.
+#
+# `budget_usd` is a hard cap on everything ever spent through the router, read
+# back from the cost recorded on every answer on disk. A request that would
+# start past it is refused before it is sent.
+# ---------------------------------------------------------------------------
+
+budget_usd: 40.0
+concurrency: 16
+
+deployments:
+  # DeepSeek V4 Flash as served before the 17 Oct 2026 update.
+  flash_0731_fp8:
+    model: deepseek/deepseek-v4-flash-0731
+    provider: deepinfra/fp8
+    provider_name: DeepInfra
+    quantization: fp8
+
+  # The same product after the update (V4.1 Flash 1017), same host and precision.
+  flash_1017_fp8:
+    model: deepseek/deepseek-v4.1-flash-1017
+    provider: deepinfra/fp8
+    provider_name: DeepInfra
+    quantization: fp8
+
+  # The pre-update model from a host that serves it at 4-bit.
+  flash_0731_fp4:
+    model: deepseek/deepseek-v4-flash-0731
+    provider: open-inference/fp4
+    provider_name: OpenInference
+    quantization: fp4
