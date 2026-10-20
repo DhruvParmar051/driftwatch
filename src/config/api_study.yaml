@@ -1,0 +1,70 @@
+# ---------------------------------------------------------------------------
+# Hosted-API study (Stage 7r). PRE-REGISTERED: fixed and committed before any
+# round below is run and before any answer is read.
+#
+# The question. Every fault so far is a model we swapped ourselves on one
+# laptop. Here the deployed model is a commercial hosted model, and the main
+# fault is a REAL update its maker shipped: DeepSeek replaced V4 Flash (0731)
+# with V4.1 Flash (1017) behind the same `deepseek-flash` name on 17 Oct 2026.
+# A router still serves both versions from the same host at the same
+# precision, so the update can be replayed exactly like F1-F5.
+#
+# Conditions (config/remote.yaml pins the model version, host and precision):
+#
+#   healthy  V4 Flash 0731, DeepInfra fp8   every question (calib, heldout, fault)
+#   F7       the same, fresh seeds          fault questions - the negative control
+#   U1       V4.1 Flash 1017, DeepInfra fp8 fault questions - the real update
+#   Q1       V4 Flash 0731, OpenInference fp4  fault questions - the same model
+#            served at 4-bit by another host (a real precision change)
+#   F4, F6   derived from healthy answers exactly as in the local study
+#
+# Everything else is the local study's, unchanged: the corpus and its splits,
+# the healthy system prompt on every round, k = 4 samples at temperature 0.7,
+# max_tokens 512, the seeds (F7 its own base), thinking switched off, the five
+# signals with S7 embedded locally (nomic-embed-text v1.5), W = 200, S = 50,
+# the 0.1% family-wise budget with the Sidak split, 20,000 bootstrap windows
+# with the GPD tail, and 200 replay streams per condition.
+#
+# Analysis, fixed here:
+#   - calibrate on this study's healthy calib answers only, under v3
+#     (per_slice_capped, primary) and v1 (pooled), and freeze both before any
+#     U1, Q1 or F7 answer is generated;
+#   - report detection of U1 and Q1, and alarms on F4, F6, F7, before the
+#     onset and on the real heldout windows, with Wilson intervals; the
+#     ablation and its paired tests as for the local study;
+#   - no threshold, signal or setting is changed after a U1 or Q1 answer is
+#     read. Whatever U1 and Q1 show is reported, including a miss.
+#
+# Hosted-API caveats recorded with the results: a host may not honour seeds
+# exactly, and the version and precision are the host's own labels. Every
+# answer records the host that served it; any other host stops the round.
+#
+# All of this study's data lives under `data_dir`, apart from the shared
+# corpus: its own completions, embeddings, thresholds and reports, so nothing
+# mixes with the local study. Bump `version` on ANY edit.
+# ---------------------------------------------------------------------------
+
+version: "1.0.0"
+data_dir: api
+
+rounds:
+  healthy:
+    deployment: flash_0731_fp8
+    round_id: a001
+    questions: all
+    seeds: healthy
+  F7:
+    deployment: flash_0731_fp8
+    round_id: a002
+    questions: fault
+    seeds: f7
+  U1:
+    deployment: flash_1017_fp8
+    round_id: a003
+    questions: fault
+    seeds: healthy
+  Q1:
+    deployment: flash_0731_fp4
+    round_id: a004
+    questions: fault
+    seeds: healthy
