@@ -56,7 +56,10 @@ always within one window of the onset. False alarms before the onset run at
 the \emph{mix} of user questions changes. Scoring each task family against its
 own reference, with weights capped by its actual share, cuts this to 3.5\% and
 18.5\% while keeping detection; the second harmless shift was never seen during
-design. We also report where the monitor fails. Faults confined to a small
+design. A reference-free LLM judge that grades every answer, thresholded the
+same way, catches the smaller sibling in only 49.5\% of streams and the other
+model family in 5.5\%, and alarms before the onset at four times the budget.
+We also report where the monitor fails. Faults confined to a small
 classification or extraction slice go unseen. Doses of 10\% or less are mostly missed;
 a Page--Hinkley test raises the catch rate at 10\% about 2.5--3 times. Recalibrated on
 four other deployed models, detection holds for all of them, and every check passes on
@@ -110,7 +113,8 @@ RQ1--RQ3 are answered in \S\ref{sec:results}, the limits of RQ2 in
   most of this confusion. It was judged on a second shift that was unseen
   during design (\S\ref{sec:results}).
   \item An analysis of the monitor's limits: dose--response, faults on a single
-  slice, sequential tests, a one-answer variant, an embedding-MMD baseline, and a
+  slice, sequential tests, a one-answer variant, an embedding-MMD baseline, a
+  pre-registered LLM-as-judge baseline, and a
   transfer to four other deployed models, which holds on three vendors' models and
   partly fails on an older Gemma
   (\S\ref{sec:robust}). The code, frozen threshold records and analysis
@@ -139,6 +143,13 @@ both sequential tests on the same statistics in \S\ref{sec:seq}.
 The maximum mean discrepancy~\citep{gretton2012kernel} is a natural label-free
 baseline on sentence embeddings. We include it and find that it is sensitive to
 model faults but cannot tell them apart from harmless shifts.
+
+\paragraph{LLM-as-a-judge}
+A strong model grading answers agrees well with human preferences, but it favours
+longer answers and grades maths and reasoning poorly~\citep{zheng2023judging}.
+A judge is the obvious alternative to a label-free monitor, at the cost of one
+more inference per answer. We run one as a baseline under our calibration and
+find that it inherits exactly these biases as a monitor.
 
 \paragraph{Consistency as a quality signal}
 Agreement among sampled answers predicts correctness: self-consistency improves
@@ -389,7 +400,8 @@ F6 alarms rise to 44.5\% and F7 to 4\%.
 \begin{table}[t]
   \centering\small
   \caption{Ablation under \vthree{} (\% of 200 runs alarmed). Every row is
-  recalibrated to the same family-wise budget except ``no Šidák''.}
+  recalibrated to the same family-wise budget except ``no Šidák''. The LLM
+  judge grades every answer with \texttt{qwen2.5:14b} (\S\ref{sec:judge}).}
   \label{tab:ablation}
   \setlength{\tabcolsep}{4.5pt}
   \begin{tabular}{lrrrr|rrr|r}
@@ -406,6 +418,7 @@ F6 alarms rise to 44.5\% and F7 to 4\%.
     mean-length baseline & 71.0 & 95.5 & 100.0 & 97.5 & 100.0 & 100.0 & 1.0 & 0.198\% \\
     no Šidák & 99.0 & 98.5 & 100.0 & 97.0 & 9.0 & 44.5 & 4.0 & 0.175\% \\
     embedding MMD & 97.5 & 87.5 & 92.5 & 83.5 & 99.0 & 98.0 & 7.5 & 0.524\% \\
+    LLM judge & 93.0 & 49.5 & 91.0 & 5.5 & 4.5 & 18.0 & 6.0 & 0.437\% \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -417,6 +430,26 @@ bandwidth and the same budget. It catches 83.5--97.5\% of real faults, but also
 98--99\% of harmless shifts, and its pre-onset rate is five times the budget. A
 two-sample test on embeddings answers ``did the traffic change?'', which is not
 the question we need answered.
+
+\paragraph{An LLM judge grades style, not correctness}
+\label{sec:judge}
+A second model grades every answer from 1 to 10, reference-free: it sees the
+request and the answer, never the ground truth or the system prompt. The judge is
+\texttt{qwen2.5:14b} at temperature 0, from a family that none of the graded
+models belong to. The prompt, parse rule and window statistic (healthy mean grade
+minus the window's, one-sided) were fixed and committed before any grade was read.
+It graded all 50{,}000 answers of the healthy model, F1--F3, F5 and F7; 18 replies
+held no grade and are counted, not dropped. Thresholded and replayed exactly like
+the other rows, the judge catches F1 (93.0\%) and F3 (91.0\%) but only 49.5\% of
+F2 streams and 5.5\% of F5, against 98.5\% and 95.5\% for the monitor, and its
+pre-onset rate is 4.4 times the budget. The mean grades show why. Against the
+healthy answers to the same questions, the prompt edit F3 costs 1.80 points on
+\textsf{eli5} and 0.77 on \textsf{gsm8k}, because it changes length and style. The
+weaker siblings lose up to 1.68 points on \textsf{triviaqa}, where the judge can
+check a fact itself, but on \textsf{gsm8k} they score \emph{higher} than the healthy
+model, and F5 gains 0.04 overall. The judge sees a weaker model only where it can
+check the answer without a reference. It also costs one judge inference per answer,
+which the monitor does not need.
 
 \section{Robustness and limits}
 \label{sec:robust}
@@ -594,7 +627,10 @@ Unlabelled production traffic would need a slice classifier, whose errors we hav
 not studied. (iv) \vtwo{} and \vthree{} were designed after seeing \vone{} on F4.
 F6 was unseen, but there is only one such shift; the 50 random mixtures are
 supporting evidence, not a pre-registered test. (v) Accuracy on \textsf{jsonx} is
-ill-defined under the strict key, so we exclude it from means.
+ill-defined under the strict key, so we exclude it from means. (vi) The judge
+baseline uses one 14B judge without references; a larger judge, or one given
+reference answers, may close part of the gap, at a higher cost and with
+information a label-free setting lacks.
 
 \paragraph{Practical guidance}
 Use per-slice scoring with capped weights. Calibrate on at least 1{,}250 healthy
@@ -615,7 +651,7 @@ statistics, and each new deployment needs a stability check at calibration time.
 \paragraph{Reproducibility}
 Every frozen record stores its thresholds, signal list, scoring version and data
 hashes, and every analysis verifies it before running. All rounds, analyses and
-model digests are scripted, and the suite of 282 tests includes 62 that gate the
+model digests are scripted, and the suite of 303 tests includes 62 that gate the
 leakage and calibration rules.
 
 \bibliographystyle{abbrvnat}
