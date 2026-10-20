@@ -127,6 +127,21 @@ def test_rate_limits_are_retried_not_recorded(sample_query, monkeypatch):
     assert line["response"]["choices"][0]["message"]["content"] == "42"
 
 
+@pytest.mark.parametrize(
+    "failed",
+    [{"error": {"code": 502, "message": "upstream error"}}, {"id": "gen-1", "usage": {}}],
+)
+def test_a_200_that_carries_an_upstream_failure_is_retried_not_refused(
+    sample_query, monkeypatch, failed
+):
+    import provider.remote as remote
+
+    monkeypatch.setattr(remote.time, "sleep", lambda s: None)
+    calls = iter([httpx.Response(200, json=failed), httpx.Response(200, json=_answer())])
+    line = _client(lambda r: next(calls)).post_row(_row(sample_query))
+    assert line["response"]["provider"] == "Host"
+
+
 def test_retries_back_off_patiently_then_stop_the_round(sample_query, monkeypatch):
     import provider.remote as remote
 
