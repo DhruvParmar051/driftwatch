@@ -1,0 +1,37 @@
+{
+  "judge_model": "qwen2.5:14b-instruct-q4_K_M",
+  "judge_digest": "7cdf5a0187d5c58cc5d369b255592f7841d1c4696d45a8c8a9489440385b22f6",
+  "judge_config_version": "1.0.0",
+  "by_condition": {
+    "F1": {
+      "graded": 6000,
+      "mean_score": 7.327333333333334,
+      "unscored": 0
+    },
+    "F2": {
+      "graded": 6000,
+      "mean_score": 7.632666666666666,
+      "unscored": 0
+    },
+    "F3": {
+      "graded": 6000,
+      "mean_score": 7.267877979663277,
+      "unscored": 1
+    },
+    "F5": {
+      "graded": 6000,
+      "mean_score": 7.826833333333333,
+      "unscored": 0
+    },
+    "F7": {
+      "graded": 6000,
+      "mean_score": 7.790430143381127,
+      "unscored": 2
+    },
+    "healthy": {
+      "graded": 20000,
+      "mean_score": 7.863847885914436,
+      "unscored": 15
+    }
+  }
+}
