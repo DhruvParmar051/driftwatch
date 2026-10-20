@@ -31,6 +31,10 @@ Configurations, fixed here before any real run:
   only_<s>        <s> alone at the budget (m = 1);
   baseline_*      as above, at the budget.
 
+Every row is also compared with `frozen` run for run (exact McNemar on the
+runs where exactly one of the two alarmed): the rows share their streams, so
+the paired test is the right one, not two independent rates.
+
 Every threshold is read off ONE set of bootstrap windows - the calibration's
 own, same count and seed - so configurations differ in their signals and
 nothing else. Nothing here is frozen or replaces a frozen record; these are
@@ -50,7 +54,7 @@ from corpus.schemas import Completion, Query, SignalScore
 from corpus.splits import fault_subset
 from detect.calibrate import bootstrap_scores, sidak_alpha, tail_threshold
 from evaluate.judge import LLM_JUDGE
-from evaluate.metrics import wilson_interval
+from evaluate.metrics import mcnemar_exact, wilson_interval
 from evaluate.pipeline import (
     DEFAULT_MIN_PREFIX,
     DEFAULT_REPLAY_WINDOWS,
@@ -298,6 +302,7 @@ def run_ablation(
         _summarise_config(config, thresholds[config.name], records, heldout_scores)
         for config in configs
     ]
+    streams = example_streams(records, replay_thresholds)
     log.info("ablation.done", configs=len(configs), runs=len(records))
     return {
         "family_wise_budget": s.false_alarm_budget,
@@ -312,7 +317,51 @@ def run_ablation(
         "thresholds": thresholds,
         "heldout_windows": len(next(iter(heldout_scores.values()))),
         "summary": rows,
+        "paired": paired_tests(rows),
+        "example_streams": streams,
     }
+
+
+def paired_tests(rows: list[dict[str, Any]], reference: str = "frozen") -> list[dict[str, Any]]:
+    """Every other row against `reference` on the same runs, per condition (exact McNemar).
+
+    `only_a` counts runs where the reference alarmed and the row did not,
+    `only_b` the reverse.
+    """
+    ref = next(r for r in rows if r["config"] == reference)
+    out = []
+    for row in rows:
+        if row["config"] == reference:
+            continue
+        out.append(
+            {
+                "config": row["config"],
+                "by_condition": {
+                    cond: mcnemar_exact(
+                        ref["by_condition"][cond]["runs_alarmed"], r["runs_alarmed"]
+                    )
+                    for cond, r in row["by_condition"].items()
+                },
+            }
+        )
+    return out
+
+
+def example_streams(records: list[dict], thresholds: dict[str, float]) -> dict[str, Any]:
+    """The first replay run of each condition, every signal's window scores and threshold.
+
+    For figures: one stream drawn as the monitor saw it, onset included.
+    """
+    out: dict[str, Any] = {}
+    for r in records:
+        if r["condition"] in out:
+            continue
+        out[r["condition"]] = {
+            "onset": r["onset"],
+            "thresholds": {n: thresholds[n] for n in r["scores"] if n in thresholds},
+            "scores": {n: [float(v) for v in vs] for n, vs in r["scores"].items()},
+        }
+    return out
 
 
 def ablation_markdown(results: dict[str, Any], scoring: str) -> str:
@@ -359,7 +408,23 @@ def ablation_markdown(results: dict[str, Any], scoring: str) -> str:
         + f" | {r['pre_onset_false_alarm_rate']:.5f} | {r['heldout_alarms']}/{results['heldout_windows']} |\n"
         for r in results["summary"]
     )
-    return head + body + head2 + body2
+    head3 = (
+        "\n## Paired against the frozen monitor\n\n"
+        "Same runs, exact McNemar test. Cell: runs only the frozen monitor alarmed on : "
+        "runs only this row alarmed on, then the two-sided p-value.\n\n"
+        "| configuration | " + " | ".join(conds) + " |\n"
+        "|---|" + "---|" * len(conds) + "\n"
+    )
+    body3 = "".join(
+        f"| {t['config']} | "
+        + " | ".join(
+            f"{m['only_a']}:{m['only_b']} p={m['p']:.2g}"
+            for m in (t["by_condition"][c] for c in conds)
+        )
+        + " |\n"
+        for t in results.get("paired", [])
+    )
+    return head + body + head2 + body2 + (head3 + body3 if results.get("paired") else "")
 
 
 # ── internals ───────────────────────────────────────────────────────────────
@@ -396,10 +461,12 @@ def _summarise_config(
     for cond in sorted({r["condition"] for r in records}):
         rs = [r for r in records if r["condition"] == cond]
         latencies = []
+        alarmed = []
         for r in rs:
             fired = _fired(r["scores"], thresholds)
             onset = r["onset"]
             hits = np.flatnonzero(fired[onset:])
+            alarmed.append(int(len(hits) > 0))
             if len(hits):
                 latencies.append(int(hits[0]))
             pre_windows += onset
@@ -412,6 +479,7 @@ def _summarise_config(
             "ci_lo": lo,
             "ci_hi": hi,
             "latency_median": float(np.median(latencies)) if latencies else None,
+            "runs_alarmed": alarmed,
         }
         if cond not in HARMLESS:
             fault_latencies += latencies
