@@ -15,7 +15,7 @@
 \usepackage{multirow}
 \usepackage{enumitem}
 \usepackage{amsmath,amssymb}
-\usepackage{xcolor}
+\usepackage[table]{xcolor}
 \usepackage{pgfplots}
 \pgfplotsset{compat=1.17}
 \usepackage[colorlinks=true,linkcolor=black,citecolor=blue!50!black,urlcolor=blue!50!black]{hyperref}
@@ -427,9 +427,39 @@ F6 alarms rise to 44.5\% and F7 to 4\%.
 An unbiased RBF-kernel MMD$^2$~\citep{gretton2012kernel} is computed on per-question
 mean embeddings against 500 calibration questions, with a median-heuristic
 bandwidth and the same budget. It catches 83.5--97.5\% of real faults, but also
-98--99\% of harmless shifts, and its pre-onset rate is five times the budget. A
+98--99\% of harmless shifts, and its pre-onset rate is five times the budget.
+Paired with the monitor on the same streams, it misses 22, 14 and 24 more F2, F3
+and F5 streams ($p\le 1.2\times10^{-4}$) and alarms on 191 and 159 more F4 and F6
+streams. A
 two-sample test on embeddings answers ``did the traffic change?'', which is not
 the question we need answered.
+
+\begin{figure}[t]
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[
+      width=0.75\textwidth, height=3.9cm,
+      xlabel={window relative to the onset (stride 50 queries)},
+      ylabel={statistic / threshold},
+      xmin=-23, xmax=16, ymin=-0.5, ymax=2.3, grid=major, grid style={gray!20},
+      legend style={font=\scriptsize, at={(0.02,0.97)}, anchor=north west, draw=none, fill=white, fill opacity=0.8, text opacity=1},
+      tick label style={font=\scriptsize}, label style={font=\small},
+    ]
+      \addplot[thick, black] coordinates {(-23,0.75) (-22,0.70) (-21,0.59) (-20,0.56) (-19,0.59) (-18,0.60) (-17,0.64) (-16,0.75) (-15,0.66) (-14,0.58) (-13,0.51) (-12,0.58) (-11,0.49) (-10,0.59) (-9,0.61) (-8,0.77) (-7,0.72) (-6,0.75) (-5,0.66) (-4,0.70) (-3,0.55) (-2,0.63) (-1,0.68) (0,0.90) (1,1.12) (2,1.49) (3,1.75) (4,1.70) (5,1.82) (6,1.69) (7,1.83) (8,1.87) (9,1.93) (10,2.03) (11,1.99) (12,1.88) (13,1.93) (14,1.94) (15,2.04) (16,1.97)};
+      \addlegendentry{monitor (largest of five signals)}
+      \addplot[thick, red!70!black, dashed] coordinates {(-23,-0.32) (-22,-0.32) (-21,-0.23) (-20,-0.22) (-19,0.27) (-18,0.72) (-17,0.79) (-16,0.75) (-15,0.57) (-14,0.44) (-13,0.10) (-12,0.38) (-11,0.33) (-10,0.29) (-9,0.27) (-8,-0.01) (-7,0.19) (-6,0.11) (-5,0.17) (-4,0.19) (-3,0.13) (-2,0.15) (-1,0.16) (0,0.44) (1,0.21) (2,-0.03) (3,-0.06) (4,-0.05) (5,0.14) (6,0.32) (7,0.39) (8,0.15) (9,0.08) (10,-0.07) (11,-0.05) (12,0.11) (13,0.28) (14,0.53) (15,0.41) (16,0.13)};
+      \addlegendentry{LLM judge}
+      \addplot[gray, densely dotted, forget plot] coordinates {(-23,1) (16,1)};
+      \draw[gray] (axis cs:0,-0.5) -- (axis cs:0,2.3);
+      \node[anchor=west, font=\scriptsize, gray!70!black] at (axis cs:0.3,2.1) {onset};
+    \end{axis}
+  \end{tikzpicture}
+  \caption{One replayed F5 stream under \vthree{} (the first of 200). Each line is
+  its alarm statistic divided by its threshold, so an alarm is a value above 1. The
+  monitor crosses one window after the onset, driven by S1 length; the judge never
+  does. The same stream, thresholds and budget apply to both.}
+  \label{fig:stream}
+\end{figure}
 
 \paragraph{An LLM judge grades style, not correctness}
 \label{sec:judge}
@@ -448,8 +478,12 @@ healthy answers to the same questions, the prompt edit F3 costs 1.80 points on
 weaker siblings lose up to 1.68 points on \textsf{triviaqa}, where the judge can
 check a fact itself, but on \textsf{gsm8k} they score \emph{higher} than the healthy
 model, and F5 gains 0.04 overall. The judge sees a weaker model only where it can
-check the answer without a reference. It also costs one judge inference per answer,
-which the monitor does not need.
+check the answer without a reference (Appendix~\ref{app:judge};
+Figure~\ref{fig:stream} shows one F5 stream). Paired on the same streams with an
+exact McNemar test, the monitor alarms on every fault stream the judge alarms on,
+and on 12, 98, 17 and 180 more for F1, F2, F3 and F5 ($p\le 5\times10^{-4}$); the
+judge adds 12 false alarms on F7 ($p=5\times10^{-4}$). Holding the judge to the
+budget would only raise its threshold and lower its detection further.
 
 \section{Robustness and limits}
 \label{sec:robust}
@@ -526,6 +560,7 @@ cannot see a fault that does not change the surface of the answers. This is the
 clearest limit of our approach.
 
 \subsection{One answer per query}
+\label{sec:oneanswer}
 Sampling $k=4$ answers quadruples the serving cost. Dropping to one answer
 removes S3 and leaves four signals. Under \vthree{}, detection of real faults
 stays at 94--98.5\% and the pre-onset false-alarm rate stays within budget (0.047\%).
@@ -632,6 +667,29 @@ baseline uses one 14B judge without references; a larger judge, or one given
 reference answers, may close part of the gap, at a higher cost and with
 information a label-free setting lacks.
 
+\paragraph{Cost}
+Table~\ref{tab:cost} compares what each monitor adds to serving. The monitor needs
+no second language model: with $k=4$ it samples three more answers per query, and
+the one-answer variant (\S\ref{sec:oneanswer}) samples none. Both embed each
+answer with a 137M-parameter model. The judge needs a 14B-parameter model call for
+every answer it grades; our 50{,}000 grades took about 4.5 hours on one machine.
+
+\begin{table}[h]
+  \centering\small
+  \caption{Extra work per served answer, and whether labels are needed.}
+  \label{tab:cost}
+  \begin{tabular}{lll}
+    \toprule
+    monitor & extra inference per answer & labels \\
+    \midrule
+    ours, $k=4$ & 3 more samples + 4 embeddings (137M) & no \\
+    ours, one answer & 1 embedding (137M) & no \\
+    LLM judge & 1 call to a 14B judge & no \\
+    labelled evaluation & a scheduled benchmark run & yes \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
 \paragraph{Practical guidance}
 Use per-slice scoring with capped weights. Calibrate on at least 1{,}250 healthy
 queries per deployment and validate on a held-out split before freezing. Pair the
@@ -651,7 +709,7 @@ statistics, and each new deployment needs a stability check at calibration time.
 \paragraph{Reproducibility}
 Every frozen record stores its thresholds, signal list, scoring version and data
 hashes, and every analysis verifies it before running. All rounds, analyses and
-model digests are scripted, and the suite of 303 tests includes 62 that gate the
+model digests are scripted, and the suite of 306 tests includes 62 that gate the
 leakage and calibration rules.
 
 \bibliographystyle{abbrvnat}
@@ -716,6 +774,32 @@ leakage and calibration rules.
     F1 & 91.0 (14.4) & 47.5 (24.5) & 66.5 (28.2) & 0.5 (5.0) & 32.0 & 96.5 & 2.0 \\
     F2 & 86.0 (7.5) & 78.0 (15.1) & 34.0 (10.6) & 2.5 (9.7) & 85.0 & 95.0 & 1.0 \\
     F5 & 50.5 (6.0) & 0.5 (0.8) & 2.0 (8.1) & 1.5 (1.5) & 0.5 & 96.5 & 3.5 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\clearpage
+\section{Judge grades per slice}
+\label{app:judge}
+\begin{table}[!h]
+  \centering\small
+  \caption{Mean judge grade (1--10) of the healthy model's answers to the fault
+  questions, and each condition's change from it on the same questions. Red: the
+  judge grades the condition lower; blue: higher. F3 changes style; F1, F2 and F5
+  are weaker models; F7 is the healthy model on fresh seeds.}
+  \begin{tabular}{lrrrrrr}
+    \toprule
+    slice & healthy & F1 & F2 & F3 & F5 & F7 \\
+    \midrule
+    \textsf{gsm8k} & 8.52 & \cellcolor{blue!4}$+0.13$ & \cellcolor{blue!6}$+0.17$ & \cellcolor{red!26}$-0.77$ & \cellcolor{blue!6}$+0.18$ & $+0.01$ \\
+    \textsf{triviaqa} & 7.43 & \cellcolor{red!56}$-1.68$ & \cellcolor{red!26}$-0.77$ & $-0.01$ & \cellcolor{blue!9}$+0.26$ & $-0.02$ \\
+    \textsf{squad2} & 6.61 & \cellcolor{red!18}$-0.54$ & $-0.07$ & \cellcolor{blue!6}$+0.19$ & \cellcolor{blue!4}$+0.12$ & $+0.00$ \\
+    \textsf{banking77} & 8.06 & \cellcolor{red!11}$-0.32$ & \cellcolor{red!10}$-0.30$ & $-0.05$ & \cellcolor{red!4}$-0.11$ & $-0.01$ \\
+    \textsf{xsum} & 7.93 & \cellcolor{red!11}$-0.33$ & \cellcolor{red!3}$-0.09$ & \cellcolor{red!4}$-0.12$ & $+0.04$ & $+0.01$ \\
+    \textsf{eli5} & 7.99 & \cellcolor{red!8}$-0.23$ & \cellcolor{red!3}$-0.08$ & \cellcolor{red!60}$-1.80$ & $-0.06$ & $+0.01$ \\
+    \textsf{jsonx} & 8.08 & \cellcolor{red!11}$-0.32$ & \cellcolor{blue!3}$+0.09$ & \cellcolor{red!9}$-0.28$ & \cellcolor{red!22}$-0.67$ & $+0.00$ \\
+    \midrule
+    all & 7.79 & \cellcolor{red!15}$-0.46$ & \cellcolor{red!5}$-0.16$ & \cellcolor{red!17}$-0.52$ & $+0.04$ & $+0.00$ \\
     \bottomrule
   \end{tabular}
 \end{table}
