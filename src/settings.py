@@ -31,7 +31,21 @@ DATA_DIR: Path = PROJECT_ROOT / "data"
 Slice = Literal["gsm8k", "triviaqa", "squad2", "banking77", "xsum", "eli5", "jsonx"]
 Split = Literal["calib", "heldout", "fault"]
 Condition = Literal[
-    "healthy", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "H2", "H3", "H4", "H5"
+    "healthy",
+    "F1",
+    "F2",
+    "F3",
+    "F4",
+    "F5",
+    "F6",
+    "F7",
+    "F8",
+    "H2",
+    "H3",
+    "H4",
+    "H5",
+    "U1",
+    "Q1",
 ]
 
 SLICES: tuple[str, ...] = ("gsm8k", "triviaqa", "squad2", "banking77", "xsum", "eli5", "jsonx")
@@ -367,6 +381,13 @@ def load_extension_prompts() -> dict:
 def load_judge_config() -> dict:
     """Return config/judge.yaml: the pre-registered LLM-as-judge baseline."""
     with (CONFIG_DIR / "judge.yaml").open() as fh:
+        return yaml.safe_load(fh)
+
+
+@lru_cache(maxsize=1)
+def load_api_study() -> dict:
+    """Return config/api_study.yaml: the pre-registered study on a hosted API (Stage 7r)."""
+    with (CONFIG_DIR / "api_study.yaml").open() as fh:
         return yaml.safe_load(fh)
 
 
