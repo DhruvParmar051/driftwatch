@@ -20,7 +20,9 @@
 # ---------------------------------------------------------------------------
 
 budget_usd: 40.0
-concurrency: 16
+# Requests in flight. The shared hosts rate-limit bursts; a few at a time
+# with patient retries finishes sooner than many that keep being refused.
+concurrency: 6
 
 deployments:
   # DeepSeek V4 Flash as served before the 17 Oct 2026 update.
