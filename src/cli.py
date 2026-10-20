@@ -1743,9 +1743,13 @@ def _remote_spent() -> float:
 
 def _remote_client(name: str, already_spent: float = 0.0) -> Any:
     """A RemoteClient pinned to one deployment. Needs DRIFTWATCH_REMOTE_* in .env."""
+    import logging
+
     from provider.remote import RemoteClient, deployment
     from settings import get_settings, load_remote_config
 
+    # One line per request would bury the progress lines; refusals are retried anyway.
+    logging.getLogger("httpx").setLevel(logging.WARNING)
     s = get_settings()
     if not s.remote_base_url or not s.remote_api_key:
         raise typer.BadParameter(
