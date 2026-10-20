@@ -201,6 +201,15 @@ class RemoteClient:
                 continue
             if resp.status_code == 200:
                 payload = resp.json()
+                if _failed_upstream(payload):
+                    # The host failed after the router accepted the request: the
+                    # 200 carries an error and no host, nothing the model wrote.
+                    if attempt == _RETRIES:
+                        raise RemoteError(
+                            f"{custom_id}: upstream kept failing: {str(payload)[:300]}"
+                        )
+                    time.sleep(_backoff(attempt))
+                    continue
                 self._check(custom_id, payload)
                 return {"custom_id": custom_id, "response": payload, "error": None}
             if resp.status_code in _TRANSIENT_STATUS and attempt < _RETRIES:
@@ -241,6 +250,13 @@ class RemoteClient:
         if resp.status_code != 200:
             raise RemoteError(f"GET {url} -> {resp.status_code}: {resp.text[:300]}")
         return resp.json()
+
+
+def _failed_upstream(payload: dict[str, Any]) -> bool:
+    """A 200 that is not an answer: an error body, or no host and no choices."""
+    if payload.get("error"):
+        return True
+    return payload.get("provider") is None and not payload.get("choices")
 
 
 def _backoff(attempt: int) -> float:
