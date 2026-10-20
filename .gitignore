@@ -16,9 +16,12 @@ data/logs/
 data/batches/
 data/results/
 data/report*/
+# The hosted-API study (config/api_study.yaml) keeps the same layout one level down.
+data/api/*
 
 # NEVER ignore the frozen thresholds: they are the experimental record (C4).
 !data/thresholds*.json
+!data/api/thresholds*.json
 
 .env
 
