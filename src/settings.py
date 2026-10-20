@@ -151,6 +151,17 @@ class Settings(BaseSettings):
     base_url: str = Field(description="OpenAI-compatible batch endpoint root, e.g. https://host/v1")
     api_key: str = Field(description="Bearer token for the batch endpoint.")
     request_timeout_s: float = 60.0
+
+    # ── Remote API (OpenRouter-style router; optional) ─────────────────────
+    # Used only by the remote-* commands (provider.remote). Like the backend
+    # above they have no default URL in the source tree; leave both unset and
+    # nothing remote can run.
+    remote_base_url: str | None = Field(
+        default=None, description="OpenAI-compatible router root, e.g. https://host/api/v1"
+    )
+    remote_api_key: str | None = Field(
+        default=None, repr=False, description="Bearer token for the remote router."
+    )
     poll_interval_s: float = 60.0
     poll_timeout_s: float = 24 * 3600.0
 
@@ -356,6 +367,13 @@ def load_extension_prompts() -> dict:
 def load_judge_config() -> dict:
     """Return config/judge.yaml: the pre-registered LLM-as-judge baseline."""
     with (CONFIG_DIR / "judge.yaml").open() as fh:
+        return yaml.safe_load(fh)
+
+
+@lru_cache(maxsize=1)
+def load_remote_config() -> dict:
+    """Return config/remote.yaml: the pinned remote deployments and the spending cap."""
+    with (CONFIG_DIR / "remote.yaml").open() as fh:
         return yaml.safe_load(fh)
 
 
