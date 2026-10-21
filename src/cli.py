@@ -1425,7 +1425,9 @@ def remote_generate(
         None, help="Requests in flight; default from config/remote.yaml."
     ),
     study: str = typer.Option(
-        "api_study", help="api_study (Stage 7r) or chat_study (Stage 7u, DRIFTWATCH_STUDY=chat)."
+        "api_study",
+        help="api_study (7r), chat_study (7u, DRIFTWATCH_STUDY=chat), or a paired-monitor "
+        "reference round: reference_api, reference_chat (7v).",
     ),
 ) -> None:
     """Generate one round of a hosted study (Stages 7r, 7u), resumable (SPENDS).
@@ -1457,7 +1459,7 @@ def remote_generate(
         raise typer.BadParameter(f"{condition!r} is not a round of config/{study}.yaml")
     spec = spec_all["rounds"][condition]
     data_dir = _api_data_dir(study)
-    if condition != "healthy":
+    if condition != "healthy" and spec_all.get("requires_freeze", True):
         missing = [p.name for p in _api_frozen(data_dir, study) if not p.exists()]
         if missing:
             raise typer.BadParameter(
@@ -1467,6 +1469,8 @@ def remote_generate(
     queries = read_queries(_api_queries(data_dir, study))
     if spec["questions"] == "all":
         selected = queries
+    elif spec["questions"] == "reference":
+        selected = [q for q in queries if q.split != "fault"]
     elif study == "api_study":
         selected = fault_subset(queries)
     else:
@@ -1774,6 +1778,7 @@ def _round_rows(condition: str, round_id: str) -> tuple[list[dict], str]:
         F7_SEED_BASE,
         FIFTH_HEALTHY,
         FOURTH_HEALTHY,
+        REFERENCE,
         SECOND_HEALTHY,
         THIRD_HEALTHY,
         get_settings,
@@ -1794,8 +1799,9 @@ def _round_rows(condition: str, round_id: str) -> tuple[list[dict], str]:
     queries = read_queries(s.queries_path)
     if condition in ("healthy", THIRD_HEALTHY, FOURTH_HEALTHY, FIFTH_HEALTHY):
         selected = queries
-    elif condition == SECOND_HEALTHY:
-        # The fault questions are F5's round already: same model, prompt and seeds.
+    elif condition in (SECOND_HEALTHY, REFERENCE):
+        # H2: the fault questions are F5's round already, same model, prompt and
+        # seeds. R: the fault questions are F7's round already, same seeds.
         selected = [q for q in queries if q.split != "fault"]
     else:
         selected = fault_subset(queries)
@@ -1806,7 +1812,7 @@ def _round_rows(condition: str, round_id: str) -> tuple[list[dict], str]:
         condition,
         round_id,
         system_prompt_for_condition(condition),
-        F7_SEED_BASE if condition == "F7" else s.seed_base,
+        F7_SEED_BASE if condition in ("F7", REFERENCE) else s.seed_base,
         s.temperature,
         s.max_tokens,
     )
