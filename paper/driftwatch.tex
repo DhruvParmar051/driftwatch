@@ -683,6 +683,16 @@ update from one provider. Its host honours seeds only approximately, version and
 precision are the host's own labels, and Q1 changes the host as well as the
 precision. Its pre-onset false-alarm rate sits at the budget rather than below it.
 
+\paragraph{From alarm to action}
+An alarm reports change, not harm. Two follow-ups separate them while the
+reference model can still be asked (Appendix~\ref{app:triage}). Re-asking it the
+window's questions needs no labels: under a harmless shift the answers do not
+change, which would dismiss every pooled \vone{} alarm on F4 and F6, and under a
+model change agreement between samples moves the way accuracy did (down 0.09 and
+0.12 under F1 and F2, up 0.04 under U1). Grading 100 paired answers per alarm
+confirms harm for 98\% of F1 and 85\% of F2 alarms and never reports the wrong
+direction, but is inconclusive on the small F3 and F5 drops.
+
 \paragraph{Cost}
 Table~\ref{tab:cost} (Appendix~\ref{app:cost}) compares what each monitor adds to serving. The monitor needs
 no second language model: with $k=4$ it samples three more answers per query, and
@@ -910,6 +920,53 @@ time, before trusting the frozen thresholds.
   alarms 3--6 times the budget and 17.5\% alarms on the fresh-seed control.}
   \label{fig:dose}
 \end{figure}
+
+\section{From alarm to action}
+\label{app:triage}
+Every alarm recorded in the main replays (200 streams per condition) is followed
+up in two ways, with the design fixed before either was run. The \emph{readout}
+compares the condition's answers with the reference model's answers to the same
+questions, using every sample: the change in mean length, in mean agreement among
+the $k=4$ samples (S3's measure), and in parse failures. It reads no label. F4 and
+F6 reuse healthy answers, so their readout is zero by construction; re-asking the
+reference model would give fresh samples, whose change F7 measures (length within
+0.3\%, agreement within 0.003). The \emph{check} draws $n$ questions per alarm,
+seeded by the stream, from the gradeable slices (\textsf{gsm8k}, \textsf{triviaqa},
+\textsf{squad2}, \textsf{banking77}), grades sample 0 of both models, and applies
+an exact two-sided McNemar test at $\alpha=0.05$: harm, improvement or no clear
+change. Table~\ref{tab:triage} gives \vthree{}'s alarms and the counts for
+\vone{} on the harmless shifts. Across all 2{,}868 alarms under \vone{} and \vthree{}, at
+both $n$, the check never returned the wrong direction: no harm verdict on U1, F4, F6, F7 or Q1, and no
+improvement verdict on a fault.
+
+\begin{table}[h]
+  \centering\small
+  \caption{Readout and check after each alarm, \vthree{}. Length and agreement:
+  change against the reference model on the same questions (no labels). Accuracy:
+  change on all gradeable fault questions, sample 0, with the paired McNemar $p$.
+  Check: harm\,/\,improvement verdicts among the alarms when $n$ graded pairs are
+  read per alarm. Top: local study; bottom: hosted API.}
+  \label{tab:triage}
+  \begin{tabular}{lrrrrrcc}
+    \toprule
+    condition & alarms & length & agreement & accuracy & $p$ & check $n{=}50$ & check $n{=}100$ \\
+    \midrule
+    F1 & 198 & $-4.0\%$ & $-0.088$ & $-19.1$ & $10^{-29}$ & 152\,/\,0 & 194\,/\,0 \\
+    F2 & 197 & $-9.2\%$ & $-0.122$ & $-11.2$ & $10^{-16}$ & 71\,/\,0 & 167\,/\,0 \\
+    F3 & 199 & $-71.0\%$ & $-0.003$ & $-3.5$ & $7\cdot10^{-5}$ & 3\,/\,0 & 16\,/\,0 \\
+    F5 & 191 & $-17.8\%$ & $-0.016$ & $-4.7$ & $3\cdot10^{-4}$ & 13\,/\,0 & 32\,/\,0 \\
+    F4 (\vone{}: 196) & 7 & $0$ & $0$ & $0$ & 1 & 0\,/\,0 & 0\,/\,0 \\
+    F6 (\vone{}: 200) & 37 & $0$ & $0$ & $0$ & 1 & 0\,/\,0 & 0\,/\,0 \\
+    F7 & 0 & $-0.1\%$ & $-0.001$ & $-0.8$ & 0.2 & -- & -- \\
+    \midrule
+    U1 & 187 & $-7.5\%$ & $+0.043$ & $+4.9$ & $8\cdot10^{-5}$ & 0\,/\,10 & 0\,/\,37 \\
+    Q1 & 2 & $-0.1\%$ & $+0.006$ & $+0.1$ & 1 & 0\,/\,0 & 0\,/\,0 \\
+    F7 & 3 & $+0.3\%$ & $+0.003$ & $+0.5$ & 0.7 & 0\,/\,0 & 0\,/\,0 \\
+    F4 (\vone{}: 198) & 17 & $0$ & $0$ & $0$ & 1 & 0\,/\,0 & 0\,/\,0 \\
+    F6 (\vone{}: 200) & 58 & $0$ & $0$ & $0$ & 1 & 0\,/\,0 & 0\,/\,0 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
 
 \section{Half-sample intervals}
 \label{app:half}
