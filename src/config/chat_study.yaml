@@ -1,0 +1,103 @@
+# ---------------------------------------------------------------------------
+# Real-traffic study (Stage 7u). PRE-REGISTERED: fixed and committed before
+# the source file is downloaded, before any question is drawn and before any
+# answer exists.
+#
+# The question. Every stream so far mixes seven benchmark tasks in fixed
+# proportions. Real deployments see whatever users type. Here the questions
+# are first user turns from public chatbot logs (WildChat-1M), the deployed
+# model is the hosted DeepSeek V4 Flash 0731, and the fault is the same real
+# update as the hosted-API study (U1, V4.1 Flash 1017). Does the monitor still
+# catch the update when the traffic is real, and stay quiet on the same model?
+#
+# Source: allenai/WildChat-1M on Hugging Face, ODC-BY, revision pinned below,
+# ONE shard only. Nothing but the first user turn's text is kept: no country,
+# state, IP hash, header, timestamp or model field is read into the corpus.
+#
+# Questions, in this order, from the pinned shard:
+#   1. conversation language is English, and the conversation is not marked
+#      toxic or redacted;
+#   2. its first turn is the user's, is English, not toxic, not redacted, and
+#      not flagged by the logged OpenAI moderation result for that turn;
+#   3. the text, stripped, is 20-2,000 characters;
+#   4. one prompt per template: prompts whose first 100 characters agree after
+#      lowercasing and collapsing whitespace keep only the first by
+#      conversation_hash (WildChat repeats long templates thousands of times);
+#   5. 3,000 drawn uniformly without replacement (corpus seed), ids chat_00000
+#      to chat_02999 in drawn order, then split at random (corpus seed):
+#      1,500 calib, 600 heldout, 900 fault.
+#
+# Conditions (config/remote.yaml pins the version, host and precision; these
+# are the hosted-API study's deployments, unchanged):
+#
+#   healthy  V4 Flash 0731, DeepInfra fp8     every question
+#   F7       the same, fresh seeds            fault questions - negative control
+#   U1       V4.1 Flash 1017, DeepInfra fp8   fault questions - the real update
+#
+# Generation as in the hosted-API study: the healthy system prompt, k = 4
+# samples at temperature 0.7, max_tokens 512, thinking off, pinned host.
+#
+# Monitor. Real traffic has no task labels, so there is ONE slice ("chat") and
+# a window is 200 chat questions (DRIFTWATCH_STUDY=chat). Pooled and per-slice
+# scoring coincide with one slice: one monitor, recorded as pooled. Signals:
+# length_ks, self_consistency (word-overlap agreement, as for the open-ended
+# slices), lexical_ttr and embedding_shift (nomic-embed-text v1.5, local).
+# label_entropy is left out before any answer exists: it reads banking77
+# intents only and has nothing to read here. m = 4, the 0.1% family-wise
+# budget with the Sidak split, W = 200, S = 50, 20,000 bootstrap windows with
+# the GPD tail, 200 replay streams of 40 windows per condition, onset >= 10.
+#
+# Analysis, fixed here:
+#   - calibrate on this study's healthy calib answers only and freeze before
+#     any F7 or U1 answer is generated;
+#   - report detection of U1, alarms on F7, false alarms before the onset and
+#     on the real heldout windows, each with a Wilson interval, plus the
+#     per-signal detection rates and the label-free readout (Stage 7t);
+#   - no threshold, signal or setting changes after an F7 or U1 answer is
+#     read. Whatever U1 shows is reported, including a miss.
+#
+# Caveats recorded with the results: the host honours seeds only
+# approximately; a chat question can be anything, including requests the
+# model declines; there are no labels, so this study measures detection and
+# false alarms, not accuracy.
+#
+# All of this study's data lives under `data_dir`, separate from the other
+# studies. Bump `version` on ANY edit.
+# ---------------------------------------------------------------------------
+
+version: "1.0.0"
+data_dir: chat
+
+corpus:
+  source: allenai/WildChat-1M
+  revision: 7d6490e462285cf85d91eabea0f9a954fbddcd1f
+  file: data/train-00000-of-00014.parquet
+  min_chars: 20
+  max_chars: 2000
+  template_prefix_chars: 100
+  n_questions: 3000
+  splits:
+    calib: 1500
+    heldout: 600
+    fault: 900
+
+monitor:
+  signals: [length_ks, self_consistency, lexical_ttr, embedding_shift]
+  scoring: pooled
+
+rounds:
+  healthy:
+    deployment: flash_0731_fp8
+    round_id: c001
+    questions: all
+    seeds: healthy
+  F7:
+    deployment: flash_0731_fp8
+    round_id: c002
+    questions: fault
+    seeds: f7
+  U1:
+    deployment: flash_1017_fp8
+    round_id: c003
+    questions: fault
+    seeds: healthy
