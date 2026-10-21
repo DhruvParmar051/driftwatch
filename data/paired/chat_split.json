@@ -1,0 +1,71 @@
+{
+  "thresholds": {
+    "length_ks": 0.081149781194984,
+    "agreement_gap": 0.032757824148780756,
+    "lexical_gap": 0.00735326778801373,
+    "embedding_gap": 0.05144746319611829
+  },
+  "per_signal_alpha": 0.00025009380472507114,
+  "family_wise_budget": 0.001,
+  "bootstrap_windows": 20000,
+  "calibration_seed": 11071987,
+  "tail_fits": {
+    "length_ks": {
+      "signal": "length_ks",
+      "threshold": 0.081149781194984,
+      "method": "pot_gpd",
+      "n_windows": 20000,
+      "alpha": 0.00025009380472507114,
+      "pot_threshold": 0.0625,
+      "pot_quantile": 0.99,
+      "n_exceedances": 194,
+      "gpd_shape": -0.17234398154078234,
+      "gpd_scale": 0.006873135148353889,
+      "bootstrap_max": 0.09000000000000008
+    },
+    "agreement_gap": {
+      "signal": "agreement_gap",
+      "threshold": 0.032757824148780756,
+      "method": "pot_gpd",
+      "n_windows": 20000,
+      "alpha": 0.00025009380472507114,
+      "pot_threshold": 0.0220332795582325,
+      "pot_quantile": 0.99,
+      "n_exceedances": 200,
+      "gpd_shape": 0.010984986088046378,
+      "gpd_scale": 0.0028490524760614623,
+      "bootstrap_max": 0.03842005490787905
+    },
+    "lexical_gap": {
+      "signal": "lexical_gap",
+      "threshold": 0.00735326778801373,
+      "method": "pot_gpd",
+      "n_windows": 20000,
+      "alpha": 0.00025009380472507114,
+      "pot_threshold": 0.005245062270939535,
+      "pot_quantile": 0.99,
+      "n_exceedances": 200,
+      "gpd_shape": -0.148586324848467,
+      "gpd_scale": 0.0007424219314510615,
+      "bootstrap_max": 0.008107087867952001
+    },
+    "embedding_gap": {
+      "signal": "embedding_gap",
+      "threshold": 0.05144746319611829,
+      "method": "pot_gpd",
+      "n_windows": 20000,
+      "alpha": 0.00025009380472507114,
+      "pot_threshold": 0.047457088893661625,
+      "pot_quantile": 0.99,
+      "n_exceedances": 200,
+      "gpd_shape": 0.03037914501844786,
+      "gpd_scale": 0.0010223604107462156,
+      "bootstrap_max": 0.05360931987870718
+    }
+  },
+  "study": "chat",
+  "design": "split",
+  "pairs_hash": "sha256:93725310f512095b4ac451c1f8d16a90e2111e25156cf021013b5c6ada52a3b1",
+  "git_commit": "0cc827869b4b",
+  "frozen_at": "2026-10-21T12:18:48.762797+00:00"
+}
