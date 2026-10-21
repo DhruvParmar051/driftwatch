@@ -169,7 +169,8 @@ class RemoteClient:
             "allow_fallbacks": False,
             "require_parameters": True,
         }
-        out["reasoning"] = {"enabled": False}
+        if self.dep.get("thinking_switch", True):
+            out["reasoning"] = {"enabled": False}
         out["usage"] = {"include": True}
         return out
 
