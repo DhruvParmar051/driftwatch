@@ -626,9 +626,9 @@ one window (Table~\ref{tab:api}). The update did not make the model worse: it is
 more accurate on every scored slice, by up to 8.6 points on \textsf{triviaqa}, and
 it answers differently, with \textsf{jsonx} answers a quarter as long, shorter
 explanations and longer summaries. S1 length catches it alone in 94.5\% of streams and S7 embedding shift
-in 84.5\%. This is the scope of \S\ref{sec:discussion} in practice: the monitor
-reports that the model behind the name changed, which no one announced, and leaves
-whether the change is welcome to a person. Q1 is the opposite case. The 4-bit
+in 84.5\%. The monitor reports that the model behind the name changed, which no
+one announced; whether the change is welcome is a separate question
+(\S\ref{sec:discussion}). Q1 is the opposite case. The 4-bit
 build answers like the 8-bit one (accuracy within 1.5 points, mean lengths nearly
 unchanged),
 and the monitor stays at the fresh-seed rate. The scoring result replicates:
@@ -637,9 +637,8 @@ pooled \vone{} alarms on harmless mix shifts in 99--100\% of streams, \vthree{} 
 alarm on 95.5--100\% of the harmless shifts. One result is weaker than locally:
 pre-onset false alarms under \vthree{} are 0.129\% (95\% interval 0.088--0.182\%),
 at rather than below the 0.1\% budget (0.080--0.165\% over ten calibration
-seeds), while the held-out windows stay quiet. The
-host honours seeds only approximately, so repeated answers vary more than on a
-local server, which calibration on one set of answers does not see.
+seeds), while the held-out windows stay quiet; the host honours seeds only
+approximately, so repeated answers vary more than calibration saw.
 
 \section{Discussion}
 \label{sec:discussion}
@@ -650,35 +649,37 @@ vocabulary and meaning. It does not detect changes in \emph{whether} answers are
 correct. Model swaps and prompt edits almost always change both, which is why the
 results in Table~\ref{tab:main} are strong. A fault that changes only correctness,
 such as a wrong intent label with identical surface form, is invisible to it.
-Within this scope, the design choices matter more than the choice of statistics:
-the per-slice reference and the family-wise budget are what turn a change detector
+Within this scope, the per-slice reference and the family-wise budget are what turn a change detector
 into a degradation detector.
 
+\paragraph{From alarm to action}
+An alarm reports change, not harm; while the reference model can still be
+asked, two follow-ups tell them apart (Appendix~\ref{app:triage}). Re-asking it the
+window's questions needs no labels: under a harmless shift the answers do not
+change, which would dismiss every pooled \vone{} alarm on F4 and F6, and under a
+model change agreement between samples moves the way accuracy did (down 0.09 and
+0.12 under F1 and F2, up 0.04 under U1). Grading 100 paired answers per alarm
+confirms harm for 98\% of F1 and 85\% of F2 alarms and never reports the wrong
+direction, but is inconclusive on the small F3 and F5 drops.
+
 \paragraph{Cost}
-Table~\ref{tab:cost} (Appendix~\ref{app:cost}) compares what each monitor adds to serving. The monitor needs
-no second language model: with $k=4$ it samples three more answers per query, and
-the one-answer variant (\S\ref{sec:oneanswer}) samples none. Both embed each
-answer with a 137M-parameter model. A judge needs a model call for every answer it
-grades: our 50{,}000 grades took about 4.5 hours on one machine with the 14B judge,
-and cost \$6.81 on a hosted GPU with the 72B one.
+The monitor needs no second language model (Table~\ref{tab:cost},
+Appendix~\ref{app:cost}): it samples three more answers per query (none in the
+one-answer variant, \S\ref{sec:oneanswer}) and embeds each with a 137M-parameter
+model. A judge calls a model per answer: 50{,}000 grades took 4.5 hours locally
+with the 14B judge and cost \$6.81 hosted with the 72B one.
 
 \paragraph{Practical guidance}
 Use per-slice capped scoring, calibrate on at least 1{,}250 healthy queries, check
-several bootstrap seeds and a held-out split before freezing, add a Page--Hinkley
+bootstrap seeds and a held-out split before freezing, add a Page--Hinkley
 test for slow faults, and do not rely on the monitor alone for classification slices.
 
 \section{Conclusion}
 A label-free monitor can detect real degradation of a deployed language model
-within one window of 200 queries, at a false-alarm rate set in advance. Doing so
-requires comparing each kind of question only with itself. Without that
-comparison, a monitor flags every change of topic. With it, the monitor stays
-quiet on most harmless shifts and still catches all four real faults we tested,
-and on a commercial API it noticed the provider's own unannounced update.
-Classification slices need signals tied to the label space, slow faults need
-sequential statistics, and each deployment needs a stability check at calibration. All rounds and analyses are scripted
-and verify their frozen records.
-
-
+within one window of 200 queries, at a false-alarm rate set in advance, provided
+each kind of question is compared only with itself. It stays quiet on most harmless shifts, catches all four real
+faults we tested and a provider's unannounced update, and a short follow-up
+tells whether a change is harm.
 
 \section*{Limitations}
 (i) Apart from \S\ref{sec:api}, all models are open-weight models served on one
@@ -917,6 +918,53 @@ time, before trusting the frozen thresholds.
   alarms 3--6 times the budget and 17.5\% alarms on the fresh-seed control.}
   \label{fig:dose}
 \end{figure*}
+
+\section{From alarm to action}
+\label{app:triage}
+Every alarm recorded in the main replays (200 streams per condition) is followed
+up in two ways, with the design fixed before either was run. The \emph{readout}
+compares the condition's answers with the reference model's answers to the same
+questions, using every sample: the change in mean length, in mean agreement among
+the $k=4$ samples (S3's measure), and in parse failures. It reads no label. F4 and
+F6 reuse healthy answers, so their readout is zero by construction; re-asking the
+reference model would give fresh samples, whose change F7 measures (length within
+0.3\%, agreement within 0.003). The \emph{check} draws $n$ questions per alarm,
+seeded by the stream, from the gradeable slices (\textsf{gsm8k}, \textsf{triviaqa},
+\textsf{squad2}, \textsf{banking77}), grades sample 0 of both models, and applies
+an exact two-sided McNemar test at $\alpha=0.05$: harm, improvement or no clear
+change. Table~\ref{tab:triage} gives \vthree{}'s alarms and the counts for
+\vone{} on the harmless shifts. Across all 2{,}868 alarms under \vone{} and \vthree{}, at
+both $n$, the check never returned the wrong direction: no harm verdict on U1, F4, F6, F7 or Q1, and no
+improvement verdict on a fault.
+
+\begin{table*}[h]
+  \centering\small
+  \caption{Readout and check after each alarm, \vthree{}. Length and agreement:
+  change against the reference model on the same questions (no labels). Accuracy:
+  change on all gradeable fault questions, sample 0, with the paired McNemar $p$.
+  Check: harm\,/\,improvement verdicts among the alarms when $n$ graded pairs are
+  read per alarm. Top: local study; bottom: hosted API.}
+  \label{tab:triage}
+  \begin{tabular}{lrrrrrcc}
+    \toprule
+    condition & alarms & length & agreement & accuracy & $p$ & check $n{=}50$ & check $n{=}100$ \\
+    \midrule
+    F1 & 198 & $-4.0\%$ & $-0.088$ & $-19.1$ & $10^{-29}$ & 152\,/\,0 & 194\,/\,0 \\
+    F2 & 197 & $-9.2\%$ & $-0.122$ & $-11.2$ & $10^{-16}$ & 71\,/\,0 & 167\,/\,0 \\
+    F3 & 199 & $-71.0\%$ & $-0.003$ & $-3.5$ & $7\cdot10^{-5}$ & 3\,/\,0 & 16\,/\,0 \\
+    F5 & 191 & $-17.8\%$ & $-0.016$ & $-4.7$ & $3\cdot10^{-4}$ & 13\,/\,0 & 32\,/\,0 \\
+    F4 (\vone{}: 196) & 7 & $0$ & $0$ & $0$ & 1 & 0\,/\,0 & 0\,/\,0 \\
+    F6 (\vone{}: 200) & 37 & $0$ & $0$ & $0$ & 1 & 0\,/\,0 & 0\,/\,0 \\
+    F7 & 0 & $-0.1\%$ & $-0.001$ & $-0.8$ & 0.2 & -- & -- \\
+    \midrule
+    U1 & 187 & $-7.5\%$ & $+0.043$ & $+4.9$ & $8\cdot10^{-5}$ & 0\,/\,10 & 0\,/\,37 \\
+    Q1 & 2 & $-0.1\%$ & $+0.006$ & $+0.1$ & 1 & 0\,/\,0 & 0\,/\,0 \\
+    F7 & 3 & $+0.3\%$ & $+0.003$ & $+0.5$ & 0.7 & 0\,/\,0 & 0\,/\,0 \\
+    F4 (\vone{}: 198) & 17 & $0$ & $0$ & $0$ & 1 & 0\,/\,0 & 0\,/\,0 \\
+    F6 (\vone{}: 200) & 58 & $0$ & $0$ & $0$ & 1 & 0\,/\,0 & 0\,/\,0 \\
+    \bottomrule
+  \end{tabular}
+\end{table*}
 
 \section{Half-sample intervals}
 \label{app:half}
