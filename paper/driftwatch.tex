@@ -57,14 +57,15 @@ the \emph{mix} of user questions changes. Scoring each task family against its
 own reference, with weights capped by its actual share, cuts this to 3.5\% and
 18.5\% while keeping detection; the second harmless shift was never seen during
 design. A reference-free LLM judge that grades every answer, thresholded the
-same way, catches the smaller sibling in only 49.5\% of streams and the other
-model family in 5.5\%, and alarms before the onset at four times the budget.
-We also report where the monitor fails. Faults confined to a small
-classification or extraction slice go unseen. Doses of 10\% or less are mostly missed;
-a Page--Hinkley test raises the catch rate at 10\% about 2.5--3 times. Recalibrated on
-four other deployed models, detection holds for all of them, and every check passes on
-the three from other vendors (Qwen, Llama, Phi); on an older Gemma, one signal's
-false-alarm rate does not hold.
+same way, catches the smaller sibling in 49.5\% of streams and the other model
+family in 5.5\% with a 14B judge, and in 90.5\% and 58.5\% with a 72B one. On a
+commercial hosted model, the monitor flags the provider's own silent update
+(DeepSeek V4 Flash to V4.1) in 93.5\% of streams, within one window, although the
+update improved accuracy, and stays quiet on a 4-bit build whose answers did not
+change. We also report where the monitor fails. Faults confined to a small
+classification or extraction slice go unseen, and doses of 10\% or less are
+mostly missed. Recalibrated on four other deployed models, detection holds for
+all of them; on an older Gemma, one signal's false-alarm rate does not hold.
 \end{abstract}
 
 \section{Introduction}
@@ -82,7 +83,7 @@ We ask a narrower question: \emph{can a monitor that sees only the model's answe
 to live traffic, with no labels, raise an alarm when quality drops, at a
 false-alarm rate fixed before deployment?} Three requirements make this harder
 than generic drift detection~\citep{gama2014survey,rabanser2019failing}, and with
-one more about generality they give our four research questions.
+two more about generality they give our five research questions.
 \begin{enumerate}[label=\textbf{RQ\arabic*}, leftmargin=*]
   \item \textbf{Calibrated alarms.} Does the monitor keep, on healthy traffic, the
   false-alarm rate it was calibrated to? A monitor that fires every few days is
@@ -95,9 +96,12 @@ one more about generality they give our four research questions.
   change of topic gives no useful signal.
   \item \textbf{Transfer.} Do RQ1--RQ3 still hold when the deployed model comes
   from another family, recalibrated but with nothing tuned?
+  \item \textbf{A real deployment.} Does the monitor notice an update that a
+  provider actually shipped, unannounced, behind a commercial API?
 \end{enumerate}
 RQ1--RQ3 are answered in \S\ref{sec:results}, the limits of RQ2 in
-\S\ref{sec:seq}--\ref{sec:slice}, and RQ4 in \S\ref{sec:transfer}.
+\S\ref{sec:seq}--\ref{sec:slice}, RQ4 in \S\ref{sec:transfer} and RQ5 in
+\S\ref{sec:api}.
 
 \paragraph{Contributions}
 \begin{itemize}
@@ -112,9 +116,12 @@ RQ1--RQ3 are answered in \S\ref{sec:results}, the limits of RQ2 in
   mix with degradation, and a per-slice scoring with capped weights that removes
   most of this confusion. It was judged on a second shift that was unseen
   during design (\S\ref{sec:results}).
+  \item A pre-registered study on a commercial hosted model, in which the
+  provider's own silent update is the fault and a 4-bit build from another host
+  a second one (\S\ref{sec:api}).
   \item An analysis of the monitor's limits: dose--response, faults on a single
-  slice, sequential tests, a one-answer variant, an embedding-MMD baseline, a
-  pre-registered LLM-as-judge baseline, and a
+  slice, sequential tests, a one-answer variant, an embedding-MMD baseline,
+  pre-registered LLM-as-judge baselines at 14B and 72B, and a
   transfer to four other deployed models, which holds on three vendors' models and
   partly fails on an older Gemma
   (\S\ref{sec:robust}). The code, frozen threshold records and analysis
@@ -401,7 +408,7 @@ F6 alarms rise to 44.5\% and F7 to 4\%.
   \centering\small
   \caption{Ablation under \vthree{} (\% of 200 runs alarmed). Every row is
   recalibrated to the same family-wise budget except ``no Šidák''. The LLM
-  judge grades every answer with \texttt{qwen2.5:14b} (\S\ref{sec:judge}).}
+  judges grade every answer with Qwen 2.5 at 14B or 72B (\S\ref{sec:judge}).}
   \label{tab:ablation}
   \setlength{\tabcolsep}{4.5pt}
   \begin{tabular}{lrrrr|rrr|r}
@@ -418,7 +425,8 @@ F6 alarms rise to 44.5\% and F7 to 4\%.
     mean-length baseline & 71.0 & 95.5 & 100.0 & 97.5 & 100.0 & 100.0 & 1.0 & 0.198\% \\
     no Šidák & 99.0 & 98.5 & 100.0 & 97.0 & 9.0 & 44.5 & 4.0 & 0.175\% \\
     embedding MMD & 97.5 & 87.5 & 92.5 & 83.5 & 99.0 & 98.0 & 7.5 & 0.524\% \\
-    LLM judge & 93.0 & 49.5 & 91.0 & 5.5 & 4.5 & 18.0 & 6.0 & 0.437\% \\
+    LLM judge, 14B & 93.0 & 49.5 & 91.0 & 5.5 & 4.5 & 18.0 & 6.0 & 0.437\% \\
+    LLM judge, 72B & 98.5 & 90.5 & 92.0 & 58.5 & 1.5 & 8.5 & 0.0 & 0.061\% \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -485,6 +493,17 @@ and on 12, 98, 17 and 180 more for F1, F2, F3 and F5 ($p\le 5\times10^{-4}$); th
 judge adds 12 false alarms on F7 ($p=5\times10^{-4}$). Holding the judge to the
 budget would only raise its threshold and lower its detection further.
 
+A larger judge closes part of the gap. We pre-registered a second version that
+changes only the judge, to Qwen 2.5 72B (same family, five times larger, fp8 on a
+hosted GPU), and graded the same 50{,}000 answers. It catches F2 in 90.5\% of
+streams and F5 in 58.5\%, stays within budget before the onset (0.061\%) and never
+alarms on F7; under \vthree{} it also alarms on F6 less than the monitor (8.5\%
+against 18.5\%). Paired on the same streams, the monitor still catches 16, 15 and
+74 more F2, F3 and F5 streams ($p\le 6\times10^{-5}$), while the judge alarms on
+20 fewer F6 streams (31 against 11, $p=0.003$). The larger judge is a strong
+baseline, but it misses two in five streams of a different model family, and it
+needs a 72B call for every answer (\$6.81 for these grades).
+
 \section{Robustness and limits}
 \label{sec:robust}
 
@@ -503,7 +522,7 @@ redundant.
 In practice, a fault may affect only part of the traffic (for example, a
 canary deployment) or arrive gradually. We mix a dose $d$ of faulty answers into
 the post-onset stream, or ramp it from 0 to 100\% over 30 windows
-(Figure~\ref{fig:dose}). The threshold monitor reliably catches doses of 25\% and
+(Appendix~\ref{app:dose}, Figure~\ref{fig:dose}). The threshold monitor reliably catches doses of 25\% and
 above, including the ramp. At 10\% it catches only 17.5--21\%, and at 5\% almost
 nothing. On the same statistics, standardised on healthy calibration streams, we
 set CUSUM~\citep{page1954continuous} and
@@ -515,7 +534,248 @@ the budget, because evaluation streams sit $+0.64$ standard deviations from
 calibration on S7, and CUSUM accumulates this offset. Page--Hinkley is the better
 companion; CUSUM needs a recalibrated reference before it is safe.
 
-\begin{figure}[t]
+
+
+\subsection{Faults confined to one slice}
+\label{sec:slice}
+If only one kind of question is routed to a bad model, the fault occupies 4--22\%
+of each window. Under \vthree{}, detection follows how visible the change is in
+that slice, not how large the accuracy drop is. Faults on long-form eli5 are
+caught in 95--97\% of streams and on gsm8k in 86--91\% (F1, F2), through length and
+lexical change. Triviaqa reaches 48--78\% and squad2 34--67\%. Banking77 and
+\textsf{jsonx} are blind spots ($\le$3.5\%) even when the accuracy drop is 9.7
+points: a wrong intent label looks just like a right one. A label-free monitor
+cannot see a fault that does not change the surface of the answers. This is the
+clearest limit of our approach.
+
+\subsection{One answer per query}
+\label{sec:oneanswer}
+Sampling $k=4$ answers quadruples the serving cost. Dropping to one answer
+removes S3 and leaves four signals. Under \vthree{}, detection of real faults
+stays at 94--98.5\% and the pre-onset false-alarm rate stays within budget (0.047\%).
+Under \vone{} it does not (0.65\%). The extra samples are therefore optional,
+not essential.
+
+\subsection{Calibration size and window size}
+Thresholds are stable from 50\% of the calibration questions up; smaller windows
+alarm sooner but double the F6 alarms, larger ones help at small doses
+(Appendix~\ref{app:sens}).
+
+\subsection{Other healthy models (RQ4)}
+\label{sec:transfer}
+Every result above treats one model as the deployment. To test transfer, we
+rerun the whole method with four other models as the healthy deployment, each on
+all 5{,}000 questions: \texttt{gemma3:12b} (an older Gemma generation) and three
+families from other vendors, \texttt{qwen2.5:14b}, \texttt{llama3.1:8b} and
+\texttt{phi4:14b}. The gemma3 round is part of the 64{,}000 answers above; the
+three others add 60{,}000 answers in three more rounds. For each deployment
+we recalibrate from scratch with the same signals, scoring and budget and tune
+nothing. The checks were committed before any of its calibration answers were
+read: F1 and F2 must be caught in at least 90\% of streams, false alarms must stay
+within twice the budget, and the real held-out windows must stay quiet. For the
+three non-Gemma deployments, F1 or F2 counts as ``worse'' only if its oracle
+accuracy is below the deployment's; both are, for all three. Swaps to
+\texttt{gemma4:26b} (G4) and \texttt{gemma3:12b} (G3) are reported as changes,
+not judged, since neither is clearly worse than every deployment.
+
+Detection transfers to every deployment (Appendix~\ref{app:transfer},
+Table~\ref{tab:transfer}): F1 and F2 are caught in 95.5--99.5\% of streams under
+both designs, and the swaps G4 and G3 in 91.0--98.5\%. The scoring result also
+transfers: pooled \vone{} alarms on harmless mix shifts in 95--100\% of streams for
+every deployment, and \vthree{} cuts F4 to 1--4\% and F6 to 19--56\%. On the three
+non-Gemma deployments every pre-registered check passes, with pre-onset false alarms
+of 0.047--0.176\%. The one failure is \texttt{gemma3:12b} under \vthree{} (0.90\%
+false alarms, 2 of 17 held-out windows), caused by one signal, S4 lexical diversity,
+being less stable for that model than its calibration bootstrap suggests; we report
+it rather than drop S4 after seeing the result.
+
+\section{A real update on a hosted API (RQ5)}
+\label{sec:api}
+Every fault above is a model we swapped ourselves. On 17 October 2026 DeepSeek
+replaced V4 Flash (0731) with V4.1 Flash (1017) behind the same API name, and a
+model router still served both versions from one host at the same precision
+(fp8). We pre-registered a study with this hosted model as the deployment: the
+healthy round is V4 Flash 0731 on all 5{,}000 questions, F7 the same model on fresh
+seeds, U1 the update, and Q1 the old model served at 4-bit by another host. Every
+request is pinned to its host with fallbacks off, thinking is switched off, and an
+answer from any other host is refused. Corpus, prompts, sampling, signals, budget
+and replay are the local study's; thresholds were frozen on this study's healthy
+calibration answers before any U1, Q1 or F7 answer existed. One amendment, also
+committed before any Q1 answer, moved Q1 to another 4-bit host when the first
+stopped serving the model. The 38{,}000 answers cost \$1.30.
+
+\begin{table}[t]
+  \centering\small
+  \caption{The hosted-API study: runs alarmed out of 200 and median latency in
+  windows, with frozen thresholds. Accuracy changes are against the healthy answers
+  to the same questions, on the four scored slices.}
+  \label{tab:api}
+  \setlength{\tabcolsep}{5pt}
+  \begin{tabular}{llcc}
+    \toprule
+    condition & what changed & \vone{} pooled & \vthree{} capped \\
+    \midrule
+    U1 & DeepSeek's update; accuracy $+0.3$ to $+8.6$ & 182 (91.0\%), 2 & 187 (93.5\%), 1 \\
+    Q1 & 4-bit host; accuracy within $\pm1.5$ & 4 (2.0\%) & 2 (1.0\%) \\
+    \midrule
+    F4 mix (seen) & question mix only & 198 (99.0\%) & 17 (8.5\%) \\
+    F6 mix (unseen) & question mix only & 200 (100\%) & 58 (29.0\%) \\
+    F7 fresh seeds & nothing & 3 (1.5\%) & 3 (1.5\%) \\
+    \midrule
+    pre-onset false alarms & & 0.092\% & 0.129\% \\
+    held-out windows & & 0/17 & 0/17 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The monitor flags the update in 93.5\% of streams under \vthree{}, at a median of
+one window (Table~\ref{tab:api}). The update did not make the model worse: it is
+more accurate on every scored slice, by up to 8.6 points on \textsf{triviaqa}, and
+it answers differently, with \textsf{jsonx} answers a quarter as long, shorter
+explanations and longer summaries. S1 length catches it alone in 94.5\% of streams and S7 embedding shift
+in 84.5\%. This is the scope of \S\ref{sec:discussion} in practice: the monitor
+reports that the model behind the name changed, which no one announced, and leaves
+whether the change is welcome to a person. Q1 is the opposite case. The 4-bit
+build answers like the 8-bit one (accuracy within 1.5 points, mean lengths nearly
+unchanged),
+and the monitor stays at the fresh-seed rate. The scoring result replicates:
+pooled \vone{} alarms on harmless mix shifts in 99--100\% of streams, \vthree{} in
+8.5\% and 29.0\%. Both simple baselines catch U1 (mean length 86\%, MMD 87\%) and
+alarm on 95.5--100\% of the harmless shifts. One result is weaker than locally:
+pre-onset false alarms under \vthree{} are 0.129\% (95\% interval 0.088--0.182\%),
+at rather than below the 0.1\% budget, while the held-out windows stay quiet. The
+host honours seeds only approximately, so repeated answers vary more than on a
+local server, which calibration on one set of answers does not see.
+
+\section{Discussion}
+\label{sec:discussion}
+
+\paragraph{What the monitor sees}
+The monitor detects changes in \emph{how} a model answers: length, agreement,
+vocabulary and meaning. It does not detect changes in \emph{whether} answers are
+correct. Model swaps and prompt edits almost always change both, which is why the
+results in Table~\ref{tab:main} are strong. A fault that changes only correctness,
+such as a wrong intent label with identical surface form, is invisible to it.
+Within this scope, the design choices matter more than the choice of statistics:
+the per-slice reference and the family-wise budget are what turn a change detector
+into a degradation detector.
+
+\paragraph{Limitations}
+(i) Apart from \S\ref{sec:api}, all models are open-weight models served on one
+machine; the healthy, F1, F2 and F5 models are from one vendor. Transfer holds on
+Qwen, Llama and Phi but is partial on \texttt{gemma3:12b} (\S\ref{sec:transfer}),
+and the local deployments are 8--26B parameters. (ii) Streams are replays of real answers, not live
+traffic with arrival-time effects. (iii) Task families are known to the monitor.
+Unlabelled production traffic would need a slice classifier, whose errors we have
+not studied. (iv) \vtwo{} and \vthree{} were designed after seeing \vone{} on F4.
+F6 was unseen, but there is only one such shift; the 50 random mixtures are
+supporting evidence, not a pre-registered test. (v) Accuracy on \textsf{jsonx} is
+ill-defined under the strict key, so we exclude it from means. (vi) Both judges
+are reference-free; a judge given reference answers may close more of the gap, but
+it uses the labels this setting lacks. (vii) The hosted study observes one real
+update from one provider. Its host honours seeds only approximately, version and
+precision are the host's own labels, and Q1 changes the host as well as the
+precision. Its pre-onset false-alarm rate sits at the budget rather than below it.
+
+\paragraph{Cost}
+Table~\ref{tab:cost} (Appendix~\ref{app:cost}) compares what each monitor adds to serving. The monitor needs
+no second language model: with $k=4$ it samples three more answers per query, and
+the one-answer variant (\S\ref{sec:oneanswer}) samples none. Both embed each
+answer with a 137M-parameter model. A judge needs a model call for every answer it
+grades: our 50{,}000 grades took about 4.5 hours on one machine with the 14B judge,
+and cost \$6.81 on a hosted GPU with the 72B one.
+
+\paragraph{Practical guidance}
+Use per-slice scoring with capped weights. Calibrate on at least 1{,}250 healthy
+queries per deployment and validate on a held-out split before freezing. Pair the
+window thresholds with a Page--Hinkley test for slow or partial faults. Do not rely
+on the monitor alone for classification-style slices.
+
+\section{Conclusion}
+A label-free monitor can detect real degradation of a deployed language model
+within one window of 200 queries, at a false-alarm rate set in advance. Doing so
+requires comparing each kind of question only with itself. Without that
+comparison, a monitor flags every change of topic. With it, the monitor stays
+quiet on most harmless shifts and still catches all four real faults we tested,
+and on a commercial API it noticed the provider's own unannounced update.
+The blind spots we document point to the next steps. Classification and extraction
+slices need signals tied to the label space. Slow faults need sequential
+statistics, and each new deployment needs a stability check at calibration time.
+
+\paragraph{Reproducibility}
+Every frozen record stores its thresholds, signal list, scoring version and data
+hashes, and every analysis verifies it before running. All rounds, analyses and
+model digests are scripted, and the suite of 328 tests includes 62 that gate the
+leakage and calibration rules.
+
+\bibliographystyle{abbrvnat}
+\bibliography{references}
+
+\appendix
+
+\section{Transfer to other deployed models}
+\label{app:transfer}
+\begin{table}[h]
+  \centering\small
+  \caption{Transfer to four other deployed models, recalibrated from scratch.
+  Detection is the share of 200 streams; accuracy of each deployment in brackets.
+  Held-out: alarms on the 17 real held-out windows. G3 is not applicable when
+  \texttt{gemma3:12b} is itself the deployment.}
+  \label{tab:transfer}
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{llccccc}
+    \toprule
+    deployment & scoring & F1 / F2 & G4 / G3 & F4 / F6 & false alarms & held-out \\
+    \midrule
+    gemma3 12B (0.732) & \vone{} & 97.5 / 96.5 & 96.0 / -- & 95.5 / 100 & 0.165\% \checkmark & 0/17 \checkmark \\
+                       & \vthree{} & 98.0 / 96.5 & 95.0 / -- & 3.5 / 56.0 & \textbf{0.901\%} $\times$ & \textbf{2/17} $\times$ \\
+    \addlinespace
+    qwen2.5 14B (0.760) & \vone{} & 97.0 / 95.5 & 95.5 / 91.0 & 95.0 / 100 & 0.122\% \checkmark & 0/17 \checkmark \\
+                        & \vthree{} & 98.5 / 95.5 & 98.0 / 94.5 & 2.5 / 19.0 & 0.047\% \checkmark & 0/17 \checkmark \\
+    \addlinespace
+    llama3.1 8B (0.708) & \vone{} & 96.5 / 97.5 & 94.0 / 93.0 & 96.5 / 99.5 & 0.166\% \checkmark & 0/17 \checkmark \\
+                        & \vthree{} & 98.5 / 97.0 & 96.5 / 92.0 & 4.0 / 30.0 & 0.176\% \checkmark & 0/17 \checkmark \\
+    \addlinespace
+    phi4 14B (0.768) & \vone{} & 98.5 / 98.5 & 98.0 / 97.0 & 95.5 / 100 & 0.064\% \checkmark & 0/17 \checkmark \\
+                     & \vthree{} & 99.5 / 99.0 & 98.5 / 98.5 & 1.0 / 22.0 & 0.085\% \checkmark & 0/17 \checkmark \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The one failure is \texttt{gemma3:12b} under \vthree{}: 0.90\% false alarms
+before the onset and 2 of 17 held-out windows. The cause is one signal. S4
+lexical diversity accounts for 0.58 points of the pre-onset rate and for both
+held-out alarms. Its mean healthy score on the fault questions is $0.0062$ against
+a bootstrap mean of $0.0034$: per-slice MATTR for gemma3 is less stable across
+question sets than its calibration bootstrap suggests. Dropping S4 would probably
+fix this, but choosing that after seeing the result would be fitting to the test,
+so we report the failure. Per-slice scoring narrows each reference and so needs
+signals that are stable within a slice for the model at hand. The other three
+deployments show this instability is a property of one model, not of the design,
+but it can only be found by checking stability on a held-out split at calibration
+time, before trusting the frozen thresholds.
+
+\section{Cost per served answer}
+\label{app:cost}
+\begin{table}[h]
+  \centering\small
+  \caption{Extra work per served answer, and whether labels are needed.}
+  \label{tab:cost}
+  \begin{tabular}{lll}
+    \toprule
+    monitor & extra inference per answer & labels \\
+    \midrule
+    ours, $k=4$ & 3 more samples + 4 embeddings (137M) & no \\
+    ours, one answer & 1 embedding (137M) & no \\
+    LLM judge & 1 call to a 14B or 72B judge & no \\
+    labelled evaluation & a scheduled benchmark run & yes \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section{Detection versus dose}
+\label{app:dose}
+\begin{figure}[h]
   \centering
   \begin{tikzpicture}
     \begin{axis}[
@@ -546,176 +806,6 @@ companion; CUSUM needs a recalibrated reference before it is safe.
   alarms 3--6 times the budget and 17.5\% alarms on the fresh-seed control.}
   \label{fig:dose}
 \end{figure}
-
-\subsection{Faults confined to one slice}
-\label{sec:slice}
-If only one kind of question is routed to a bad model, the fault occupies 4--22\%
-of each window. Under \vthree{}, detection follows how visible the change is in
-that slice, not how large the accuracy drop is. Faults on long-form eli5 are
-caught in 95--97\% of streams and on gsm8k in 86--91\% (F1, F2), through length and
-lexical change. Triviaqa reaches 48--78\% and squad2 34--67\%. Banking77 and
-\textsf{jsonx} are blind spots ($\le$3.5\%) even when the accuracy drop is 9.7
-points: a wrong intent label looks just like a right one. A label-free monitor
-cannot see a fault that does not change the surface of the answers. This is the
-clearest limit of our approach.
-
-\subsection{One answer per query}
-\label{sec:oneanswer}
-Sampling $k=4$ answers quadruples the serving cost. Dropping to one answer
-removes S3 and leaves four signals. Under \vthree{}, detection of real faults
-stays at 94--98.5\% and the pre-onset false-alarm rate stays within budget (0.047\%).
-Under \vone{} it does not (0.65\%). The extra samples are therefore optional,
-not essential.
-
-\subsection{Calibration size and window size}
-Re-calibrating on 25\% of the calibration questions (627) moves thresholds by
-15--23\% and raises false alarms on harmless shifts. At 50\% or more, thresholds
-move by under 9\% and results match the full set. Smaller windows ($W=100$) alarm
-sooner but more than double the F6 alarms (94 against 37 of 200). Larger ones
-($W=400$) raise detection at a 10\% dose to 31.5\% (F1) and 48.5\% (F2) (Appendix~\ref{app:sens}).
-
-\subsection{Other healthy models (RQ4)}
-\label{sec:transfer}
-Every result above treats one model as the deployment. To test transfer, we
-rerun the whole method with four other models as the healthy deployment, each on
-all 5{,}000 questions: \texttt{gemma3:12b} (an older Gemma generation) and three
-families from other vendors, \texttt{qwen2.5:14b}, \texttt{llama3.1:8b} and
-\texttt{phi4:14b}. The gemma3 round is part of the 64{,}000 answers above; the
-three others add 60{,}000 answers in three more rounds. For each deployment
-we recalibrate from scratch with the same signals, scoring and budget and tune
-nothing. The checks were committed before any of its calibration answers were
-read: F1 and F2 must be caught in at least 90\% of streams, false alarms must stay
-within twice the budget, and the real held-out windows must stay quiet. For the
-three non-Gemma deployments, F1 or F2 counts as ``worse'' only if its oracle
-accuracy is below the deployment's; both are, for all three. Swaps to
-\texttt{gemma4:26b} (G4) and \texttt{gemma3:12b} (G3) are reported as changes,
-not judged, since neither is clearly worse than every deployment.
-
-\begin{table}[t]
-  \centering\small
-  \caption{Transfer to four other deployed models, recalibrated from scratch.
-  Detection is the share of 200 streams; accuracy of each deployment in brackets.
-  Held-out: alarms on the 17 real held-out windows. G3 is not applicable when
-  \texttt{gemma3:12b} is itself the deployment.}
-  \label{tab:transfer}
-  \setlength{\tabcolsep}{4pt}
-  \begin{tabular}{llccccc}
-    \toprule
-    deployment & scoring & F1 / F2 & G4 / G3 & F4 / F6 & false alarms & held-out \\
-    \midrule
-    gemma3 12B (0.732) & \vone{} & 97.5 / 96.5 & 96.0 / -- & 95.5 / 100 & 0.165\% \checkmark & 0/17 \checkmark \\
-                       & \vthree{} & 98.0 / 96.5 & 95.0 / -- & 3.5 / 56.0 & \textbf{0.901\%} $\times$ & \textbf{2/17} $\times$ \\
-    \addlinespace
-    qwen2.5 14B (0.760) & \vone{} & 97.0 / 95.5 & 95.5 / 91.0 & 95.0 / 100 & 0.122\% \checkmark & 0/17 \checkmark \\
-                        & \vthree{} & 98.5 / 95.5 & 98.0 / 94.5 & 2.5 / 19.0 & 0.047\% \checkmark & 0/17 \checkmark \\
-    \addlinespace
-    llama3.1 8B (0.708) & \vone{} & 96.5 / 97.5 & 94.0 / 93.0 & 96.5 / 99.5 & 0.166\% \checkmark & 0/17 \checkmark \\
-                        & \vthree{} & 98.5 / 97.0 & 96.5 / 92.0 & 4.0 / 30.0 & 0.176\% \checkmark & 0/17 \checkmark \\
-    \addlinespace
-    phi4 14B (0.768) & \vone{} & 98.5 / 98.5 & 98.0 / 97.0 & 95.5 / 100 & 0.064\% \checkmark & 0/17 \checkmark \\
-                     & \vthree{} & 99.5 / 99.0 & 98.5 / 98.5 & 1.0 / 22.0 & 0.085\% \checkmark & 0/17 \checkmark \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-
-Detection transfers to every deployment (Table~\ref{tab:transfer}): F1 and F2
-are caught in 95.5--99.5\% of streams under both designs, and the swaps G4 and G3
-in 91.0--98.5\%. The scoring result of \S\ref{sec:results} also transfers. Pooled
-\vone{} alarms on harmless mix shifts in 95.0--100\% of streams for every
-deployment; per-slice \vthree{} cuts F4 to 1.0--4.0\% and F6 to 19.0--56.0\%.
-On the three non-Gemma deployments every pre-registered check passes under
-both designs, with pre-onset false alarms of 0.047--0.176\%, inside twice the
-budget.
-
-The one failure is \texttt{gemma3:12b} under \vthree{}: 0.90\% false alarms
-before the onset and 2 of 17 held-out windows. The cause is one signal. S4
-lexical diversity accounts for 0.58 points of the pre-onset rate and for both
-held-out alarms. Its mean healthy score on the fault questions is $0.0062$ against
-a bootstrap mean of $0.0034$: per-slice MATTR for gemma3 is less stable across
-question sets than its calibration bootstrap suggests. Dropping S4 would probably
-fix this, but choosing that after seeing the result would be fitting to the test,
-so we report the failure. Per-slice scoring narrows each reference and so needs
-signals that are stable within a slice for the model at hand. The other three
-deployments show this instability is a property of one model, not of the design,
-but it can only be found by checking stability on a held-out split at calibration
-time, before trusting the frozen thresholds.
-
-\section{Discussion}
-
-\paragraph{What the monitor sees}
-The monitor detects changes in \emph{how} a model answers: length, agreement,
-vocabulary and meaning. It does not detect changes in \emph{whether} answers are
-correct. Model swaps and prompt edits almost always change both, which is why the
-results in Table~\ref{tab:main} are strong. A fault that changes only correctness,
-such as a wrong intent label with identical surface form, is invisible to it.
-Within this scope, the design choices matter more than the choice of statistics:
-the per-slice reference and the family-wise budget are what turn a change detector
-into a degradation detector.
-
-\paragraph{Limitations}
-(i) All models are open-weight models served on one machine; the healthy, F1, F2
-and F5 models are from one vendor. Transfer holds on Qwen, Llama and Phi but is
-partial on \texttt{gemma3:12b} (\S\ref{sec:transfer}), and all deployments are
-8--26B parameters. (ii) Streams are replays of real answers, not live
-traffic with arrival-time effects. (iii) Task families are known to the monitor.
-Unlabelled production traffic would need a slice classifier, whose errors we have
-not studied. (iv) \vtwo{} and \vthree{} were designed after seeing \vone{} on F4.
-F6 was unseen, but there is only one such shift; the 50 random mixtures are
-supporting evidence, not a pre-registered test. (v) Accuracy on \textsf{jsonx} is
-ill-defined under the strict key, so we exclude it from means. (vi) The judge
-baseline uses one 14B judge without references; a larger judge, or one given
-reference answers, may close part of the gap, at a higher cost and with
-information a label-free setting lacks.
-
-\paragraph{Cost}
-Table~\ref{tab:cost} compares what each monitor adds to serving. The monitor needs
-no second language model: with $k=4$ it samples three more answers per query, and
-the one-answer variant (\S\ref{sec:oneanswer}) samples none. Both embed each
-answer with a 137M-parameter model. The judge needs a 14B-parameter model call for
-every answer it grades; our 50{,}000 grades took about 4.5 hours on one machine.
-
-\begin{table}[h]
-  \centering\small
-  \caption{Extra work per served answer, and whether labels are needed.}
-  \label{tab:cost}
-  \begin{tabular}{lll}
-    \toprule
-    monitor & extra inference per answer & labels \\
-    \midrule
-    ours, $k=4$ & 3 more samples + 4 embeddings (137M) & no \\
-    ours, one answer & 1 embedding (137M) & no \\
-    LLM judge & 1 call to a 14B judge & no \\
-    labelled evaluation & a scheduled benchmark run & yes \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-
-\paragraph{Practical guidance}
-Use per-slice scoring with capped weights. Calibrate on at least 1{,}250 healthy
-queries per deployment and validate on a held-out split before freezing. Pair the
-window thresholds with a Page--Hinkley test for slow or partial faults. Do not rely
-on the monitor alone for classification-style slices.
-
-\section{Conclusion}
-A label-free monitor can detect real degradation of a deployed language model
-within one window of 200 queries, at a false-alarm rate set in advance. Doing so
-requires comparing each kind of question only with itself. Without that
-comparison, a monitor flags every change of topic. With it, the monitor stays
-quiet on most harmless shifts and still catches all four real faults we tested.
-The blind spots we document point to the next steps. Classification and extraction
-slices need signals tied to the label space. Slow faults need sequential
-statistics, and each new deployment needs a stability check at calibration time.
-
-\paragraph{Reproducibility}
-Every frozen record stores its thresholds, signal list, scoring version and data
-hashes, and every analysis verifies it before running. All rounds, analyses and
-model digests are scripted, and the suite of 306 tests includes 62 that gate the
-leakage and calibration rules.
-
-\bibliographystyle{abbrvnat}
-\bibliography{references}
-
-\appendix
 
 \section{Half-sample intervals}
 \label{app:half}
