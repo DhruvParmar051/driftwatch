@@ -1169,6 +1169,68 @@ def triage(
     typer.echo(report_md.read_text())
 
 
+@app.command("chat-corpus")
+def chat_corpus(
+    shard: Path = typer.Option(
+        ..., help="The pinned WildChat-1M shard config/chat_study.yaml names."
+    ),
+) -> None:
+    """Build the real-traffic study's questions from public chat logs (Stage 7u).
+
+    Writes queries.jsonl under the study's data_dir, once: refuses to overwrite.
+    """
+    from corpus.build import write_queries
+    from corpus.chat import build_chat_queries
+    from settings import get_settings, load_api_study
+
+    spec = load_api_study("chat_study")
+    out = _api_data_dir("chat_study") / "queries.jsonl"
+    if out.exists():
+        raise typer.BadParameter(f"{out} exists; the study's questions are drawn once")
+    queries, n_candidates = build_chat_queries(shard, spec["corpus"], get_settings().corpus_seed)
+    write_queries(queries, out)
+    splits = {s: sum(q.split == s for q in queries) for s in spec["corpus"]["splits"]}
+    typer.echo(f"{len(queries)} questions from {n_candidates} candidates {splits} -> {out}")
+
+
+@app.command("chat-evaluate")
+def chat_evaluate(
+    completions: Path = typer.Option(..., help="The chat study's completions."),
+    thresholds: Path = typer.Option(..., help="The chat study's frozen record."),
+    out: Path = typer.Option(..., help="Results JSON."),
+    report_md: Path = typer.Option(..., help="Markdown tables."),
+    n_runs: int = typer.Option(200, help="Replayed streams per condition."),
+) -> None:
+    """The real-traffic study's pre-registered analysis (Stage 7u; DRIFTWATCH_STUDY=chat).
+
+    REFUSES TO RUN without a record that passes freeze.verify().
+    """
+    from corpus.build import read_queries
+    from detect import freeze
+    from detect.calibrate import fit_signals
+    from evaluate.chat import chat_markdown, run_chat
+    from evaluate.pipeline import build_monitor_signals, calibration_rows
+    from provider.collect import read_completions, read_embeddings
+    from settings import get_settings
+
+    s = get_settings()
+    queries = read_queries(s.queries_path)
+    rows = read_completions(completions)
+    calib_q, calib_rows = calibration_rows(queries, rows)
+    record = freeze.verify(thresholds, calib_rows)
+    names = list(record.thresholds)
+    embeddings = read_embeddings(_embeddings_path()) if "embedding_shift" in names else None
+    signals = fit_signals(
+        build_monitor_signals(embeddings, names, record.scoring), calib_q, calib_rows
+    )
+    r = run_chat(queries, rows, signals, record.thresholds, n_runs=n_runs, seed=s.calibration_seed)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(r, indent=2) + "\n")
+    report_md.parent.mkdir(parents=True, exist_ok=True)
+    report_md.write_text(chat_markdown(r))
+    typer.echo(report_md.read_text())
+
+
 @app.command("pilot-f8")
 def pilot_f8(
     completions: Path = typer.Option(..., help="Completions holding the healthy round."),
@@ -1357,13 +1419,16 @@ def remote_pilot(
 @app.command("remote-generate")
 def remote_generate(
     condition: str = typer.Option(
-        ..., help="A round of config/api_study.yaml: healthy, F7, U1, Q1."
+        ..., help="A round of the study's config: healthy, F7, U1 (and Q1 for api_study)."
     ),
     concurrency: int = typer.Option(
         None, help="Requests in flight; default from config/remote.yaml."
     ),
+    study: str = typer.Option(
+        "api_study", help="api_study (Stage 7r) or chat_study (Stage 7u, DRIFTWATCH_STUDY=chat)."
+    ),
 ) -> None:
-    """Generate one round of the hosted-API study (Stage 7r), resumable (SPENDS).
+    """Generate one round of a hosted study (Stages 7r, 7u), resumable (SPENDS).
 
     Rerun the exact same command after any failure - a rate limit that outlasts
     the retries, a dropped connection, the spending cap: answers already on
@@ -1387,20 +1452,25 @@ def remote_generate(
     )
 
     s = get_settings()
-    study = load_api_study()
-    if condition not in study["rounds"]:
-        raise typer.BadParameter(f"{condition!r} is not a round of config/api_study.yaml")
-    spec = study["rounds"][condition]
-    data_dir = _api_data_dir()
+    spec_all = load_api_study(study)
+    if condition not in spec_all["rounds"]:
+        raise typer.BadParameter(f"{condition!r} is not a round of config/{study}.yaml")
+    spec = spec_all["rounds"][condition]
+    data_dir = _api_data_dir(study)
     if condition != "healthy":
-        missing = [p.name for p in _api_frozen(data_dir) if not p.exists()]
+        missing = [p.name for p in _api_frozen(data_dir, study) if not p.exists()]
         if missing:
             raise typer.BadParameter(
                 f"{condition} waits for the frozen study thresholds ({', '.join(missing)} "
                 f"under {data_dir}) - calibrate and freeze on the healthy round first"
             )
-    queries = read_queries(_api_queries(data_dir))
-    selected = queries if spec["questions"] == "all" else fault_subset(queries)
+    queries = read_queries(_api_queries(data_dir, study))
+    if spec["questions"] == "all":
+        selected = queries
+    elif study == "api_study":
+        selected = fault_subset(queries)
+    else:
+        selected = sorted((q for q in queries if q.split == "fault"), key=lambda q: q.query_id)
     client = _remote_client(spec["deployment"], _remote_spent())
     pin = client.resolve(spec["deployment"])
     rows = expand_queries(
@@ -1813,23 +1883,39 @@ def _remote_client(name: str, already_spent: float = 0.0) -> Any:
     )
 
 
-def _api_data_dir() -> Path:
-    """The hosted-API study's own data directory (config/api_study.yaml `data_dir`)."""
+def _api_data_dir(study: str = "api_study") -> Path:
+    """A hosted study's own data directory (its config's `data_dir`)."""
     from settings import DATA_DIR, load_api_study
 
-    return DATA_DIR / load_api_study()["data_dir"]
+    return DATA_DIR / load_api_study(study)["data_dir"]
 
 
-def _api_frozen(data_dir: Path) -> list[Path]:
-    """The frozen records the study's fault rounds wait for: v1 and v3."""
+def _api_frozen(data_dir: Path, study: str = "api_study") -> list[Path]:
+    """The frozen records a study's fault rounds wait for.
+
+    v1 and v3 for the API study; one record for the chat study, whose one slice
+    makes pooled and per-slice scoring coincide.
+    """
+    if study != "api_study":
+        return [data_dir / "thresholds.json"]
     return [data_dir / "thresholds.json", data_dir / "thresholds_v3.json"]
 
 
-def _api_queries(data_dir: Path) -> Path:
-    """The study's copy of the shared corpus, made once and checked identical after."""
+def _api_queries(data_dir: Path, study: str = "api_study") -> Path:
+    """The study's questions.
+
+    The API study's copy of the shared corpus, made once and checked identical
+    after; the chat study's own, built by `chat-corpus`.
+    """
     import shutil
 
     from settings import DATA_DIR
+
+    if study != "api_study":
+        path = data_dir / "queries.jsonl"
+        if not path.exists():
+            raise typer.BadParameter(f"{path} is missing - run `chat-corpus` first")
+        return path
 
     src, dst = DATA_DIR / "queries.jsonl", data_dir / "queries.jsonl"
     if not dst.exists():
