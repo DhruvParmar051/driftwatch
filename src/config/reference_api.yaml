@@ -1,0 +1,13 @@
+# Reference round for the paired monitor's `fresh` design (config/paired_study.yaml),
+# hosted-API study. The healthy deployment with F7's seeds on the calib and
+# held-out questions, into its own directory so the study's store is untouched.
+# It needs no frozen record: it is a reference, never replayed as a fault.
+version: "1.0.0"
+data_dir: api/reference
+requires_freeze: false
+rounds:
+  R:
+    deployment: flash_0731_fp8
+    round_id: ar01
+    questions: reference
+    seeds: f7
