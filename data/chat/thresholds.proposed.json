@@ -1,0 +1,73 @@
+{
+  "thresholds": {
+    "length_ks": 0.1252106823411188,
+    "self_consistency": 0.03601697730557126,
+    "lexical_ttr": 0.015520919782045554,
+    "embedding_shift": 0.015444006040213922
+  },
+  "per_signal_alpha": 0.00025009380472507114,
+  "family_wise_budget": 0.001,
+  "bootstrap_windows": 20000,
+  "calibration_seed": 11071987,
+  "signals": [
+    "length_ks",
+    "self_consistency",
+    "lexical_ttr",
+    "embedding_shift"
+  ],
+  "scoring": "pooled",
+  "tail_fits": {
+    "length_ks": {
+      "signal": "length_ks",
+      "threshold": 0.1252106823411188,
+      "method": "pot_gpd",
+      "n_windows": 20000,
+      "alpha": 0.00025009380472507114,
+      "pot_threshold": 0.09883333333333333,
+      "pot_quantile": 0.99,
+      "n_exceedances": 199,
+      "gpd_shape": -0.1393242725175627,
+      "gpd_scale": 0.009154947745571376,
+      "bootstrap_max": 0.13166666666666665
+    },
+    "self_consistency": {
+      "signal": "self_consistency",
+      "threshold": 0.03601697730557126,
+      "method": "pot_gpd",
+      "n_windows": 20000,
+      "alpha": 0.00025009380472507114,
+      "pot_threshold": 0.024566377957733303,
+      "pot_quantile": 0.99,
+      "n_exceedances": 200,
+      "gpd_shape": -0.189050126911357,
+      "gpd_scale": 0.004311554127892827,
+      "bootstrap_max": 0.03942175453301627
+    },
+    "lexical_ttr": {
+      "signal": "lexical_ttr",
+      "threshold": 0.015520919782045554,
+      "method": "pot_gpd",
+      "n_windows": 20000,
+      "alpha": 0.00025009380472507114,
+      "pot_threshold": 0.009727419640435936,
+      "pot_quantile": 0.99,
+      "n_exceedances": 200,
+      "gpd_shape": -0.029898511034227325,
+      "gpd_scale": 0.00165889096565109,
+      "bootstrap_max": 0.021924138484744275
+    },
+    "embedding_shift": {
+      "signal": "embedding_shift",
+      "threshold": 0.015444006040213922,
+      "method": "pot_gpd",
+      "n_windows": 20000,
+      "alpha": 0.00025009380472507114,
+      "pot_threshold": 0.011395988676523212,
+      "pot_quantile": 0.99,
+      "n_exceedances": 200,
+      "gpd_shape": -0.05794523495412908,
+      "gpd_scale": 0.0012189247945210099,
+      "bootstrap_max": 0.018939407353291193
+    }
+  }
+}
