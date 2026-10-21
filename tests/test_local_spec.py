@@ -91,6 +91,33 @@ def test_server_dying_midround_keeps_answers_and_resumes_without_duplicates(tmp_
     assert len(final) == len(set(final)), "a row was answered twice"
 
 
+def test_ctrl_c_drops_the_queued_rows_and_keeps_what_landed(tmp_path, rows, monkeypatch):
+    """Ctrl+C stops the round: queued rows are not sent, finished ones stay on disk."""
+    import threading
+
+    import provider.local as local
+
+    gate = threading.Event()
+    sent: list[str] = []
+
+    class Slow:
+        def post_row(self, row: dict) -> dict:
+            sent.append(row["custom_id"])
+            gate.wait(5)
+            return {"custom_id": row["custom_id"], "response": {"choices": []}, "error": None}
+
+    def interrupted(futures, return_when) -> None:  # noqa: ARG001
+        threading.Timer(0.2, gate.set).start()
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(local, "wait", interrupted)
+    ck = tmp_path / "results.jsonl"
+    with pytest.raises(KeyboardInterrupt):
+        local.run_rows(Slow(), rows, ck, concurrency=2)  # type: ignore[arg-type]
+    assert len(sent) <= 2 < len(rows)  # only the rows already in flight were sent
+    assert sorted(ids_in(ck)) == sorted(sent)  # and they were kept
+
+
 def test_unpulled_model_stops_the_round_immediately(tmp_path, rows):
     from provider.local import LocalServerError, run_rows
 
