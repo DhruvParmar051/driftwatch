@@ -1411,13 +1411,17 @@ def judge(
     completions: Path = typer.Option(..., help="Completions holding healthy and the faults."),
     out: Path = typer.Option(..., help="Judge score store (parquet)."),
     concurrency: int = typer.Option(4, help="Requests in flight; match OLLAMA_NUM_PARALLEL."),
+    config: str = typer.Option(
+        "judge", help="Judge config: judge (v1, local 14B) or judge_v2 (72B, remote; SPENDS)."
+    ),
 ) -> None:
-    """LLM-as-judge round (Stage 7m): a second model grades every answer 1-10.
+    """LLM-as-judge round (Stages 7m, 7s): a second model grades every answer 1-10.
 
     Grades every sample of healthy, F1, F2, F3, F5 and F7 with the model, prompt
-    and parsing pre-registered in config/judge.yaml. Checkpointed per row like a
-    generation round: rerun the same command to resume. Writes the score store
-    and a summary JSON next to it.
+    and parsing pre-registered in config/<config>.yaml - on the local server
+    when it names a `role`, through the pinned remote client when it names a
+    `deployment`. Checkpointed per row like a generation round: rerun the
+    same command to resume. Writes the score store and a summary JSON next to it.
     """
     from corpus.build import read_queries
     from evaluate.judge import (
@@ -1431,15 +1435,27 @@ def judge(
     from settings import get_settings, load_judge_config
 
     s = get_settings()
-    cfg = load_judge_config()
-    resolved = _resolve_role(cfg["role"], "local")
+    cfg = load_judge_config(config)
+    remote = _remote_client(cfg["deployment"], _remote_spent()) if "deployment" in cfg else None
+    if remote is not None:
+        resolved = remote.resolve(cfg["deployment"])
+    else:
+        resolved = _resolve_role(cfg["role"], "local")
     queries = read_queries(s.queries_path)
     graded = [c for c in read_completions(completions) if c.condition in JUDGED_CONDITIONS]
-    rows = build_judge_rows(queries, graded, resolved.model_id)
+    rows = build_judge_rows(queries, graded, resolved.model_id, cfg)
     checkpoint = _rounds_dir() / cfg["round_id"] / "results.jsonl"
     checkpoint.parent.mkdir(parents=True, exist_ok=True)
     typer.echo(f"{len(rows)} answers to grade with {resolved.model_id}")
-    _answer_rows(rows, checkpoint, "local", concurrency)
+    if remote is not None:
+        from provider.local import run_rows
+
+        try:
+            run_rows(remote, rows, checkpoint, concurrency)  # type: ignore[arg-type]
+        finally:
+            remote.close()
+    else:
+        _answer_rows(rows, checkpoint, "local", concurrency)
     scores, replies = collect_judge_scores(
         checkpoint, rows, resolved.model_id, resolved.digest, resolved.digest_source
     )
@@ -1467,6 +1483,9 @@ def ablation(
     n_runs: int = typer.Option(200, help="Replay runs per condition, as in `evaluate`."),
     judge_scores: Path = typer.Option(
         None, help="The `judge` round's score store; adds the LLM-judge baseline."
+    ),
+    judge_config: str = typer.Option(
+        "judge", help="The judge config those scores were graded under: judge or judge_v2."
     ),
 ) -> None:
     """Signal ablation and simple baselines on `evaluate`'s own streams (Stage 7c).
@@ -1504,7 +1523,8 @@ def ablation(
     )
     results["scoring"] = record.scoring
     if judge is not None:
-        results["judge_config_version"] = load_judge_config()["version"]
+        results["judge_config"] = judge_config
+        results["judge_config_version"] = load_judge_config(judge_config)["version"]
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(results, indent=2) + "\n")
     report_md.parent.mkdir(parents=True, exist_ok=True)
