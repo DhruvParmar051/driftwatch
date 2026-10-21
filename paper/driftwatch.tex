@@ -219,7 +219,8 @@ lies beyond all but about four of the 20{,}000 draws, so we estimate it with a
 peaks-over-threshold fit of a generalised Pareto distribution to the upper
 tail~\citep{pickands1975statistical}. The plain empirical quantile is used only
 when the tail holds enough draws. A window alarms if any signal crosses its
-threshold. Thresholds, signal list, scoring version and data hashes are written to
+threshold; Appendix~\ref{app:guarantee} states what this guarantees and under which
+assumptions. Thresholds, signal list, scoring version and data hashes are written to
 a \emph{frozen record}. Every later analysis verifies the record and refuses to run
 on any mismatch.
 
@@ -713,6 +714,65 @@ analyses are scripted, under 328 tests, 62 of which gate leakage and calibration
 \bibliography{references}
 
 \appendix
+
+\section{A formal false-alarm guarantee}
+\label{app:guarantee}
+Let $W$ be a window of healthy answers drawn from the deployment's healthy
+distribution $\mathcal{H}$, and $S_1(W),\dots,S_m(W)$ the window statistics, each
+under the scoring in use (pooled, or per slice with capped weights: the argument
+does not depend on how a statistic is computed from its window). The monitor alarms
+on $W$ if $S_j(W)>t_j$ for some $j$. Write $\beta$ for the family-wise budget and
+$\alpha'=1-(1-\beta)^{1/m}$ for the per-signal level.
+
+\paragraph{Assumptions}
+(A1) Calibration windows and healthy deployment windows have the same distribution
+$\mathcal{H}$: the same model, prompt and decoding, and questions drawn from the
+same slice mixture. (A2) Each threshold is the upper $\alpha'$ quantile of its
+statistic under $\mathcal{H}$: $\Pr_{\mathcal{H}}[S_j(W)>t_j]\le\alpha'$.
+
+\paragraph{Proposition 1 (one window)}
+Under (A1) and (A2), for any dependence between the statistics,
+\[
+  \Pr_{\mathcal{H}}\bigl[\exists j:\ S_j(W)>t_j\bigr]
+  \;\le\; m\alpha' \;\le\; -\ln(1-\beta) \;\le\; \frac{\beta}{1-\beta}.
+\]
+\emph{Proof.} The first inequality is the union bound with (A2). For the second,
+$1-(1-\beta)^{1/m}=1-e^{\ln(1-\beta)/m}\le-\ln(1-\beta)/m$, since $1-e^{-x}\le x$; the
+third is $-\ln(1-\beta)\le\beta/(1-\beta)$. \hfill$\square$
+
+At $\beta=0.1\%$ and $m=5$ the bound is $0.10004\%$: the Šidák split costs nothing
+measurable even with no assumption on dependence. If the statistics are
+independent the alarm probability is exactly $1-(1-\alpha')^m=\beta$, and for
+positively dependent statistics (the case here: the signals respond to the same
+answers) it is smaller.
+
+\paragraph{Proposition 2 (a stream)}
+Let a stream contain $N$ healthy windows, overlapping or not, each distributed as
+$\mathcal{H}$. The expected number of false alarms is at most
+$N\cdot m\alpha'$, and the probability of any false alarm is at most
+$\min(1,N\cdot m\alpha')$.
+\emph{Proof.} Linearity of expectation needs no independence, so overlap between
+consecutive windows does not matter; the second claim is the union bound. \hfill$\square$
+
+For the streams of \S\ref{sec:setup} (at most 40 healthy windows before an onset)
+this gives at most $0.04$ expected false alarms per stream and a probability of at
+most 4\% that a stream contains one, consistent with the 0--2\% of F7 streams that
+alarm under \vthree{}.
+
+\paragraph{What the assumptions cost in practice}
+(A2) is where estimation enters. The $1-\alpha'$ quantile lies beyond all but
+about four of the 20{,}000 bootstrap windows, so it is extrapolated by the
+generalised Pareto fit; the bound holds for the true quantile, and the realised
+rate depends on how well the fit estimates it. Appendix~\ref{app:seeds} measures
+this directly: across ten bootstrap seeds the pre-onset rate under \vthree{} is
+0.017--0.041\% locally, inside the bound for every seed, while \vone{} ranges over
+0.076--0.253\%, so its estimate sometimes falls short of the quantile. (A1) is what a
+deployment must preserve. On the hosted model (\S\ref{sec:api}) it holds only
+approximately: the host does not reproduce a seed exactly, so a second set of
+healthy answers to the same questions is not distributed exactly as the first, and
+the realised rate (0.080--0.165\%) sits at the bound rather than below it. The
+guarantee is therefore conditional on the healthy model being the one that was
+calibrated, which is exactly what the monitor is meant to watch.
 
 \section{Seed stability}
 \label{app:seeds}
