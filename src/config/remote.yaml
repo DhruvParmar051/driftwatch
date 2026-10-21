@@ -25,6 +25,10 @@ budget_usd: 40.0
 # Requests in flight. The shared hosts rate-limit bursts; a few at a time
 # with patient retries finishes sooner than many that keep being refused.
 concurrency: 6
+# Seconds one attempt may take before it is abandoned and retried. A chat answer
+# takes about 8 s; a host sometimes accepts a request and never answers, and a
+# long limit then holds a slot for minutes (21 Oct: one stalled round).
+timeout_s: 120
 
 deployments:
   # DeepSeek V4 Flash as served before the 17 Oct 2026 update.
