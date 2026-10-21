@@ -22,6 +22,29 @@ def test_the_judge_config_is_pinned_and_its_role_is_configured():
     assert "{request}" in cfg["user_template"] and "{response}" in cfg["user_template"]
 
 
+def test_judge_v2_changes_only_the_judge_model():
+    from settings import load_judge_config, load_remote_config
+
+    v1, v2 = load_judge_config(), load_judge_config("judge_v2")
+    assert v2["version"] == "2.0.0" and v2["round_id"] == "j002" != v1["round_id"]
+    same = set(v1) - {"version", "role", "round_id"}
+    assert {k: v2[k] for k in same} == {k: v1[k] for k in same}
+    assert "role" not in v2
+    dep = load_remote_config()["deployments"][v2["deployment"]]
+    assert dep["model"].startswith("qwen/qwen-2.5-") and dep.get("thinking_switch") is False
+
+
+def test_judge_v2_rows_are_its_own_round(sample_query, sample_completion):
+    from evaluate.judge import build_judge_rows
+    from settings import load_judge_config
+
+    (row,) = build_judge_rows(
+        [sample_query], [sample_completion], "judge-72b", load_judge_config("judge_v2")
+    )
+    assert row["custom_id"] == "gsm8k_00042|0|healthy|j002"
+    assert row["body"]["model"] == "judge-72b" and row["body"]["max_tokens"] == 4
+
+
 def test_the_judge_is_never_a_model_it_grades():
     from settings import CONDITION_ROLES, load_judge_config, load_model_roles
 
