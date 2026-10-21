@@ -1,13 +1,12 @@
-# ARR Responsible NLP Research checklist: draft answers
+# ARR Responsible NLP Research checklist: answers
 
 For the ACL/ARR submission (`paper/acl/driftwatch_acl.tex`). Section and appendix
 references are to that version. ARR's rule: answer Yes with the section, or No with
 a justification. A No is not grounds for rejection.
 
-Before pasting into OpenReview, check:
-
-- E1 (marked **TEAM DECISION**): the team must agree the answer.
-- D (marked **VERIFY**): one fact to confirm against the WildChat paper.
+Every answer is settled. D (human participants) is No, and E1 (AI assistance)
+is Yes, disclosed in the paper's Ethics Statement. Before pasting into OpenReview,
+check the section and appendix letters against the final PDF.
 
 ---
 
@@ -169,23 +168,18 @@ Yes. Appendix J:
 No. Correctness is scored automatically against each dataset's own answers. No
 annotators or participants were recruited, so D1–D5 do not apply.
 
-Optional note, **VERIFY** against the WildChat paper (Zhao et al., 2024) before
-using: the real-traffic prompts come from WildChat, whose creators collected the
-conversations from users who agreed to their release for research. Our use and
-filtering are in B4.
-
 ## E. Did you use AI assistants in your research, coding, or writing?
 
-**TEAM DECISION. Answer truthfully.** ACL's publication ethics policy requires
-disclosing AI assistance beyond minor language polishing, and an AI tool cannot be
-an author.
+Yes.
 
-If AI tools were used for coding or writing, a suitable answer is:
+**E1. Did you include information about your use of AI assistants?**
+Yes. See the *Ethics Statement*, "AI assistance":
 
-> Yes. We used an AI coding and writing assistant to help implement and test the
-> analysis code and to edit drafts of the text. All experimental design, analysis
-> decisions, and claims are the authors', and every reported number was checked
-> against the result files.
+> We used an AI coding and writing assistant to help implement, run and test the
+> code and to draft and edit the text. It also proposed analyses. The authors
+> decided which to run, made every design and analysis decision, checked every
+> reported number against the result files, and take responsibility for all
+> claims.
 
-The paper should then carry a short acknowledgement of the same use. For the
-anonymous submission it can go at the end of the Ethics Statement.
+This follows ACL's publication ethics policy: the assistance is disclosed, and the
+assistant is not an author.
