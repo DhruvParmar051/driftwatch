@@ -11,6 +11,7 @@ project may hardcode a base URL, an API key, a provider name, or a model id.
 from __future__ import annotations
 
 import json
+import os
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal
@@ -97,6 +98,15 @@ WINDOW_STRATA: dict[str, int] = {
     "xsum": 44,
     "eli5": 44,
 }
+
+#: The real-traffic study (Stage 7u, config/chat_study.yaml) has no task labels:
+#: every question is one "chat" slice, so a window is 200 chat questions. Set
+#: DRIFTWATCH_STUDY=chat for every command of that study; unset, the standard
+#: strata above are untouched. Updated in place: every module holds this dict.
+CHAT_SLICE: str = "chat"
+if os.environ.get("DRIFTWATCH_STUDY") == "chat":
+    WINDOW_STRATA.update(dict.fromkeys(WINDOW_STRATA, 0))
+    WINDOW_STRATA[CHAT_SLICE] = 200
 
 #: Slice mixture for F4 (query-distribution shift). Deliberately different from
 #: SLICE_SIZES: long-form heavy, reasoning/structured light. F4 is a DERIVED
@@ -385,9 +395,9 @@ def load_judge_config(name: str = "judge") -> dict:
 
 
 @lru_cache(maxsize=1)
-def load_api_study() -> dict:
-    """Return config/api_study.yaml: the pre-registered study on a hosted API (Stage 7r)."""
-    with (CONFIG_DIR / "api_study.yaml").open() as fh:
+def load_api_study(name: str = "api_study") -> dict:
+    """Return a pre-registered hosted study: api_study (Stage 7r) or chat_study (Stage 7u)."""
+    with (CONFIG_DIR / f"{name}.yaml").open() as fh:
         return yaml.safe_load(fh)
 
 
