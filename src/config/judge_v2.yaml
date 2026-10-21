@@ -1,0 +1,56 @@
+# ---------------------------------------------------------------------------
+# LLM-as-judge baseline, version 2: a 72B judge (Stage 7s). PRE-REGISTERED:
+# fixed and committed before any of its grades is read.
+#
+# The question. Version 1 (config/judge.yaml, qwen2.5:14b) misses most F2
+# and F5 streams. The obvious objection is "a bigger judge would not". This
+# version answers it by changing ONE thing: the judge model, Qwen 2.5 72B -
+# the same family, 5x the parameters - served by a hosted router
+# (config/remote.yaml, deployment judge_qwen72b_fp8, DeepInfra fp8).
+#
+# Everything else is version 1's, copied verbatim below: the system prompt,
+# the user template, temperature 0, max_tokens 4, the seed, the 1-10 scale,
+# the parse rule (first standalone integer on the scale, otherwise NaN,
+# counted, never dropped), the reference-free design (request and answer
+# only - never the ground truth or the answering model's system prompt), the
+# graded answers (every sample of healthy, F1, F2, F3, F5, F7 - 50,000; F4
+# and F6 reuse the healthy grades), and the window statistic (healthy mean
+# grade minus the window's, one-sided) under the frozen record's scoring.
+#
+# Differences recorded with the results: fp8 weights on a hosted GPU against
+# version 1's 4-bit build on a laptop, and a host that honours seeds only
+# approximately. Both are reported; neither is tuned.
+#
+# Bump `version` on ANY edit. The results record the version they ran with.
+# ---------------------------------------------------------------------------
+
+version: "2.0.0"
+
+# Pinned deployment from config/remote.yaml - model, host and precision.
+deployment: judge_qwen72b_fp8
+
+round_id: j002
+
+temperature: 0.0
+max_tokens: 4
+seed: 20261019
+
+scale_min: 1
+scale_max: 10
+
+system_prompt: |
+  You are an impartial judge. Rate the quality of the AI assistant's response
+  to the user's request below. Consider correctness, helpfulness, relevance,
+  completeness and whether it follows the instructions in the request. Reply
+  with a single integer from 1 (very poor) to 10 (excellent) and nothing else.
+
+# {request} is the exact user prompt the answering model saw; {response} is
+# its answer text, verbatim.
+user_template: |
+  [Request]
+  {request}
+
+  [Response]
+  {response}
+
+  [Score]
