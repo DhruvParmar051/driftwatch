@@ -1,0 +1,71 @@
+{
+  "thresholds": {
+    "length_ks": 0.062305092971346177,
+    "agreement_gap": 0.07281528073551594,
+    "lexical_gap": 0.011256559629649773,
+    "embedding_gap": 0.040604497823761646
+  },
+  "per_signal_alpha": 0.00025009380472507114,
+  "family_wise_budget": 0.001,
+  "bootstrap_windows": 20000,
+  "calibration_seed": 11071987,
+  "tail_fits": {
+    "length_ks": {
+      "signal": "length_ks",
+      "threshold": 0.062305092971346177,
+      "method": "pot_gpd",
+      "n_windows": 20000,
+      "alpha": 0.00025009380472507114,
+      "pot_threshold": 0.04749999999999999,
+      "pot_quantile": 0.99,
+      "n_exceedances": 187,
+      "gpd_shape": -0.1976684253997472,
+      "gpd_scale": 0.005724687923318039,
+      "bootstrap_max": 0.0675
+    },
+    "agreement_gap": {
+      "signal": "agreement_gap",
+      "threshold": 0.07281528073551594,
+      "method": "pot_gpd",
+      "n_windows": 20000,
+      "alpha": 0.00025009380472507114,
+      "pot_threshold": 0.04910236118424645,
+      "pot_quantile": 0.99,
+      "n_exceedances": 200,
+      "gpd_shape": -0.04321842536855544,
+      "gpd_scale": 0.006954897276027171,
+      "bootstrap_max": 0.08368612078934873
+    },
+    "lexical_gap": {
+      "signal": "lexical_gap",
+      "threshold": 0.011256559629649773,
+      "method": "pot_gpd",
+      "n_windows": 20000,
+      "alpha": 0.00025009380472507114,
+      "pot_threshold": 0.007786735472714797,
+      "pot_quantile": 0.99,
+      "n_exceedances": 200,
+      "gpd_shape": -0.021500956881565725,
+      "gpd_scale": 0.000978508325276019,
+      "bootstrap_max": 0.013833992588183852
+    },
+    "embedding_gap": {
+      "signal": "embedding_gap",
+      "threshold": 0.040604497823761646,
+      "method": "pot_gpd",
+      "n_windows": 20000,
+      "alpha": 0.00025009380472507114,
+      "pot_threshold": 0.03531087890527581,
+      "pot_quantile": 0.99,
+      "n_exceedances": 200,
+      "gpd_shape": -0.12704721006038805,
+      "gpd_scale": 0.001797604395405926,
+      "bootstrap_max": 0.042650303844544935
+    }
+  },
+  "study": "api",
+  "design": "split",
+  "pairs_hash": "sha256:b4dd47b51b0918360f7fcc83c7fbf4eb5df05ad9ba3942c95b9f2f560f3657e0",
+  "git_commit": "78e2af8d9eb9",
+  "frozen_at": "2026-10-21T12:18:43.852717+00:00"
+}
