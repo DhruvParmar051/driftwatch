@@ -67,4 +67,9 @@ done
 
 run "jsonx check" jsonx-check --completions $C --report-md data/report/jsonx_check.md
 run "leakage check" leakage-check --completions $C --report-md data/report/leakage.md
+for v in 1 3; do
+  S=$(suffix $v)
+  run "triage v$v" triage --completions $C --results data/results/evaluation$S.json \
+    --out data/results/triage_v$v.json --report-md data/report_triage/triage_v$v.md --label "local, v$v"
+done
 echo "$(date '+%F %T') ALL DONE" >> $LOG
