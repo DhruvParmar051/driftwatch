@@ -1,0 +1,37 @@
+{
+  "judge_model": "qwen/qwen-2.5-72b-instruct",
+  "judge_digest": "qwen/qwen-2.5-72b-instruct@deepinfra/fp8",
+  "judge_config_version": "2.0.0",
+  "by_condition": {
+    "F1": {
+      "graded": 6000,
+      "mean_score": 7.620166666666667,
+      "unscored": 0
+    },
+    "F2": {
+      "graded": 6000,
+      "mean_score": 7.9863333333333335,
+      "unscored": 0
+    },
+    "F3": {
+      "graded": 6000,
+      "mean_score": 7.8115,
+      "unscored": 0
+    },
+    "F5": {
+      "graded": 6000,
+      "mean_score": 8.117333333333333,
+      "unscored": 0
+    },
+    "F7": {
+      "graded": 6000,
+      "mean_score": 8.2865,
+      "unscored": 0
+    },
+    "healthy": {
+      "graded": 20000,
+      "mean_score": 8.30585,
+      "unscored": 0
+    }
+  }
+}
