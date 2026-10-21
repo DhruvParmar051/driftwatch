@@ -48,11 +48,11 @@ repeated samples, lexical diversity, label entropy and embedding shift. It sets
 each threshold on bootstrap windows of healthy answers, with a Šidák-corrected
 family-wise budget of 0.1\% per window and a generalised Pareto tail. We evaluate
 it on 64{,}000 answers from five open-weight models over seven task families,
-with thresholds frozen before any fault data was read and with 200 replayed
-streams per condition. Four real faults (two smaller siblings, a different model
+with thresholds computed from healthy calibration answers alone and with 200
+replayed streams per condition. Four real faults (two smaller siblings, a different model
 family and a plausible prompt edit) are caught in 95.5--99.5\% of streams, almost
 always within one window of the onset. False alarms before the onset run at
-0.017\%. A naive pooled monitor also alarms in 98--100\% of streams when only
+0.017--0.041\% over ten calibration seeds. A naive pooled monitor also alarms in 98--100\% of streams when only
 the \emph{mix} of user questions changes. Scoring each task family against its
 own reference, with weights capped by its actual share, cuts this to 3.5\% and
 18.5\% while keeping detection; the second harmless shift was never seen during
@@ -241,7 +241,9 @@ even though its score is far noisier. \vthree{} weights slice $s$ by
 $w_s=\min(n_s, q_s)$, where $n_s$ is its count in the window and $q_s$ its
 standard quota. On every standard window this equals \vtwo.
 
-\vone{} was frozen before any fault data was read. \vtwo{} and \vthree{} were
+\vone{}'s thresholds depend on the healthy calibration answers alone, whose hash
+every analysis checks. The fault rounds predate the freeze by hours; the one later
+choice, dropping two signals, was forced: both are constant on healthy data. \vtwo{} and \vthree{} were
 designed \emph{after} seeing \vone{} alarm on the first harmless shift (F4), so
 F4 cannot judge them fairly. Both were frozen before a second, opposite harmless
 shift (F6) was generated, and F6 is the test that counts.
@@ -388,6 +390,10 @@ operator may well want.
 
 \paragraph{False alarms stay within budget (RQ1)}
 Pre-onset false alarms under \vthree{} run at 0.017\%, against a budget of 0.1\%.
+The thresholds come from one bootstrap seed, so we recalibrated with ten: the
+rate stays at 0.017--0.041\%, thresholds move by 5--15\%, and detection of F1--F5
+by at most one point (Appendix~\ref{app:seeds}). \vone{} is less stable
+(0.076--0.253\%; the frozen seed gives the lowest).
 Questions are a finite sample, so we also resample them. Over 50 stratified
 half-samples of the fault questions, the 95\% interval for the pre-onset rate is
 0--0.061\%, still under budget. The detection intervals from half-sampling agree
@@ -596,13 +602,11 @@ replaced V4 Flash (0731) with V4.1 Flash (1017) behind the same API name, and a
 model router still served both versions from one host at the same precision
 (fp8). We pre-registered a study with this hosted model as the deployment: the
 healthy round is V4 Flash 0731 on all 5{,}000 questions, F7 the same model on fresh
-seeds, U1 the update, and Q1 the old model served at 4-bit by another host. Every
-request is pinned to its host with fallbacks off, thinking is switched off, and an
-answer from any other host is refused. Corpus, prompts, sampling, signals, budget
+seeds, U1 the update, and Q1 the old model served at 4-bit by another host.
+Requests are pinned to one host, with thinking off. Corpus, prompts, sampling, signals, budget
 and replay are the local study's; thresholds were frozen on this study's healthy
-calibration answers before any U1, Q1 or F7 answer existed. One amendment, also
-committed before any Q1 answer, moved Q1 to another 4-bit host when the first
-stopped serving the model. The 38{,}000 answers cost \$1.30.
+calibration answers before any U1, Q1 or F7 answer existed. One amendment, committed before any Q1 answer, moved Q1 to another 4-bit host
+when the first dropped the model. The 38{,}000 answers cost \$1.30.
 
 \begin{table}[t]
   \centering\small
@@ -643,7 +647,8 @@ pooled \vone{} alarms on harmless mix shifts in 99--100\% of streams, \vthree{} 
 8.5\% and 29.0\%. Both simple baselines catch U1 (mean length 86\%, MMD 87\%) and
 alarm on 95.5--100\% of the harmless shifts. One result is weaker than locally:
 pre-onset false alarms under \vthree{} are 0.129\% (95\% interval 0.088--0.182\%),
-at rather than below the 0.1\% budget, while the held-out windows stay quiet. The
+at rather than below the 0.1\% budget (0.080--0.165\% over ten calibration
+seeds), while the held-out windows stay quiet. The
 host honours seeds only approximately, so repeated answers vary more than on a
 local server, which calibration on one set of answers does not see.
 
@@ -686,10 +691,9 @@ grades: our 50{,}000 grades took about 4.5 hours on one machine with the 14B jud
 and cost \$6.81 on a hosted GPU with the 72B one.
 
 \paragraph{Practical guidance}
-Use per-slice scoring with capped weights. Calibrate on at least 1{,}250 healthy
-queries per deployment and validate on a held-out split before freezing. Pair the
-window thresholds with a Page--Hinkley test for slow or partial faults. Do not rely
-on the monitor alone for classification-style slices.
+Use per-slice capped scoring, calibrate on at least 1{,}250 healthy queries, check
+several bootstrap seeds and a held-out split before freezing, add a Page--Hinkley
+test for slow faults, and do not rely on the monitor alone for classification slices.
 
 \section{Conclusion}
 A label-free monitor can detect real degradation of a deployed language model
@@ -698,20 +702,60 @@ requires comparing each kind of question only with itself. Without that
 comparison, a monitor flags every change of topic. With it, the monitor stays
 quiet on most harmless shifts and still catches all four real faults we tested,
 and on a commercial API it noticed the provider's own unannounced update.
-The blind spots we document point to the next steps. Classification and extraction
-slices need signals tied to the label space. Slow faults need sequential
-statistics, and each new deployment needs a stability check at calibration time.
+Classification slices need signals tied to the label space, slow faults need
+sequential statistics, and each deployment needs a stability check at calibration. Every frozen record stores
+its thresholds and data hashes, which every analysis verifies; all rounds and
+analyses are scripted, under 328 tests, 62 of which gate leakage and calibration.
 
-\paragraph{Reproducibility}
-Every frozen record stores its thresholds, signal list, scoring version and data
-hashes, and every analysis verifies it before running. All rounds, analyses and
-model digests are scripted, and the suite of 328 tests includes 62 that gate the
-leakage and calibration rules.
+
 
 \bibliographystyle{abbrvnat}
 \bibliography{references}
 
 \appendix
+
+\section{Seed stability}
+\label{app:seeds}
+\begin{table}[h]
+  \centering\small
+  \caption{Ranges over ten seeds. Calibration: thresholds re-estimated from
+  another bootstrap seed, replay streams fixed. Replay: frozen thresholds, other
+  replay streams. Detection is the share of 200 streams; the frozen seed is one of
+  the ten.}
+  \label{tab:seeds}
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{lllccc}
+    \toprule
+    study & design & seeds varied & pre-onset false alarms & real faults & F4 / F6 \\
+    \midrule
+    local & \vone{} & calibration & 0.076--0.253\% & F1--F5 96.0--100 & 97.5--99.5 / 100 \\
+          &         & replay      & 0.046--0.105\% & F1--F5 94.5--100 & 95.5--98.5 / 99.5--100 \\
+    local & \vthree{} & calibration & 0.017--0.041\% & F1--F5 95.5--100 & 2.0--4.0 / 17.5--27.0 \\
+          &           & replay      & 0.017--0.047\% & F1--F5 94.5--100 & 1.0--6.5 / 17.5--26.5 \\
+    \addlinespace
+    API & \vone{} & calibration & 0.056--0.097\% & U1 90.0--91.0 & 99.0 / 100 \\
+        &         & replay      & 0.061--0.145\% & U1 90.0--96.0 & 97.0--99.0 / 100 \\
+    API & \vthree{} & calibration & 0.080--0.165\% & U1 93.0--93.5 & 8.0--10.5 / 26.0--40.0 \\
+        &           & replay      & 0.073--0.162\% & U1 92.0--97.5 & 4.0--12.0 / 28.0--39.0 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section{Leakage checks}
+\label{app:leak}
+No query id or prompt (case and whitespace folded) appears in two splits, and every
+fault answer is on a fault question, in both studies. The signals and the detector
+cannot import the correctness oracle; a test checks this and a second test shows
+the check can fail. The harmless shifts F4 and F6 are drawn from calibration and
+fault questions (about 60\% calibration), because the fault split alone is too small
+for their mixtures; their answers are therefore partly the answers the references
+were fitted on. Rebuilt from fault questions only (583 and 595), on the same
+streams, \vthree{} alarms on F4 and F6 in 1.5\% and 7.0\% of streams locally
+(3.0\% and 24.5\% with the published rows) and in 11.0\% and 33.5\% on the API
+(8.5\% and 31.0\%): the overlap does not make the shifts look quieter. Some source
+material is shared by construction: 24\% of \textsf{squad2} fault questions share
+a passage with a calibration question, and 92\% of \textsf{jsonx} ones an item
+title.
 
 \section{Transfer to other deployed models}
 \label{app:transfer}
