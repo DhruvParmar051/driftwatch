@@ -67,7 +67,8 @@ def test_every_configured_deployment_is_fully_pinned():
     assert cfg["budget_usd"] > 0
     local_ids = {e["id"] for e in load_model_roles().values()}
     for name, dep in cfg["deployments"].items():
-        assert set(dep) == {"model", "provider", "provider_name", "quantization"}, name
+        required = {"model", "provider", "provider_name", "quantization"}
+        assert required <= set(dep) <= required | {"thinking_switch"}, name
         assert "/" in dep["provider"] and dep["model"] not in local_ids, name
 
 
@@ -92,6 +93,19 @@ def test_every_request_is_pinned_to_one_host_without_thinking(sample_query):
     assert body["seed"] == row["body"]["seed"] and body["messages"] == row["body"]["messages"]
     assert line["custom_id"] == row["custom_id"] and line["error"] is None
     assert client.spent == pytest.approx(0.001)
+
+
+def test_a_model_that_cannot_think_gets_no_thinking_switch(sample_query):
+    from provider.remote import RemoteClient
+
+    plain = RemoteClient(
+        "https://router.test/api/v1", "k", {**DEP, "thinking_switch": False}, budget_usd=1
+    )
+    body = plain.pinned_body(_row(sample_query)["body"])
+    assert "reasoning" not in body and "reasoning_effort" not in body
+    assert (
+        body["provider"]["order"] == ["host/fp8"] and body["provider"]["allow_fallbacks"] is False
+    )
 
 
 def test_a_row_for_another_model_is_refused(sample_query):
