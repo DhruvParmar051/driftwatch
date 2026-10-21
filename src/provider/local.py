@@ -259,14 +259,18 @@ def run_rows(
                     eta_minutes=round((len(todo) - finished) / rate / 60, 1),
                 )
 
-    with ThreadPoolExecutor(max_workers=max(1, concurrency)) as pool:
-        futures = [pool.submit(answer, row) for row in todo]
-        _done, _pending = wait(futures, return_when=FIRST_EXCEPTION)
-        failure = next((f.exception() for f in futures if f.done() and f.exception()), None)
-        if failure is not None:
-            for f in futures:
-                f.cancel()
-            raise failure
+    pool = ThreadPoolExecutor(max_workers=max(1, concurrency))
+    futures = [pool.submit(answer, row) for row in todo]
+    try:
+        wait(futures, return_when=FIRST_EXCEPTION)
+    except BaseException:
+        # Ctrl+C: drop every queued row; only those in flight finish and are kept.
+        pool.shutdown(wait=True, cancel_futures=True)
+        raise
+    failure = next((f.exception() for f in futures if f.done() and f.exception()), None)
+    pool.shutdown(wait=True, cancel_futures=failure is not None)
+    if failure is not None:
+        raise failure
     return finished
 
 
