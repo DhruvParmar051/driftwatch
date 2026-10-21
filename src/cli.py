@@ -2067,6 +2067,7 @@ def _remote_client(name: str, already_spent: float = 0.0) -> Any:
         deployment(name),
         budget_usd=load_remote_config()["budget_usd"],
         already_spent_usd=already_spent,
+        timeout_s=load_remote_config().get("timeout_s", 600.0),
     )
 
 
