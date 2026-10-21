@@ -160,7 +160,9 @@ def bootstrap_query_indices(queries: Sequence[Query], n_windows: int, seed: int)
     """
     by_slice: dict[str, np.ndarray] = {}
     slices = np.asarray([q.slice for q in queries])
-    for s in SLICES:
+    # SLICES order first, so the standard draw is unchanged; then any slice only a
+    # study's strata name (the real-traffic study's "chat").
+    for s in (*SLICES, *(x for x in WINDOW_STRATA if x not in SLICES)):
         if WINDOW_STRATA.get(s, 0) == 0:
             continue
         members = np.flatnonzero(slices == s)
