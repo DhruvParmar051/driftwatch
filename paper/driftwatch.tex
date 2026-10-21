@@ -38,34 +38,24 @@
 \maketitle
 
 \begin{abstract}
-A language model behind an API can get worse without anyone noticing: a provider
-swaps in a smaller model, a quantisation changes, or someone edits the system
-prompt. Production traffic carries no labels, so accuracy cannot be measured as it
-happens. We study whether such degradation can be detected from the answers alone,
-with a false-alarm rate fixed in advance. Our monitor scores sliding windows of
-200 answers with five label-free statistics: answer length, agreement among
-repeated samples, lexical diversity, label entropy and embedding shift. It sets
-each threshold on bootstrap windows of healthy answers, with a Šidák-corrected
-family-wise budget of 0.1\% per window and a generalised Pareto tail. We evaluate
-it on 64{,}000 answers from four open-weight models over seven task families,
-with thresholds computed from healthy calibration answers alone and with 200
-replayed streams per condition. Four real faults (two smaller siblings, an older model
-generation and a plausible prompt edit) are caught in 95.5--99.5\% of streams, almost
-always within one window of the onset. False alarms before the onset run at
-0.017--0.041\% over ten calibration seeds. A naive pooled monitor also alarms in 98--100\% of streams when only
-the \emph{mix} of user questions changes. Scoring each task family against its
-own reference, with weights capped by its actual share, cuts this to 3.5\% and
-18.5\% while keeping detection; the second harmless shift was never seen during
-design. A reference-free LLM judge that grades every answer, thresholded the
-same way, catches the smaller sibling in 49.5\% of streams and the older generation
-in 5.5\% with a 14B judge, and in 90.5\% and 58.5\% with a 72B one. On a
-commercial hosted model, the monitor flags the provider's own silent update
-(DeepSeek V4 Flash to V4.1) in 93.5\% of streams, within one window, although the
-update improved accuracy, and stays quiet on a 4-bit build whose answers did not
-change. We also report where the monitor fails. Faults confined to a small
-classification or extraction slice go unseen, and doses of 10\% or less are
-mostly missed. Recalibrated on four other deployed models, detection holds for
-all of them; on an older Gemma, one signal's false-alarm rate does not hold.
+A language model behind an API can get worse without anyone noticing: the
+provider swaps in a smaller model, changes its quantisation, or edits the system
+prompt. Production traffic carries no labels, so such changes must be caught from
+the answers alone, at a false-alarm rate fixed in advance. We find that the
+obvious label-free monitor fails in a specific way: pooled over all traffic, it
+alarms in 98--100\% of streams when only the \emph{mix} of user questions changes.
+Comparing each task family only with itself, with weights capped by its share,
+cuts this to 3.5\% and, on a shift unseen during design, 18.5\%, while four real
+faults are still caught in 95.5--99.5\% of streams within about one window and
+false alarms stay below the 0.1\% budget. In two pre-registered studies on a
+commercial model, the monitor caught the provider's own unannounced update in
+93.5\% of streams on benchmark traffic and 89\% on real user requests, although
+the update made the model more accurate. Because an alarm means change, not
+harm, we add a follow-up that tells the two apart: re-asking the reference model
+needs no labels, and grading 100 answers never pointed the wrong way across 2{,}868
+alarms. The monitor detects more faults than an embedding MMD test and a 72B LLM
+judge on the same streams. It is blind to faults that leave the form of an answer
+unchanged.
 \end{abstract}
 
 \section{Introduction}
@@ -79,53 +69,52 @@ silent behaviour change~\citep{chen2023chatgpt}. The usual remedy, a labelled
 evaluation set run on a schedule, is slow and expensive. It also measures a fixed
 benchmark rather than the traffic that actually matters.
 
-We ask a narrower question: \emph{can a monitor that sees only the model's answers
-to live traffic, with no labels, raise an alarm when quality drops, at a
-false-alarm rate fixed before deployment?} Three requirements make this harder
-than generic drift detection~\citep{gama2014survey,rabanser2019failing}, and with
-two more about generality they give our five research questions.
+We ask whether \emph{a monitor that sees only the model's answers to live traffic,
+with no labels, can raise an alarm when quality drops, at a false-alarm rate fixed
+before deployment}. This is harder than generic drift
+detection~\citep{gama2014survey,rabanser2019failing} for one reason above all:
+user traffic changes on its own. A week of maths homework looks different from a
+week of trivia, and a monitor that flags every change of topic is switched off.
+Five research questions follow.
 \begin{enumerate}[label=\textbf{RQ\arabic*}, leftmargin=*]
   \item \textbf{Calibrated alarms.} Does the monitor keep, on healthy traffic, the
-  false-alarm rate it was calibrated to? A monitor that fires every few days is
-  switched off, so this rate has to be a design parameter, not a by-product.
-  \item \textbf{Real faults, not synthetic ones.} Does it detect actual model swaps
-  and prompt edits, not injected noise, and how soon after the onset?
-  \item \textbf{Telling degradation from a harmless shift.} Does it stay quiet when
-  only the mix of questions changes? User traffic changes on its own; a week of
-  maths homework looks different from a week of trivia. A monitor that flags every
-  change of topic gives no useful signal.
-  \item \textbf{Transfer.} Do RQ1--RQ3 still hold when the deployed model comes
-  from another family, recalibrated but with nothing tuned?
-  \item \textbf{A real deployment.} Does the monitor notice an update that a
-  provider actually shipped, unannounced, behind a commercial API?
+  false-alarm rate it was calibrated to?
+  \item \textbf{Real faults.} Does it detect actual model swaps and prompt edits,
+  not injected noise, and how soon after the onset?
+  \item \textbf{Degradation or a change of topic.} Does it stay quiet when only the
+  mix of questions changes?
+  \item \textbf{Transfer.} Do RQ1--RQ3 hold for deployed models of other
+  families, recalibrated with nothing tuned?
+  \item \textbf{A real deployment.} Does it notice an update that a provider
+  actually shipped, unannounced, and on real user requests?
 \end{enumerate}
-RQ1--RQ3 are answered in \S\ref{sec:results}, the limits of RQ2 in
-\S\ref{sec:seq}--\ref{sec:slice}, RQ4 in \S\ref{sec:transfer} and RQ5 in
-\S\ref{sec:api}.
+RQ1--RQ3 are answered in \S\ref{sec:results}, their limits in
+\S\ref{sec:robust}, RQ4 in \S\ref{sec:transfer} and RQ5 in \S\ref{sec:api}.
 
 \paragraph{Contributions}
 \begin{itemize}
-  \item A label-free window monitor with five complementary statistics and a
-  per-window family-wise false-alarm budget. Thresholds come from a bootstrap of
-  healthy answers with a generalised Pareto tail (\S\ref{sec:method}).
-  \item A pre-registered evaluation on 64{,}000 real answers from four
-  open-weight models. It covers four real faults, two harmless shifts in the
-  question mix and a fresh-seed negative control, each replayed in 200 streams with
-  confidence intervals (\S\ref{sec:setup}).
-  \item Evidence that the obvious pooled design confuses changes in the question
-  mix with degradation, and a per-slice scoring with capped weights that removes
-  most of this confusion. It was judged on a second shift that was unseen
-  during design (\S\ref{sec:results}).
-  \item A pre-registered study on a commercial hosted model, in which the
-  provider's own silent update is the fault and a 4-bit build from another host
-  a second one (\S\ref{sec:api}).
-  \item An analysis of the monitor's limits: dose--response, faults on a single
-  slice, sequential tests, a one-answer variant, an embedding-MMD baseline,
-  pre-registered LLM-as-judge baselines at 14B and 72B, and a
-  transfer to four other deployed models, which holds on three vendors' models and
-  partly fails on an older Gemma
-  (\S\ref{sec:robust}). The code, frozen threshold records and analysis
-  commands are released.
+  \item \textbf{A failure of the obvious design, and a fix.} Pooled label-free
+  statistics mostly measure \emph{which kinds} of question a window holds, so a
+  pooled monitor mistakes a change of topic for degradation. Per-slice scoring
+  with capped weights removes most of this, judged on a shift unseen during
+  design and on 50 random mixtures (\S\ref{sec:scoring}, \S\ref{sec:results}).
+  \item \textbf{A real, unannounced update, caught.} Two pre-registered studies on
+  a commercial model: the provider's own update is detected within one window
+  on benchmark traffic and three on real user traffic, and a 4-bit build whose answers
+  did not change is not (\S\ref{sec:api}, Appendix~\ref{app:chat}).
+  \item \textbf{From alarm to action.} Since the update improved accuracy, an
+  alarm must be triaged. A label-free readout and a small graded check separate
+  harm from harmless change and never point the wrong way
+  (\S\ref{sec:discussion}, Appendix~\ref{app:triage}).
+  \item \textbf{A strong baseline beaten, and limits mapped.} Under the same
+  calibration, the monitor detects more faults than embedding MMD and
+  reference-free LLM judges at 14B and 72B, which grade style rather than
+  correctness. Dose, single-slice faults and transfer to four other models show
+  where it fails (\S\ref{sec:robust}).
+  \item \textbf{A protocol.} Thresholds are frozen before any fault answer is
+  read, every analysis verifies the frozen record, and the false-alarm guarantee
+  and its assumptions are stated (Appendix~\ref{app:guarantee}). Code and records
+  are released.
 \end{itemize}
 
 \section{Related work}
