@@ -45,6 +45,7 @@ Condition = Literal[
     "H3",
     "H4",
     "H5",
+    "R",
     "U1",
     "Q1",
 ]
@@ -306,6 +307,7 @@ CONDITION_ROLES: dict[str, str] = {
     "H3": "third_family",
     "H4": "fourth_family",
     "H5": "fifth_family",
+    "R": "healthy",
 }
 
 #: H2 is the SECOND HEALTHY MODEL (Stage 7n): gemma3:12b, the F5 model, on the
@@ -338,6 +340,12 @@ ALTERNATE_HEALTHY: tuple[str, ...] = (
 #: same deployment. Same model, prompt and questions; only this differs from
 #: settings.seed_base, so no F7 answer repeats a healthy one by construction.
 F7_SEED_BASE: int = 20261012
+
+#: R is the paired monitor's REFERENCE round (Stage 7v, config/paired_study.yaml):
+#: the healthy model with F7's seeds on the calib and heldout questions, so every
+#: question has a fresh-seed healthy answer set. Written to its own data
+#: directory, never to a study's store, and never replayed as a fault.
+REFERENCE: str = "R"
 
 
 @lru_cache(maxsize=1)
