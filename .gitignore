@@ -30,3 +30,4 @@ docs/PROJECT_BRIEF.md
 
 # PDFs are generated exports, never tracked
 *.pdf
+dist/
