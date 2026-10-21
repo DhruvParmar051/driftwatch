@@ -999,6 +999,37 @@ update answers are 6.7\% shorter and agreement between samples rises by 0.033
 ($-7.5\%$ and $+0.043$ there), while F7 moves neither. One slice means this study
 cannot test harmless topic shifts, the failure that per-slice scoring fixes.
 
+\section{Datasets and licences}
+\label{app:data}
+Every source is loaded from the Hugging Face Hub at a pinned revision, and only
+the fields listed are read. We release code that rebuilds the questions from these
+revisions, not the questions or answers themselves, so no source text is
+redistributed. Three sources declare no licence; we use them, as their authors
+released them, for non-commercial research only.
+
+\begin{table}[h]
+  \centering\small
+  \caption{Sources, the licence each dataset card declares, and what we use.}
+  \label{tab:data}
+  \begin{tabular}{llll}
+    \toprule
+    slice & source & licence & used \\
+    \midrule
+    \textsf{gsm8k} & \texttt{openai/gsm8k} (test) & MIT & question, answer \\
+    \textsf{triviaqa} & \texttt{mandarjoshi/trivia\_qa} (rc.nocontext) & none declared$^a$ & question, aliases \\
+    \textsf{squad2} & \texttt{rajpurkar/squad\_v2} (validation) & CC BY-SA 4.0 & passage, question, answer \\
+    \textsf{banking77} & \texttt{legacy-datasets/banking77} (test) & CC BY 4.0 & query, intent \\
+    \textsf{xsum} & \texttt{EdinburghNLP/xsum} (test) & none declared$^b$ & article \\
+    \textsf{eli5} & \texttt{sentence-transformers/eli5} & none declared$^c$ & question \\
+    \textsf{jsonx} & synthesised by us & -- & -- \\
+    chat (App.~\ref{app:chat}) & \texttt{allenai/WildChat-1M}, one shard & ODC-BY & first user turn \\
+    \bottomrule
+  \end{tabular}\\[2pt]
+  {\footnotesize $^a$The card states that the University of Washington does not own
+  the copyright of the questions and documents. $^b$BBC news articles.
+  $^c$Questions from the r/explainlikeimfive subreddit.}
+\end{table}
+
 \section{Half-sample intervals}
 \label{app:half}
 \begin{table}[h]
