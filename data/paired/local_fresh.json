@@ -1,0 +1,71 @@
+{
+  "thresholds": {
+    "length_ks": 0.04308412551682189,
+    "agreement_gap": 0.03512456474568209,
+    "lexical_gap": 0.008261353517864205,
+    "embedding_gap": 0.013021701162575346
+  },
+  "per_signal_alpha": 0.00025009380472507114,
+  "family_wise_budget": 0.001,
+  "bootstrap_windows": 20000,
+  "calibration_seed": 11071987,
+  "tail_fits": {
+    "length_ks": {
+      "signal": "length_ks",
+      "threshold": 0.04308412551682189,
+      "method": "pot_gpd",
+      "n_windows": 20000,
+      "alpha": 0.00025009380472507114,
+      "pot_threshold": 0.03249999999999997,
+      "pot_quantile": 0.99,
+      "n_exceedances": 170,
+      "gpd_shape": -0.12698390149222763,
+      "gpd_scale": 0.003723737472511322,
+      "bootstrap_max": 0.05125000000000002
+    },
+    "agreement_gap": {
+      "signal": "agreement_gap",
+      "threshold": 0.03512456474568209,
+      "method": "pot_gpd",
+      "n_windows": 20000,
+      "alpha": 0.00025009380472507114,
+      "pot_threshold": 0.023841142676243442,
+      "pot_quantile": 0.99,
+      "n_exceedances": 200,
+      "gpd_shape": -0.010580445721962725,
+      "gpd_scale": 0.003119157980591565,
+      "bootstrap_max": 0.0393355261050624
+    },
+    "lexical_gap": {
+      "signal": "lexical_gap",
+      "threshold": 0.008261353517864205,
+      "method": "pot_gpd",
+      "n_windows": 20000,
+      "alpha": 0.00025009380472507114,
+      "pot_threshold": 0.005631964076873424,
+      "pot_quantile": 0.99,
+      "n_exceedances": 200,
+      "gpd_shape": -0.13862496647344297,
+      "gpd_scale": 0.0009105741330744703,
+      "bootstrap_max": 0.009358471669383639
+    },
+    "embedding_gap": {
+      "signal": "embedding_gap",
+      "threshold": 0.013021701162575346,
+      "method": "pot_gpd",
+      "n_windows": 20000,
+      "alpha": 0.00025009380472507114,
+      "pot_threshold": 0.01089810607651618,
+      "pot_quantile": 0.99,
+      "n_exceedances": 200,
+      "gpd_shape": -0.05312862417929967,
+      "gpd_scale": 0.0006339865132388061,
+      "bootstrap_max": 0.015435396038128818
+    }
+  },
+  "study": "local",
+  "design": "fresh",
+  "pairs_hash": "sha256:4afacd4ede070e5ade1732c5f0086e7382a43990102c1221a4fd09821c966409",
+  "git_commit": "b978df7ee153",
+  "frozen_at": "2026-10-21T16:35:22.622445+00:00"
+}
