@@ -1,0 +1,23 @@
+{
+  "frozen_at": "2026-10-21T04:12:59.745554Z",
+  "git_commit": "570382212a40",
+  "calib_rows_hash": "sha256:a9fc8968031053ef5f37257a4292c94769f7ffbf6bb89293e3755eafb2e69fb2",
+  "k": 4,
+  "window_size": 200,
+  "window_stride": 50,
+  "family_wise_budget": 0.001,
+  "per_signal_alpha": 0.000200080048033624,
+  "n_signals": 5,
+  "bootstrap_windows": 20000,
+  "calibration_seed": 11071987,
+  "refusal_patterns_version": "1.0.0",
+  "prompts_version": "1.1.0",
+  "thresholds": {
+    "length_ks": 0.13672541138481872,
+    "self_consistency": 0.050482989109360416,
+    "lexical_ttr": 0.009941143070485211,
+    "label_entropy": 4.594122892834119,
+    "embedding_shift": 0.04340368816105906
+  },
+  "scoring": "per_slice_capped"
+}
