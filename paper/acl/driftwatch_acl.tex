@@ -39,18 +39,18 @@ with a false-alarm rate fixed in advance. Our monitor scores sliding windows of
 repeated samples, lexical diversity, label entropy and embedding shift. It sets
 each threshold on bootstrap windows of healthy answers, with a Šidák-corrected
 family-wise budget of 0.1\% per window and a generalised Pareto tail. We evaluate
-it on 64{,}000 answers from five open-weight models over seven task families,
+it on 64{,}000 answers from four open-weight models over seven task families,
 with thresholds computed from healthy calibration answers alone and with 200
-replayed streams per condition. Four real faults (two smaller siblings, a different model
-family and a plausible prompt edit) are caught in 95.5--99.5\% of streams, almost
+replayed streams per condition. Four real faults (two smaller siblings, an older model
+generation and a plausible prompt edit) are caught in 95.5--99.5\% of streams, almost
 always within one window of the onset. False alarms before the onset run at
 0.017--0.041\% over ten calibration seeds. A naive pooled monitor also alarms in 98--100\% of streams when only
 the \emph{mix} of user questions changes. Scoring each task family against its
 own reference, with weights capped by its actual share, cuts this to 3.5\% and
 18.5\% while keeping detection; the second harmless shift was never seen during
 design. A reference-free LLM judge that grades every answer, thresholded the
-same way, catches the smaller sibling in 49.5\% of streams and the other model
-family in 5.5\% with a 14B judge, and in 90.5\% and 58.5\% with a 72B one. On a
+same way, catches the smaller sibling in 49.5\% of streams and the older generation
+in 5.5\% with a 14B judge, and in 90.5\% and 58.5\% with a 72B one. On a
 commercial hosted model, the monitor flags the provider's own silent update
 (DeepSeek V4 Flash to V4.1) in 93.5\% of streams, within one window, although the
 update improved accuracy, and stays quiet on a 4-bit build whose answers did not
@@ -100,7 +100,7 @@ RQ1--RQ3 are answered in \S\ref{sec:results}, the limits of RQ2 in
   \item A label-free window monitor with five complementary statistics and a
   per-window family-wise false-alarm budget. Thresholds come from a bootstrap of
   healthy answers with a generalised Pareto tail (\S\ref{sec:method}).
-  \item A pre-registered evaluation on 64{,}000 real answers from five
+  \item A pre-registered evaluation on 64{,}000 real answers from four
   open-weight models. It covers four real faults, two harmless shifts in the
   question mix and a fresh-seed negative control, each replayed in 200 streams with
   confidence intervals (\S\ref{sec:setup}).
@@ -308,7 +308,7 @@ answers across seven generation rounds.
     F1 & smallest sibling, \texttt{gemma4:e2b} & 0.593 & yes \\
     F2 & small sibling, \texttt{gemma4:e4b} & 0.666 & yes \\
     F3 & edited system prompt, healthy model & 0.745 & yes \\
-    F5 & other family, \texttt{gemma3:12b} & 0.732 & yes \\
+    F5 & older generation, \texttt{gemma3:12b} & 0.732 & yes \\
     F4 & healthy answers, long-form-heavy mix & 0.773 & no \\
     F6 & healthy answers, short-form-heavy mix & 0.773 & no \\
     F7 & healthy model, fresh seeds & 0.773 & no \\
@@ -350,7 +350,7 @@ came 50 queries after the onset window.
     F6 mix (unseen) & \textbf{200} (98--100\%), 0 & 190 (91--97\%), 3 & 37 (14--24\%), 12 \\
     F7 fresh seeds & 4 (1--5\%), 12 & 0 (0--2\%) & 0 (0--2\%) \\
     \midrule
-    pre-onset false alarms & 0.076\% & -- & 0.017\% \\
+    pre-onset false alarms & 0.076\% & 0.017\% & 0.017\% \\
     held-out windows & 0/17 & 0/17 & 0/17 \\
     \bottomrule
   \end{tabular}
@@ -397,9 +397,9 @@ Table~\ref{tab:ablation} shows single-signal configurations, each calibrated to 
 same family-wise budget. Length alone (S1) catches every real fault and almost
 none of the harmless shifts under \vthree{}. Removing it costs most of the F5
 detection (95.5\%$\to$40.5\%). Self-consistency (S3) and lexical diversity (S4)
-catch the sibling faults but not F3 or F5. The other signals still matter:
-\S\ref{sec:lengthmatched} shows that when answer length is held fixed, they
-carry the detection. Two baselines are instructive. A mean-length threshold
+catch the sibling faults but at most 68\% of F3 and half of F5. They still matter:
+\S\ref{sec:lengthmatched} shows that when mean answer length is matched, either
+alone still catches 82--97\% of streams. Two baselines are instructive. A mean-length threshold
 detects F2--F5 but alarms on every harmless shift. Without the Šidák correction,
 F6 alarms rise to 44.5\% and F7 to 4\%.
 
@@ -500,7 +500,7 @@ alarms on F7; under \vthree{} it also alarms on F6 less than the monitor (8.5\%
 against 18.5\%). Paired on the same streams, the monitor still catches 16, 15 and
 74 more F2, F3 and F5 streams ($p\le 6\times10^{-5}$), while the judge alarms on
 20 fewer F6 streams (31 against 11, $p=0.003$). The larger judge is a strong
-baseline, but it misses two in five streams of a different model family, and it
+baseline, but it misses two in five streams of the older-generation model, and it
 needs a 72B call for every answer (\$6.81 for these grades).
 
 \begin{table*}[t]
@@ -514,7 +514,7 @@ needs a 72B call for every answer (\$6.81 for these grades).
     \toprule
     condition & what changed & \vone{} pooled & \vthree{} capped \\
     \midrule
-    U1 & DeepSeek's update; accuracy $+0.3$ to $+8.6$ & 182 (91.0\%), 2 & 187 (93.5\%), 1 \\
+    U1 & DeepSeek's update; accuracy $+0.2$ to $+8.6$ & 182 (91.0\%), 2 & 187 (93.5\%), 1 \\
     Q1 & 4-bit host; accuracy within $\pm1.5$ & 4 (2.0\%) & 2 (1.0\%) \\
     \midrule
     F4 mix (seen) & question mix only & 198 (99.0\%) & 17 (8.5\%) \\
@@ -536,9 +536,10 @@ A smaller model writes shorter answers, so a skeptic may suspect that the monito
 is just a length detector. For each slice, we keep the 50\% of fault questions
 whose faulty answers are closest in length to the healthy ones. This brings the
 length ratio to $0.95$ (F1) and $0.90$ (F2) while the accuracy drop remains
-10.0 and 7.4 points. Detection stays at 99.5\% and 98\%; self-consistency fires
-in 82--94\% of runs and lexical diversity in 86--97\%. The other signals are not
-redundant.
+10.0 and 7.4 points. Detection stays at 99.5\% and 98\% (S1 still sees the shape of the length
+distribution); S3 alone fires in 82--94\% of runs and S4 in 86--97\%. Pre-onset
+false alarms on these restricted sets rise to 0.8--2.3\% per window, enough for
+at most 11--30\% of the detections.
 
 \subsection{Partial and gradual degradation}
 \label{sec:seq}
@@ -575,8 +576,8 @@ clearest limit of our approach.
 \label{sec:oneanswer}
 With one answer per query (no S3, a quarter of the cost), \vthree{} still catches
 94--98.5\% of real faults at 0.047\% pre-onset false alarms; \vone{} does not
-(0.65\%). Thresholds are stable from half the calibration questions up, and larger
-windows help at small doses (Appendix~\ref{app:sens}).
+(0.65\%). Thresholds move under 9\% from half the calibration questions up, though F6
+alarms vary across draws, and larger windows help at small doses (Appendix~\ref{app:sens}).
 
 \subsection{Other healthy models (RQ4)}
 \label{sec:transfer}
@@ -635,7 +636,7 @@ and the monitor stays at the fresh-seed rate. The scoring result replicates:
 pooled \vone{} alarms on harmless mix shifts in 99--100\% of streams, \vthree{} in
 8.5\% and 29.0\%. Both simple baselines catch U1 but alarm on 95.5--100\% of
 the harmless shifts. One result is weaker than locally:
-pre-onset false alarms under \vthree{} are 0.129\% (95\% interval 0.088--0.182\%),
+pre-onset false alarms under \vthree{} are 0.129\% (95\% interval 0.091--0.182\%),
 at rather than below the 0.1\% budget (0.080--0.165\% over ten calibration
 seeds), while the held-out windows stay quiet; the host honours seeds only
 approximately, so repeated answers vary more than calibration saw.
@@ -677,8 +678,8 @@ A label-free monitor that compares each kind of question only with itself detect
 real degradation of a deployed language model within one window of 200 queries, at
 a false-alarm rate set in advance. It stays quiet on most harmless shifts, catches
 four real faults and an unannounced provider update, and a short follow-up tells
-whether a change is harm. Calibrate on at least 1{,}250 healthy queries, check seeds
-and a held-out split before freezing, and add a Page--Hinkley test for slow faults.
+whether a change is harm. Calibrate on about 1{,}900 healthy queries or more, check seeds
+and a held-out split, and add a Page--Hinkley test for slow faults.
 
 \section*{Limitations}
 (i) Apart from \S\ref{sec:api}, all models are open-weight models served on one
@@ -697,17 +698,21 @@ precision are the host's labels, Q1 also changes the host, and pre-onset false
 alarms sit at the budget rather than below it.
 
 \section*{Ethics Statement}
-\paragraph{Data} The questions come from six public research datasets, used for
-research as their authors intended, and from \textsf{jsonx}, which we synthesised
-ourselves. None contains personal information we collected, and no human
-annotators or participants were involved; correctness is scored automatically
-against the datasets' own answers.
+\paragraph{Data} The benchmark questions come from six public research datasets,
+used for research as their authors intended, and from \textsf{jsonx}, which we
+synthesised ourselves. The real-traffic study (Appendix~\ref{app:chat}) uses the
+first user turns of public chatbot logs released for research (WildChat-1M,
+ODC-BY): we kept only turns that no flag marks toxic, redacted (personal
+information) or moderated, read only their text, and drop every other field,
+including location and IP hashes. We collected no personal information, and no
+human annotators or participants were involved; correctness is scored
+automatically against the datasets' own answers.
 
 \paragraph{Models and services} All local models are openly released and were run
 on one laptop. The hosted study used a commercial model router through its public
 API, with a key paid for by the authors, a pinned host per deployment and a spending
-cap; it sent only the benchmark questions above. The 72B judge ran on the same
-service. The hosted runs cost under \$10 in total.
+cap; it sent only the benchmark questions and the filtered chat turns above. The
+72B judge ran on the same service. The hosted runs cost about \$10 in total.
 
 \paragraph{Use and misuse} The monitor is meant to protect the users of a deployed
 model by noticing when its behaviour changes without notice. It flags change, not
@@ -817,7 +822,7 @@ fault questions (about 60\% calibration), because the fault split alone is too s
 for their mixtures; their answers are therefore partly the answers the references
 were fitted on. Rebuilt from fault questions only (583 and 595), on the same
 streams, \vthree{} alarms on F4 and F6 in 1.5\% and 7.0\% of streams locally
-(3.0\% and 24.5\% with the published rows) and in 11.0\% and 33.5\% on the API
+(3.0\% and 24.5\% with the published rows on these streams) and in 11.0\% and 33.5\% on the API
 (8.5\% and 31.0\%): the overlap does not make the shifts look quieter. Some source
 material is shared by construction: 24\% of \textsf{squad2} fault questions share
 a passage with a calibration question, and 92\% of \textsf{jsonx} ones an item
@@ -947,7 +952,7 @@ improvement verdict on a fault.
     \toprule
     condition & alarms & length & agreement & accuracy & $p$ & check $n{=}50$ & check $n{=}100$ \\
     \midrule
-    F1 & 198 & $-4.0\%$ & $-0.088$ & $-19.1$ & $10^{-29}$ & 152\,/\,0 & 194\,/\,0 \\
+    F1 & 198 & $-4.0\%$ & $-0.088$ & $-19.1$ & $9\cdot10^{-30}$ & 152\,/\,0 & 194\,/\,0 \\
     F2 & 197 & $-9.2\%$ & $-0.122$ & $-11.2$ & $10^{-16}$ & 71\,/\,0 & 167\,/\,0 \\
     F3 & 199 & $-71.0\%$ & $-0.003$ & $-3.5$ & $7\cdot10^{-5}$ & 3\,/\,0 & 16\,/\,0 \\
     F5 & 191 & $-17.8\%$ & $-0.016$ & $-4.7$ & $3\cdot10^{-4}$ & 13\,/\,0 & 32\,/\,0 \\
@@ -1000,8 +1005,10 @@ close to the 93.5\% on benchmark traffic, but by S7 rather than S1: 62\% of heal
 chat answers run into the 512-token limit (50\% of the update's), which flattens the
 length distribution S1 compares. The held-out windows raise no alarm (nine windows),
 and pre-onset false alarms are 0.121\% (95\% interval 0.069--0.211\%), at the
-budget as in \S\ref{sec:api}. F7's 4.5\% is what that per-window rate adds up to over
-about 30 windows after the onset, not a change in the model. The readout of
+budget as in \S\ref{sec:api}. F7 alarms in 4.5\% of streams, above the 1.8\% that this per-window rate predicts
+over its 15 post-onset windows on average: the host does not reproduce seeds
+exactly, so fresh-seed answers differ slightly from the calibrated ones (S7 fires
+in 3.5\%). The readout of
 Appendix~\ref{app:triage} points the same way as on benchmark traffic: under the
 update answers are 6.7\% shorter and agreement between samples rises by 0.033
 ($-7.5\%$ and $+0.043$ there), while F7 moves neither. One slice means this study
@@ -1013,7 +1020,8 @@ cannot test harmless topic shifts, the failure that per-slice scoring fixes.
   \centering\small
   \caption{\vthree{}: Wilson intervals (replay noise only) against intervals from 50
   stratified half-samples of the fault questions (question sampling and replay
-  noise).}
+  noise). The pre-onset rate here pools the F1--F7 streams; with F4 and F6 it is
+  0.017\%.}
   \begin{tabular}{lrcc}
     \toprule
     measure & full data & Wilson 95\% & half-sample 95\% \\
@@ -1032,17 +1040,17 @@ cannot test harmless topic shifts, the failure that per-slice scoring fixes.
 \label{app:sens}
 \begin{table*}[h]
   \centering\small
-  \caption{\vthree{} recalibrated on a share of the calibration questions (one
-  draw shown per share; three were run) and at three window sizes. Runs alarmed
+  \caption{\vthree{} recalibrated on a share of the calibration questions (ranges over
+  three draws per share) and at three window sizes. Runs alarmed
   out of 200.}
   \setlength{\tabcolsep}{4pt}
   \begin{tabular}{lrrrrrrrr}
     \toprule
     setting & threshold change & F1 & F2 & F3 & F4 & F5 & F6 & pre-onset \\
     \midrule
-    25\% calib (627 q.) & 14.9--23.0\% & 197 & 195 & 199 & 47 & 192 & 145 & 0.7\% \\
-    50\% calib (1{,}250 q.) & 4.4--8.2\% & 197 & 197 & 197 & 9 & 191 & 35 & 0.1\% \\
-    75\% calib (1{,}873 q.) & 4.1--5.4\% & 198 & 197 & 200 & 7 & 191 & 44 & 0.0\% \\
+    25\% calib (627 q.) & 14.9--23.0\% & 197 & 195--197 & 199--200 & 10--69 & 192--196 & 118--175 & 0.1--2.1\% \\
+    50\% calib (1{,}250 q.) & 4.4--8.2\% & 197--198 & 197 & 197--199 & 9--22 & 191--192 & 35--110 & 0.1--0.2\% \\
+    75\% calib (1{,}873 q.) & 4.1--5.4\% & 198 & 197 & 199--200 & 5--9 & 191--192 & 44--60 & 0.0--0.1\% \\
     100\% calib (2{,}500 q.) & -- & 198 & 197 & 199 & 7 & 191 & 37 & 0.0\% \\
     \midrule
     $W=100$ & & 198 & 197 & 200 & 18 & 195 & 94 & 0.1\% \\
