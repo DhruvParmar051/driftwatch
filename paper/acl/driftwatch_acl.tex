@@ -616,8 +616,8 @@ healthy round is V4 Flash 0731 on all 5{,}000 questions, F7 the same model on fr
 seeds, U1 the update, and Q1 the old model served at 4-bit by another host.
 Requests are pinned to one host, with thinking off. Corpus, prompts, sampling, signals, budget
 and replay are the local study's; thresholds were frozen on this study's healthy
-calibration answers before any U1, Q1 or F7 answer existed. One amendment, committed before any Q1 answer, moved Q1 to another 4-bit host
-when the first dropped the model. The 38{,}000 answers cost \$1.30.
+calibration answers before any U1, Q1 or F7 answer existed. A pre-Q1 amendment changed Q1's host when the first dropped the model. The
+38{,}000 answers cost \$1.30.
 
 
 
@@ -633,12 +633,16 @@ build answers like the 8-bit one (accuracy within 1.5 points, mean lengths nearl
 unchanged),
 and the monitor stays at the fresh-seed rate. The scoring result replicates:
 pooled \vone{} alarms on harmless mix shifts in 99--100\% of streams, \vthree{} in
-8.5\% and 29.0\%. Both simple baselines catch U1 (mean length 86\%, MMD 87\%) and
-alarm on 95.5--100\% of the harmless shifts. One result is weaker than locally:
+8.5\% and 29.0\%. Both simple baselines catch U1 but alarm on 95.5--100\% of
+the harmless shifts. One result is weaker than locally:
 pre-onset false alarms under \vthree{} are 0.129\% (95\% interval 0.088--0.182\%),
 at rather than below the 0.1\% budget (0.080--0.165\% over ten calibration
 seeds), while the held-out windows stay quiet; the host honours seeds only
 approximately, so repeated answers vary more than calibration saw.
+
+On real user traffic (3{,}000 chatbot-log first turns as one slice, separately
+pre-registered) it caught the update in 89.0\% of streams, median three windows,
+with no held-out alarm (Appendix~\ref{app:chat}).
 
 \section{Discussion}
 \label{sec:discussion}
@@ -646,8 +650,7 @@ approximately, so repeated answers vary more than calibration saw.
 \paragraph{What the monitor sees}
 The monitor detects changes in \emph{how} a model answers: length, agreement,
 vocabulary and meaning. It does not detect changes in \emph{whether} answers are
-correct. Model swaps and prompt edits almost always change both, which is why the
-results in Table~\ref{tab:main} are strong. A fault that changes only correctness,
+correct. Model swaps and prompt edits usually change both. A fault that changes only correctness,
 such as a wrong intent label with identical surface form, is invisible to it.
 Within this scope, the per-slice reference and the family-wise budget are what turn a change detector
 into a degradation detector.
@@ -657,8 +660,8 @@ An alarm reports change, not harm; while the reference model can still be
 asked, two follow-ups tell them apart (Appendix~\ref{app:triage}). Re-asking it the
 window's questions needs no labels: under a harmless shift the answers do not
 change, which would dismiss every pooled \vone{} alarm on F4 and F6, and under a
-model change agreement between samples moves the way accuracy did (down 0.09 and
-0.12 under F1 and F2, up 0.04 under U1). Grading 100 paired answers per alarm
+model change agreement between samples moves the way accuracy did (down under F1
+and F2, up under U1). Grading 100 paired answers per alarm
 confirms harm for 98\% of F1 and 85\% of F2 alarms and never reports the wrong
 direction, but is inconclusive on the small F3 and F5 drops.
 
@@ -669,34 +672,29 @@ one-answer variant, \S\ref{sec:oneanswer}) and embeds each with a 137M-parameter
 model. A judge calls a model per answer: 50{,}000 grades took 4.5 hours locally
 with the 14B judge and cost \$6.81 hosted with the 72B one.
 
-\paragraph{Practical guidance}
-Use per-slice capped scoring, calibrate on at least 1{,}250 healthy queries, check
-bootstrap seeds and a held-out split before freezing, add a Page--Hinkley
-test for slow faults, and do not rely on the monitor alone for classification slices.
-
 \section{Conclusion}
-A label-free monitor can detect real degradation of a deployed language model
-within one window of 200 queries, at a false-alarm rate set in advance, provided
-each kind of question is compared only with itself. It stays quiet on most harmless shifts, catches all four real
-faults we tested and a provider's unannounced update, and a short follow-up
-tells whether a change is harm.
+A label-free monitor that compares each kind of question only with itself detects
+real degradation of a deployed language model within one window of 200 queries, at
+a false-alarm rate set in advance. It stays quiet on most harmless shifts, catches
+four real faults and an unannounced provider update, and a short follow-up tells
+whether a change is harm. Calibrate on at least 1{,}250 healthy queries, check seeds
+and a held-out split before freezing, and add a Page--Hinkley test for slow faults.
 
 \section*{Limitations}
 (i) Apart from \S\ref{sec:api}, all models are open-weight models served on one
 machine; the healthy, F1, F2 and F5 models are from one vendor. Transfer holds on
 Qwen, Llama and Phi but is partial on \texttt{gemma3:12b} (\S\ref{sec:transfer}),
 and the local deployments are 8--26B parameters. (ii) Streams are replays of real answers, not live
-traffic with arrival-time effects. (iii) Task families are known to the monitor.
-Unlabelled production traffic would need a slice classifier, whose errors we have
-not studied. (iv) \vtwo{} and \vthree{} were designed after seeing \vone{} on F4.
+traffic with arrival-time effects. (iii) Task families are known to the monitor,
+except on real traffic (Appendix~\ref{app:chat}), one slice without topic-shift tests. (iv) \vtwo{} and \vthree{} were designed after seeing \vone{} on F4.
 F6 was unseen, but there is only one such shift; the 50 random mixtures are
 supporting evidence, not a pre-registered test. (v) Accuracy on \textsf{jsonx} is
 ill-defined under the strict key, so we exclude it from means. (vi) Both judges
 are reference-free; a judge given reference answers may close more of the gap, but
 it uses the labels this setting lacks. (vii) The hosted study observes one real
 update from one provider. Its host honours seeds only approximately, version and
-precision are the host's own labels, and Q1 changes the host as well as the
-precision. Its pre-onset false-alarm rate sits at the budget rather than below it.
+precision are the host's labels, Q1 also changes the host, and pre-onset false
+alarms sit at the budget rather than below it.
 
 \section*{Ethics Statement}
 \paragraph{Data} The questions come from six public research datasets, used for
@@ -965,6 +963,49 @@ improvement verdict on a fault.
     \bottomrule
   \end{tabular}
 \end{table*}
+
+\section{Real user traffic}
+\label{app:chat}
+Every stream in the main text mixes seven benchmark tasks in fixed proportions. A
+second pre-registered study, committed before its source was downloaded, replaces
+them with real user requests: the first user turns of conversations in one pinned
+shard of WildChat-1M~\citep{zhao2024wildchat}, kept only when English, not marked
+toxic, redacted or flagged by the logged moderation result, 20--2{,}000 characters
+long, and one per repeated template (17{,}460 passed). From these, 3{,}000 were
+drawn and split 1{,}500 calibration, 600 held-out and 900 fault; only the prompt
+text was kept. The deployment, the update and generation are those of
+\S\ref{sec:api}: V4 Flash 0731 as healthy, the same model on fresh seeds (F7) and
+V4.1 Flash 1017 (U1). Real traffic has no task labels, so the whole stream is one
+slice and pooled and per-slice scoring coincide; S6 reads only intent labels and
+was left out ($m=4$). Thresholds were frozen on the healthy calibration answers
+before any F7 or U1 answer existed. The 19{,}200 answers cost \$1.85.
+
+\begin{table*}[h]
+  \centering\small
+  \caption{Real user traffic: 200 replayed streams per condition against the
+  frozen record. Signal columns: streams each signal alone detects.}
+  \label{tab:chat}
+  \begin{tabular}{lrrrrr}
+    \toprule
+    condition & detected (95\%) & latency & S7 & S1 & S3, S4 \\
+    \midrule
+    U1 (update) & 89.0\% (83.9--92.6) & 3 & 88.5\% & 63.0\% & 0\% \\
+    F7 (fresh seeds) & 4.5\% (2.4--8.3) & 9 & 3.5\% & 0\% & $\le$1\% \\
+    \bottomrule
+  \end{tabular}
+\end{table*}
+
+Table~\ref{tab:chat} gives the result. The update is caught in 89.0\% of streams,
+close to the 93.5\% on benchmark traffic, but by S7 rather than S1: 62\% of healthy
+chat answers run into the 512-token limit (50\% of the update's), which flattens the
+length distribution S1 compares. The held-out windows raise no alarm (nine windows),
+and pre-onset false alarms are 0.121\% (95\% interval 0.069--0.211\%), at the
+budget as in \S\ref{sec:api}. F7's 4.5\% is what that per-window rate adds up to over
+about 30 windows after the onset, not a change in the model. The readout of
+Appendix~\ref{app:triage} points the same way as on benchmark traffic: under the
+update answers are 6.7\% shorter and agreement between samples rises by 0.033
+($-7.5\%$ and $+0.043$ there), while F7 moves neither. One slice means this study
+cannot test harmless topic shifts, the failure that per-slice scoring fixes.
 
 \section{Half-sample intervals}
 \label{app:half}
