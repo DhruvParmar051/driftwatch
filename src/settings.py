@@ -378,9 +378,9 @@ def load_extension_prompts() -> dict:
 
 
 @lru_cache(maxsize=1)
-def load_judge_config() -> dict:
-    """Return config/judge.yaml: the pre-registered LLM-as-judge baseline."""
-    with (CONFIG_DIR / "judge.yaml").open() as fh:
+def load_judge_config(name: str = "judge") -> dict:
+    """Return a pre-registered LLM-as-judge config: config/judge.yaml, or config/<name>.yaml."""
+    with (CONFIG_DIR / f"{name}.yaml").open() as fh:
         return yaml.safe_load(fh)
 
 
