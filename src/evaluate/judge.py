@@ -66,7 +66,10 @@ _SCORE_SCHEMA = pa.schema(
 
 
 def build_judge_rows(
-    queries: Sequence[Query], completions: Sequence[Completion], model_id: str
+    queries: Sequence[Query],
+    completions: Sequence[Completion],
+    model_id: str,
+    cfg: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     """One /v1/chat/completions row per answer, in the shape run_rows expects.
 
@@ -74,14 +77,15 @@ def build_judge_rows(
     its answer text verbatim, through config/judge.yaml's template. The ground
     truth is never read. The answering model's system prompt is not shown
     either: F3 is a change to that prompt, and a judge told about it would be
-    reading the fault, not the answers.
+    reading the fault, not the answers. `cfg` is a judge config
+    (settings.load_judge_config); config/judge.yaml by default.
 
     Raises:
         KeyError: an answer's query is not in `queries`.
         ValueError: two answers share a (query_id, sample_idx, condition).
 
     """
-    cfg = load_judge_config()
+    cfg = cfg or load_judge_config()
     prompts = {q.query_id: q.prompt for q in queries}
     rows: list[dict[str, Any]] = []
     seen: set[ScoreKey] = set()
