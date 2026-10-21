@@ -198,6 +198,9 @@ class RemoteClient:
             except httpx.TransportError as exc:
                 if attempt == _RETRIES:
                     raise RemoteError(f"{custom_id}: router unreachable: {exc}") from exc
+                log.warning(
+                    "remote.retry", custom_id=custom_id, attempt=attempt, reason=type(exc).__name__
+                )
                 time.sleep(_backoff(attempt))
                 continue
             if resp.status_code == 200:
@@ -209,11 +212,17 @@ class RemoteClient:
                         raise RemoteError(
                             f"{custom_id}: upstream kept failing: {str(payload)[:300]}"
                         )
+                    log.warning(
+                        "remote.retry", custom_id=custom_id, attempt=attempt, reason="upstream"
+                    )
                     time.sleep(_backoff(attempt))
                     continue
                 self._check(custom_id, payload)
                 return {"custom_id": custom_id, "response": payload, "error": None}
             if resp.status_code in _TRANSIENT_STATUS and attempt < _RETRIES:
+                log.warning(
+                    "remote.retry", custom_id=custom_id, attempt=attempt, reason=resp.status_code
+                )
                 time.sleep(max(_retry_after(resp) or 0.0, _backoff(attempt)))
                 continue
             raise RemoteError(f"{custom_id}: HTTP {resp.status_code}: {resp.text[:300]}")
