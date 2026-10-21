@@ -1,0 +1,97 @@
+# ---------------------------------------------------------------------------
+# Paired re-query monitor (Stage 7v). PRE-REGISTERED: fixed and committed before
+# any reference round is generated and before any paired statistic is computed.
+#
+# The question. Every monitor so far compares a window with a fixed healthy
+# reference, so a change in WHICH questions arrive can look like a change in the
+# model; per-slice scoring removes most of that, not all (v3 still alarms on
+# 18.5-29% of F6 streams). Here the reference is the healthy model asked the SAME
+# questions as the window: a change of topic moves both sides equally and cannot
+# by itself cause an alarm. The price is extra calls to a reference model that
+# must stay available (a kept checkpoint, a pinned API version).
+#
+# What is new and what is not. The fault rounds' answers already exist and were
+# analysed under v1/v3. What this file fixes in advance is the paired monitor:
+# its statistics, its calibration (calib questions only), both designs below and
+# every comparison reported. Nothing here is tuned after a paired statistic on a
+# fault question is seen; whatever it shows is reported.
+#
+# Statistics (m = 4), each larger when the two sides differ more, computed on the
+# window's current answers C and reference answers R to the same questions:
+#   length_ks        two-sample KS statistic between all lengths in C and in R
+#                    (whitespace tokens; a parse failure has length 0, as S1)
+#   agreement_gap    |mean over questions of agreement within C_q - the same
+#                    for R_q|, agreement as S3 (exact match after
+#                    canonicalisation on verifiable slices, word Jaccard else)
+#   lexical_gap      |mean MATTR of C - mean MATTR of R| over answers that have
+#                    one, MATTR as S4 (25-token windows)
+#   embedding_gap    mean over questions of 1 - cosine(mean unit vector of C_q,
+#                    mean unit vector of R_q), Nomic Embed v1.5 as S7
+# All four are pooled over the window: the pairing, not a per-slice reference,
+# is what removes the question mix.
+#
+# Calibration. 20,000 stratified bootstrap windows (W = 200, standard strata) of
+# calib questions under "no change", Sidak split of the 0.1% family-wise budget
+# over m = 4, generalised Pareto tail - the frozen monitor's procedure, with the
+# frozen monitor's calibration seed. A window alarms if any statistic crosses.
+#
+# Two designs, both run, both reported:
+#   split  NO new generation. k' = 2 per side. Calibration: healthy samples 0-1
+#          (current) against healthy samples 2-3 (reference) on calib questions.
+#          Evaluation: the condition's samples 0-1 against F7's samples 0-1 (the
+#          healthy model on fresh seeds) on fault questions. Held-out windows:
+#          healthy 0-1 against healthy 2-3.
+#   fresh  ONE reference round R per study: the healthy model with F7's seeds on
+#          the calib and held-out questions. k = 4 per side. Calibration:
+#          healthy against R on calib questions. Evaluation: the condition
+#          against F7 on fault questions (and against R on calib questions where
+#          F4/F6 use them). Held-out windows: healthy against R.
+#
+# Replay. The frozen monitor's streams: same replay plan, seeds and condition
+# list as `evaluate`, 200 streams per condition, healthy before the onset and the
+# condition after, each side paired with its reference. F7 is not a condition
+# here - healthy against F7 IS the "no change" stream, measured before every
+# onset. F4/F6: in `fresh` as published; in `split` rebuilt from fault questions
+# only (583 and 595 questions), since calib questions have no fresh reference.
+#
+# Studies and conditions:
+#   local  healthy gemma4:26b; F1, F2, F3, F5; F4, F6
+#   api    healthy V4 Flash 0731; U1, Q1; F4, F6        (config/api_study.yaml)
+#   chat   healthy V4 Flash 0731 on WildChat; U1         (config/chat_study.yaml;
+#          one slice, so no F4/F6)
+#
+# Reported, with Wilson 95% intervals: detection and median latency per
+# condition; false alarms before the onset and on the real held-out windows;
+# an exact McNemar test against the frozen monitor on the same streams (v3 for
+# local and api, the chat study's record for chat), wherever the streams match.
+#
+# Reference rounds (fresh design), generated from config/reference_api.yaml,
+# config/reference_chat.yaml and the local `generate --condition R`, each into
+# its own data directory so no earlier store or result changes:
+#   local  data/reference       14,000 answers (3,500 questions x 4), free
+#   api    data/api/reference   14,000 answers, about $0.40
+#   chat   data/chat/reference   8,400 answers (2,100 x 4), about $0.65
+#
+# Bump `version` on ANY edit.
+# ---------------------------------------------------------------------------
+
+version: "1.0.0"
+
+statistics: [length_ks, agreement_gap, lexical_gap, embedding_gap]
+designs: [split, fresh]
+studies:
+  local:
+    data_dir: ""
+    reference_dir: reference
+    frozen: thresholds_v3.json
+    conditions: [F1, F2, F3, F5, F4, F6]
+  api:
+    data_dir: api
+    reference_dir: api/reference
+    frozen: thresholds_v3.json
+    conditions: [U1, Q1, F4, F6]
+  chat:
+    data_dir: chat
+    reference_dir: chat/reference
+    frozen: thresholds.json
+    conditions: [U1]
