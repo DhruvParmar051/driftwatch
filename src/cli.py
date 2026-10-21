@@ -1169,6 +1169,187 @@ def triage(
     typer.echo(report_md.read_text())
 
 
+@app.command("paired-calibrate")
+def paired_calibrate(
+    study: str = typer.Option(..., help="local, api or chat (config/paired_study.yaml)."),
+    design: str = typer.Option(..., help="split (no new generation) or fresh (needs R)."),
+) -> None:
+    """Calibrate the paired re-query monitor on calib questions (Stage 7v).
+
+    Writes data/paired/STUDY_DESIGN.json with the git commit and a hash of the
+    calibration pairs. Commit that file before `paired-evaluate`, which refuses
+    an uncommitted or changed record. Refuses to run on a dirty tree.
+    """
+    from evaluate.paired import calibrate, pairs_hash
+    from settings import get_settings
+
+    _require_clean_tree()
+    pairs = _paired_inputs(study, design)
+    s = get_settings()
+    record = calibrate(
+        pairs.calib_table,
+        pairs.calib,
+        s.false_alarm_budget,
+        s.bootstrap_windows,
+        s.calibration_seed,
+    )
+    record.update(
+        study=study,
+        design=design,
+        pairs_hash=pairs_hash(pairs.calib_table),
+        git_commit=_git("rev-parse", "HEAD")[:12],
+        frozen_at=_now().isoformat(),
+    )
+    out = _paired_record(study, design)
+    if out.exists():
+        raise typer.BadParameter(f"{out} exists; a paired record is calibrated once")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(record, indent=2) + "\n")
+    for name, t in record["thresholds"].items():
+        typer.echo(f"{name:15} {t:.6f}  ({record['tail_fits'][name]['method']})")
+    typer.echo(f"-> {out}; commit it before paired-evaluate")
+
+
+@app.command("paired-evaluate")
+def paired_evaluate(
+    study: str = typer.Option(..., help="local, api or chat (config/paired_study.yaml)."),
+    design: str = typer.Option(..., help="split or fresh."),
+) -> None:
+    """The paired monitor's pre-registered evaluation (Stage 7v).
+
+    Refuses unless the record is committed and the calibration reproduces it.
+    """
+    import math
+
+    from evaluate.paired import (
+        calibrate,
+        heldout_rate,
+        paired_markdown,
+        pairs_hash,
+        replay,
+        summarise,
+    )
+    from evaluate.pipeline import DEFAULT_MIN_PREFIX, DEFAULT_REPLAY_WINDOWS, replay_runs
+    from settings import DATA_DIR, get_settings, load_api_study
+
+    path = _paired_record(study, design)
+    if _git("status", "--porcelain", "--", str(path)) or not _git("ls-files", str(path)):
+        raise typer.BadParameter(f"{path} is not committed as calibrated; commit it first")
+    record = json.loads(path.read_text())
+    s = get_settings()
+    pairs = _paired_inputs(study, design)
+    again = calibrate(
+        pairs.calib_table,
+        pairs.calib,
+        s.false_alarm_budget,
+        s.bootstrap_windows,
+        s.calibration_seed,
+    )
+    if pairs_hash(pairs.calib_table) != record["pairs_hash"] or any(
+        not math.isclose(again["thresholds"][k], v, rel_tol=1e-9)
+        for k, v in record["thresholds"].items()
+    ):
+        raise typer.BadParameter(f"calibration does not reproduce {path}; refusing")
+    thresholds = record["thresholds"]
+    heldout = heldout_rate(
+        pairs.heldout_table,
+        pairs.heldout,
+        pairs.heldout_healthy,
+        thresholds,
+        s.calibration_seed,
+    )
+    conditions = set(load_api_study("paired_study")["studies"][study]["conditions"])
+    runs = replay_runs(
+        pairs.run_conditions,
+        200,
+        DEFAULT_REPLAY_WINDOWS,
+        DEFAULT_MIN_PREFIX,
+        s.calibration_seed,
+    )
+    runs = [r for r in runs if r.condition in conditions]
+    records = replay(runs, pairs.pool, pairs.healthy, pairs.faulty, pairs.tables, thresholds)
+    spec = load_api_study("paired_study")["studies"][study]
+    frozen_results = (
+        DATA_DIR
+        / spec["data_dir"]
+        / "results"
+        / ("chat.json" if study == "chat" else "evaluation_v3.json")
+    )
+    frozen = {
+        (r["condition"], r["run_idx"]): r["latency"] is not None
+        for r in json.loads(frozen_results.read_text())["records"]
+    }
+    if design == "split":  # F4/F6 are rebuilt from fault questions: not the frozen streams
+        frozen = {k: v for k, v in frozen.items() if k[0] not in ("F4", "F6")}
+    results = {
+        "study": study,
+        "design": design,
+        "record": str(path),
+        "thresholds": thresholds,
+        "heldout": heldout,
+        "summary": summarise(records, frozen),
+        "records": records,
+    }
+    out = DATA_DIR / spec["data_dir"] / "results" / f"paired_{design}.json"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(results, indent=2) + "\n")
+    md = DATA_DIR / "report_paired" / f"{study}_{design}.md"
+    md.parent.mkdir(parents=True, exist_ok=True)
+    md.write_text(paired_markdown(results))
+    typer.echo(md.read_text())
+
+
+def _paired_record(study: str, design: str) -> Path:
+    from settings import DATA_DIR
+
+    return DATA_DIR / "paired" / f"{study}_{design}.json"
+
+
+def _paired_inputs(study: str, design: str) -> Any:
+    """Load one study's rows, embeddings and (fresh) reference round, and build its pairs."""
+    from corpus.build import read_queries
+    from evaluate.paired import study_pairs
+    from provider.collect import read_completions, read_embeddings
+    from settings import DATA_DIR, WINDOW_STRATA, get_settings, load_api_study
+
+    spec = load_api_study("paired_study")["studies"].get(study)
+    if spec is None:
+        raise typer.BadParameter(f"study must be local, api or chat, got {study!r}")
+    if (study == "chat") != ("chat" in WINDOW_STRATA):
+        raise typer.BadParameter("run the chat study, and only it, with DRIFTWATCH_STUDY=chat")
+    root, ref = DATA_DIR / spec["data_dir"], DATA_DIR / spec["reference_dir"]
+    ref_rows, ref_emb = (), None
+    if design == "fresh":
+        ref_rows = read_completions(ref / "completions.parquet")
+        ref_emb = read_embeddings(ref / "embeddings.parquet")
+    return study_pairs(
+        study,
+        design,
+        read_queries(root / "queries.jsonl"),
+        read_completions(root / "completions.parquet"),
+        read_embeddings(root / "embeddings.parquet"),
+        spec["conditions"],
+        ref_rows,
+        ref_emb,
+        get_settings().corpus_seed,
+    )
+
+
+def _require_clean_tree() -> None:
+    if _git("status", "--porcelain", "--untracked-files=normal"):
+        raise typer.BadParameter("the working tree is dirty; commit first")
+
+
+def _git(*args: str) -> str:
+    import subprocess
+
+    from settings import PROJECT_ROOT
+
+    return subprocess.run(
+        ["git", *args], cwd=PROJECT_ROOT, capture_output=True, text=True, check=True
+    ).stdout.strip()
+
+
 @app.command("chat-corpus")
 def chat_corpus(
     shard: Path = typer.Option(
