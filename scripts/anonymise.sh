@@ -2,7 +2,7 @@
 # The anonymous code archive for double-blind review: dist/driftwatch-anonymous.zip.
 #
 # Packs the committed tree at HEAD (never the working copy), leaves out the
-# paper, the team's work-split notes and the CI config, and refuses to finish
+# paper, the team's work-split notes, the CI config and this script, and refuses to finish
 # if any team name, handle or repository link is left in what remains. The
 # zip carries no git metadata: it is rebuilt from a plain extract, so the
 # commit id git writes into its own archives is not in it.
@@ -10,7 +10,7 @@ set -euo pipefail
 cd "${0:A:h}/.."
 
 OUT=dist/driftwatch-anonymous.zip
-EXCLUDE=(paper docs/WORKSTREAMS.md .github)
+EXCLUDE=(paper docs/WORKSTREAMS.md .github scripts/anonymise.sh)
 PATTERN='dhruv|parmar|pronnati|tapaswi|mahak|khurdia|aditya|dhirubhai|daiict|github\.com/'
 
 TMP=$(mktemp -d)
