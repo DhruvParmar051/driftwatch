@@ -12,7 +12,9 @@
 #
 # Thinking is switched off on every request, and any answer that reports
 # reasoning tokens stops the round: the healthy model must not think on some
-# rows and not others.
+# rows and not others. A model that cannot think at all takes no switch
+# (`thinking_switch: false`) - the router would refuse a parameter its host
+# does not support - and the reasoning-token check still applies.
 #
 # `budget_usd` is a hard cap on everything ever spent through the router, read
 # back from the cost recorded on every answer on disk. A request that would
@@ -47,3 +49,12 @@ deployments:
     provider: sail-research/fp4
     provider_name: Sail Research
     quantization: fp4
+
+  # The LLM-as-judge baseline at scale (config/judge_v2.yaml): Qwen 2.5 72B,
+  # the same family as the 14B local judge (config/judge.yaml), 5x larger.
+  judge_qwen72b_fp8:
+    model: qwen/qwen-2.5-72b-instruct
+    provider: deepinfra/fp8
+    provider_name: DeepInfra
+    quantization: fp8
+    thinking_switch: false
