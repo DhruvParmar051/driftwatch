@@ -1140,6 +1140,35 @@ def leakage_check_cmd(
         raise typer.Exit(1)
 
 
+@app.command()
+def triage(
+    completions: Path = typer.Option(..., help="Healthy + fault completions."),
+    results: Path = typer.Option(..., help="An `evaluate` results file; its runs are the alarms."),
+    out: Path = typer.Option(..., help="Results JSON."),
+    report_md: Path = typer.Option(..., help="Markdown tables."),
+    label: str = typer.Option(..., help="What the results are, for the report title."),
+) -> None:
+    """What each alarm says, and whether a small graded check calls it harm (Stage 7t).
+
+    Reads the alarms `evaluate` recorded; replays nothing and changes no threshold.
+    """
+    from corpus.build import read_queries
+    from evaluate.triage import run_triage, triage_markdown
+    from provider.collect import read_completions
+    from settings import get_settings
+
+    records = json.loads(results.read_text())["records"]
+    r = run_triage(
+        read_queries(get_settings().queries_path), read_completions(completions), records
+    )
+    r["source"] = str(results)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(r, indent=2) + "\n")
+    report_md.parent.mkdir(parents=True, exist_ok=True)
+    report_md.write_text(triage_markdown(r, label))
+    typer.echo(report_md.read_text())
+
+
 @app.command("pilot-f8")
 def pilot_f8(
     completions: Path = typer.Option(..., help="Completions holding the healthy round."),
