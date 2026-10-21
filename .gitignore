@@ -24,6 +24,7 @@ data/api/*
 !data/api/thresholds*.json
 data/chat/*
 !data/chat/thresholds*.json
+data/reference/
 
 .env
 
