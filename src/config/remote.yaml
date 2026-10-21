@@ -39,9 +39,11 @@ deployments:
     provider_name: DeepInfra
     quantization: fp8
 
-  # The pre-update model from a host that serves it at 4-bit.
+  # The pre-update model from a host that serves it at 4-bit. Was OpenInference
+  # (open-inference/fp4), which stopped serving the model on 21 Oct 2026 before
+  # any Q1 answer was generated; see config/api_study.yaml, version 1.1.0.
   flash_0731_fp4:
     model: deepseek/deepseek-v4-flash-0731
-    provider: open-inference/fp4
-    provider_name: OpenInference
+    provider: sail-research/fp4
+    provider_name: Sail Research
     quantization: fp4
