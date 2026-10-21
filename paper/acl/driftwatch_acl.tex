@@ -697,6 +697,26 @@ update from one provider. Its host honours seeds only approximately, version and
 precision are the host's own labels, and Q1 changes the host as well as the
 precision. Its pre-onset false-alarm rate sits at the budget rather than below it.
 
+\section*{Ethics Statement}
+\paragraph{Data} The questions come from six public research datasets, used for
+research as their authors intended, and from \textsf{jsonx}, which we synthesised
+ourselves. None contains personal information we collected, and no human
+annotators or participants were involved; correctness is scored automatically
+against the datasets' own answers.
+
+\paragraph{Models and services} All local models are openly released and were run
+on one laptop. The hosted study used a commercial model router through its public
+API, with a key paid for by the authors, a pinned host per deployment and a spending
+cap; it sent only the benchmark questions above. The 72B judge ran on the same
+service. The hosted runs cost under \$10 in total.
+
+\paragraph{Use and misuse} The monitor is meant to protect the users of a deployed
+model by noticing when its behaviour changes without notice. It flags change, not
+harm: the real update in \S\ref{sec:api} improved accuracy, so an alarm calls for
+a person to look, not for an automatic decision. It cannot see faults that leave
+the surface of the answers unchanged (\S\ref{sec:slice}), and its silence should not
+be read as evidence that a model is safe or correct.
+
 \bibliography{../references}
 
 \appendix
