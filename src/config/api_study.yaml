@@ -14,8 +14,8 @@
 #   healthy  V4 Flash 0731, DeepInfra fp8   every question (calib, heldout, fault)
 #   F7       the same, fresh seeds          fault questions - the negative control
 #   U1       V4.1 Flash 1017, DeepInfra fp8 fault questions - the real update
-#   Q1       V4 Flash 0731, OpenInference fp4  fault questions - the same model
-#            served at 4-bit by another host (a real precision change)
+#   Q1       V4 Flash 0731, Sail Research fp4  fault questions - the same model
+#            served at 4-bit by another host (a change of host AND precision)
 #   F4, F6   derived from healthy answers exactly as in the local study
 #
 # Everything else is the local study's, unchanged: the corpus and its splits,
@@ -42,9 +42,16 @@
 # All of this study's data lives under `data_dir`, apart from the shared
 # corpus: its own completions, embeddings, thresholds and reports, so nothing
 # mixes with the local study. Bump `version` on ANY edit.
+#
+# Amendments:
+#   1.1.0 (21 Oct 2026) - Q1's host changed from OpenInference (fp4) to Sail
+#     Research (fp4): OpenInference stopped serving V4 Flash 0731. Made after
+#     the healthy round and the v1/v3 freeze, before any Q1 answer existed. No
+#     other condition, setting or analysis changed. As before, Q1 differs from
+#     healthy in both host and precision.
 # ---------------------------------------------------------------------------
 
-version: "1.0.0"
+version: "1.1.0"
 data_dir: api
 
 rounds:
