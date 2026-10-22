@@ -48,6 +48,10 @@ Condition = Literal[
     "R",
     "R2",
     "U1",
+    "L1",
+    "L2",
+    "L3",
+    "L4",
     "Q1",
 ]
 
@@ -310,7 +314,15 @@ CONDITION_ROLES: dict[str, str] = {
     "H5": "fifth_family",
     "R": "healthy",
     "R2": "healthy",
+    "L1": "healthy_q8",
+    "L2": "healthy",
+    "L3": "healthy",
+    "L4": "healthy",
 }
+
+#: The same-model fault ladder (Stage 7x, config/ladder_study.yaml): L1 serves
+#: the healthy weights at 8-bit, L2-L4 sample the healthy model hotter.
+LADDER_TEMPERATURE: dict[str, float] = {"L2": 1.0, "L3": 1.3, "L4": 1.6}
 
 #: H2 is the SECOND HEALTHY MODEL (Stage 7n): gemma3:12b, the F5 model, on the
 #: calib and heldout questions with the healthy prompt and seeds. Its answers to
