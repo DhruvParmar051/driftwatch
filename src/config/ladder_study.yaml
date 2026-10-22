@@ -1,0 +1,45 @@
+# ---------------------------------------------------------------------------
+# Same-model fault ladder (Stage 7x). PRE-REGISTERED: fixed and committed on
+# 22 Oct 2026 before any round below is generated or any answer is read.
+#
+# The question. Every local fault so far swaps the model or edits the prompt,
+# changes that alter the FORM of answers a lot. Here the deployed model and its
+# prompt stay the same and only how it is served changes, in graded steps:
+#
+#   L1  the same weights at 8-bit (gemma4:26b-a4b-it-q8_0) instead of Q4_K_M -
+#       a change of precision, expected to change little (cf. the API's Q1)
+#   L2  sampling temperature 1.0 instead of 0.7
+#   L3  temperature 1.3
+#   L4  temperature 1.6
+#
+# A temperature too high is a real serving misconfiguration (a changed default,
+# a dropped parameter). Accuracy is expected to fall from L2 to L4; whether it
+# does is measured, after detection, by the oracle.
+#
+# Rounds: fault questions only (the shared fault subset, C8), healthy prompt,
+# healthy seeds, k = 4, max_tokens 512, each condition its own round. They are
+# generated into their own data directory (data/ladder) beside a copy of the
+# local study's healthy completions, embeddings and frozen records, so no
+# result of the local study changes.
+#
+# Analysis, fixed here. NOTHING is recalibrated: the local study's frozen v1
+# and v3 records and its paired `rounds` record (calibrated on calib questions
+# before any L answer exists) are applied as they are, with the same replay
+# plan, 200 streams per condition, and Wilson intervals. Reported: detection
+# and median latency per condition and monitor; each condition's accuracy
+# change on the scored slices; the Spearman correlation between accuracy drop
+# and detection over every local fault (F1, F2, F3, F5, L1-L4).
+#
+# Hypotheses: H1 under v3, detection does not decrease from L2 to L3 to L4;
+# H2 L1 is detected in fewer streams than L4. Reported whichever way they go.
+#
+# Bump `version` on ANY edit.
+# ---------------------------------------------------------------------------
+
+version: "1.0.0"
+data_dir: ladder
+conditions:
+  L1: {role: healthy_q8, temperature: 0.7}
+  L2: {role: healthy, temperature: 1.0}
+  L3: {role: healthy, temperature: 1.3}
+  L4: {role: healthy, temperature: 1.6}
