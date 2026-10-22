@@ -1,0 +1,56 @@
+# ---------------------------------------------------------------------------
+# Real-update replication (Stage 7w). PRE-REGISTERED: fixed and committed on
+# 22 Oct 2026 before any round below is generated or any answer is read.
+#
+# The question. The hosted-API study (config/api_study.yaml) observed ONE real,
+# unannounced update. Here three more real updates, each a version its maker
+# shipped behind the same product name, are replayed exactly like U1. They are
+# also the CONFIRMATORY test of the paired monitor's `rounds` design
+# (config/paired_study.yaml v1.1.1), designed after seeing v1.0's results on
+# the earlier studies and never yet run on data it was not designed with.
+#
+# Studies, each pinned to ONE host serving both versions at its stated
+# precision (config/remote.yaml), thinking switched off:
+#   kimi    Kimi K2 0711 -> Kimi K2 0905               Novita fp8
+#   qwen    Qwen3.5 Plus 2026-02-15 -> 2026-04-20      Alibaba
+#   dspro   DeepSeek V4 Pro 2026-04-23 -> 2026-08-13   DeepInfra fp8
+# Picked from every family the router lists with two dated versions on one
+# host, leaving out pairs that change model generation (Mistral Large 2 -> 3),
+# whose older version costs over $15 per study (GPT-4o), or that we are not
+# using (models of the assistant's own vendor).
+#
+# Rounds per study (config/study_<name>.yaml), everything else as the API study
+# (corpus and splits, healthy prompt, k = 4 at temperature 0.7, max_tokens 512,
+# the seeds, nomic-embed-text v1.5 for S7, W = 200, S = 50, budget 0.1%):
+#   healthy  old version, every question               20,000 answers
+#   F7       old version, fresh seeds, fault questions  6,000
+#   U1       new version, fault questions               6,000
+#   R        old version, F7 seeds, calib + heldout    14,000  (paired monitor)
+#   R2       old version, R2 seeds, calib              10,000  (paired monitor)
+#
+# Order, per study: healthy; calibrate v1 (pooled) and v3 (per_slice_capped)
+# on calib answers with the API study's m = 5 signals and freeze both; then
+# F7, U1, R, R2; calibrate the paired `rounds` design and commit its record;
+# then evaluate. Nothing is tuned after any U1 answer is read.
+#
+# Reported for every study, with Wilson 95% intervals: U1 detection and median
+# latency under v1, v3 and paired `rounds`; F4, F6 and F7 alarms; false alarms
+# before the onset and on the 17 real held-out windows; exact McNemar tests of
+# `rounds` against v3 on the same streams; U1's accuracy change on the scored
+# slices (oracle, after detection).
+#
+# Confirmatory criteria, fixed here. For the `rounds` design, on each study:
+#   C1  pre-onset false alarms at or below the 0.1% budget (point estimate);
+#   C2  F6 alarms at or below v3's on the same streams.
+# For each monitor, U1 detection is reported, not judged: an update may leave
+# the answers unchanged, as Q1 did. A study that fails C1 or C2 is reported as
+# a failure of the design, not dropped.
+#
+# A study whose host stops serving either version before its rounds finish is
+# reported as incomplete with what exists; no host is substituted.
+#
+# Bump `version` on ANY edit.
+# ---------------------------------------------------------------------------
+
+version: "1.0.0"
+studies: [study_kimi, study_qwen, study_dspro]
