@@ -46,6 +46,7 @@ Condition = Literal[
     "H4",
     "H5",
     "R",
+    "R2",
     "U1",
     "Q1",
 ]
@@ -308,6 +309,7 @@ CONDITION_ROLES: dict[str, str] = {
     "H4": "fourth_family",
     "H5": "fifth_family",
     "R": "healthy",
+    "R2": "healthy",
 }
 
 #: H2 is the SECOND HEALTHY MODEL (Stage 7n): gemma3:12b, the F5 model, on the
@@ -346,6 +348,11 @@ F7_SEED_BASE: int = 20261012
 #: question has a fresh-seed healthy answer set. Written to its own data
 #: directory, never to a study's store, and never replayed as a fault.
 REFERENCE: str = "R"
+#: R2 is the SECOND reference round (paired_study.yaml v1.1, design `rounds`):
+#: the healthy model on the calib questions only, with seeds no other round
+#: uses, so the calibration sees three healthy rounds (healthy, R, R2).
+SECOND_REFERENCE: str = "R2"
+R2_SEED_BASE: int = 20261022
 
 
 @lru_cache(maxsize=1)
