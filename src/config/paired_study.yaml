@@ -122,10 +122,15 @@
 # criteria C1 (pre-onset false alarms <= 0.1%) and C2 (F6 alarms <= v3's)
 # fixed there before any of their answers exists. Only `rounds` is run on them.
 #
+# VERSION 1.3.0 (22 Oct 2026): `ladder` (config/ladder_study.yaml), the local
+# study's same-model fault ladder L1-L4, run under `rounds` on the local study's
+# healthy, F7, R and R2 answers, so its calibration is the local study's.
+# Added before any L answer exists.
+#
 # Bump `version` on ANY edit.
 # ---------------------------------------------------------------------------
 
-version: "1.2.0"
+version: "1.3.0"
 
 statistics: [length_ks, agreement_gap, lexical_gap, embedding_gap]
 designs: [split, fresh, rounds]
@@ -164,3 +169,8 @@ studies:
     reference_dir: dspro/reference
     frozen: thresholds_v3.json
     conditions: [U1, F4, F6]
+  ladder:
+    data_dir: ladder
+    reference_dir: reference
+    frozen: thresholds_v3.json
+    conditions: [L1, L2, L3, L4]
