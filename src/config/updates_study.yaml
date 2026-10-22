@@ -63,9 +63,16 @@
 #     paired `rounds` design and its criteria C1 and C2 are NOT tested on it.
 #     qwen reports the frozen v1 and v3 monitors on U1, F4, F6 and F7 as fixed
 #     above. The confirmatory test of `rounds` remains open and is reported so.
+#   1.3.0 (22 Oct 2026), after the frozen v1 and v3 results on qwen were read
+#     (U1 97.5% under both; v3 over budget) and before the paired or served
+#     monitor was computed on any qwen answer: the budget now covers R and R2,
+#     so they are generated as fixed above (rounds qr01, qr02) and the paired
+#     `rounds` design is calibrated and tested on qwen with C1 and C2 unchanged.
+#     The served-answer test (config/served_study.yaml) and Model Equality
+#     Testing are run on the same streams.
 #
 # Bump `version` on ANY edit.
 # ---------------------------------------------------------------------------
 
-version: "1.2.0"
+version: "1.3.0"
 studies: [study_qwen]
