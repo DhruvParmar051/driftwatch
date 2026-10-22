@@ -41,6 +41,7 @@ from evaluate.pipeline import (
     DEFAULT_MIN_PREFIX,
     DEFAULT_REPLAY_WINDOWS,
     HEALTHY,
+    alias_embeddings,
     build_monitor_signals,
     calibration_rows,
     replay_runs,
@@ -157,8 +158,11 @@ def main() -> None:
     calib_q, calib_rows = calibration_rows(queries, rows)
     record = freeze.verify(ROOT / "thresholds.json", calib_rows)
     names = list(record.thresholds)
+    emb = read_embeddings(ROOT / "embeddings.parquet")
+    for name, d in derived.items():
+        emb = alias_embeddings(emb, d, name)
     signals = fit_signals(
-        build_monitor_signals(read_embeddings(ROOT / "embeddings.parquet"), names, record.scoring),
+        build_monitor_signals(emb, names, record.scoring),
         calib_q,
         calib_rows,
     )
@@ -173,7 +177,7 @@ def main() -> None:
         **paired._groups([c for c in reference_rows if c.condition == "R"], ref_s),
         **paired._groups([c for c in rows if c.condition == "F7"], ref_s),
     }
-    vectors = paired._vectors(read_embeddings(ROOT / "embeddings.parquet"))
+    vectors = paired._vectors(emb)
     vectors.update(paired._vectors(read_embeddings(ROOT / "reference" / "embeddings.parquet")))
     pool_table = next(iter(pairs.tables.values()))[0]
     for name, d in derived.items():
