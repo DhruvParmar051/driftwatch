@@ -25,6 +25,10 @@ data/api/*
 data/chat/*
 !data/chat/thresholds*.json
 data/reference/
+# The update replication (7w) and the fault ladder (7x), same layout.
+data/qwen/*
+!data/qwen/thresholds*.json
+data/ladder/*
 
 .env
 
