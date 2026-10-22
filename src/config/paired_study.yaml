@@ -116,10 +116,16 @@
 # changes. That record is withdrawn, unused, and the API is recalibrated; the
 # chat `rounds` record has no such fit and stands.
 #
+# VERSION 1.2.0 (22 Oct 2026): the confirmatory test of `rounds`. Three new
+# studies, kimi, qwen and dspro (config/updates_study.yaml), each a real update
+# of a hosted model, run under `rounds` exactly as fixed in v1.1.1, with its
+# criteria C1 (pre-onset false alarms <= 0.1%) and C2 (F6 alarms <= v3's)
+# fixed there before any of their answers exists. Only `rounds` is run on them.
+#
 # Bump `version` on ANY edit.
 # ---------------------------------------------------------------------------
 
-version: "1.1.1"
+version: "1.2.0"
 
 statistics: [length_ks, agreement_gap, lexical_gap, embedding_gap]
 designs: [split, fresh, rounds]
@@ -143,3 +149,18 @@ studies:
     reference_dir: chat/reference
     frozen: thresholds.json
     conditions: [U1]
+  kimi:
+    data_dir: kimi
+    reference_dir: kimi/reference
+    frozen: thresholds_v3.json
+    conditions: [U1, F4, F6]
+  qwen:
+    data_dir: qwen
+    reference_dir: qwen/reference
+    frozen: thresholds_v3.json
+    conditions: [U1, F4, F6]
+  dspro:
+    data_dir: dspro
+    reference_dir: dspro/reference
+    frozen: thresholds_v3.json
+    conditions: [U1, F4, F6]
