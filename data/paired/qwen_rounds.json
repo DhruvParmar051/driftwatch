@@ -1,0 +1,174 @@
+{
+  "thresholds": {
+    "length_ks": 0.0467327327860855,
+    "agreement_gap": 0.03636147124111988,
+    "embedding_gap": 0.015898704212175707
+  },
+  "per_signal_alpha": 0.0003334445062139757,
+  "family_wise_budget": 0.001,
+  "bootstrap_windows": 20000,
+  "calibration_seed": 11071987,
+  "pairs": [
+    {
+      "thresholds": {
+        "length_ks": 0.04499849530413933,
+        "agreement_gap": 0.03609648726821806,
+        "embedding_gap": 0.014260125301160373
+      },
+      "per_signal_alpha": 0.0003334445062139757,
+      "family_wise_budget": 0.001,
+      "bootstrap_windows": 20000,
+      "calibration_seed": 11071987,
+      "tail_fits": {
+        "length_ks": {
+          "signal": "length_ks",
+          "threshold": 0.04499849530413933,
+          "method": "pot_gpd",
+          "n_windows": 20000,
+          "alpha": 0.0003334445062139757,
+          "pot_threshold": 0.03500000000000003,
+          "pot_quantile": 0.99,
+          "n_exceedances": 148,
+          "gpd_shape": -0.21055419080677198,
+          "gpd_scale": 0.00439188075203981,
+          "bootstrap_max": 0.05125000000000002
+        },
+        "agreement_gap": {
+          "signal": "agreement_gap",
+          "threshold": 0.03609648726821806,
+          "method": "pot_gpd",
+          "n_windows": 20000,
+          "alpha": 0.0003334445062139757,
+          "pot_threshold": 0.026079311193974605,
+          "pot_quantile": 0.99,
+          "n_exceedances": 200,
+          "gpd_shape": -0.10047451672000149,
+          "gpd_scale": 0.0034773189487202127,
+          "bootstrap_max": 0.03997181509897601
+        },
+        "embedding_gap": {
+          "signal": "embedding_gap",
+          "threshold": 0.014260125301160373,
+          "method": "pot_gpd",
+          "n_windows": 20000,
+          "alpha": 0.0003334445062139757,
+          "pot_threshold": 0.011538762187179367,
+          "pot_quantile": 0.99,
+          "n_exceedances": 200,
+          "gpd_shape": -0.1122649459062081,
+          "gpd_scale": 0.0009626512692795536,
+          "bootstrap_max": 0.015475813095004889
+        }
+      }
+    },
+    {
+      "thresholds": {
+        "length_ks": 0.04623695013637048,
+        "agreement_gap": 0.03636147124111988,
+        "embedding_gap": 0.015898704212175707
+      },
+      "per_signal_alpha": 0.0003334445062139757,
+      "family_wise_budget": 0.001,
+      "bootstrap_windows": 20000,
+      "calibration_seed": 11071987,
+      "tail_fits": {
+        "length_ks": {
+          "signal": "length_ks",
+          "threshold": 0.04623695013637048,
+          "method": "pot_gpd",
+          "n_windows": 20000,
+          "alpha": 0.0003334445062139757,
+          "pot_threshold": 0.036250000000000004,
+          "pot_quantile": 0.99,
+          "n_exceedances": 149,
+          "gpd_shape": -0.2714798108805515,
+          "gpd_scale": 0.00475881470168132,
+          "bootstrap_max": 0.05125000000000002
+        },
+        "agreement_gap": {
+          "signal": "agreement_gap",
+          "threshold": 0.03636147124111988,
+          "method": "pot_gpd",
+          "n_windows": 20000,
+          "alpha": 0.0003334445062139757,
+          "pot_threshold": 0.025964460283898337,
+          "pot_quantile": 0.99,
+          "n_exceedances": 200,
+          "gpd_shape": -0.06048067579060004,
+          "gpd_scale": 0.003382347412184423,
+          "bootstrap_max": 0.04536199008715158
+        },
+        "embedding_gap": {
+          "signal": "embedding_gap",
+          "threshold": 0.015898704212175707,
+          "method": "pot_gpd",
+          "n_windows": 20000,
+          "alpha": 0.0003334445062139757,
+          "pot_threshold": 0.013006635610533024,
+          "pot_quantile": 0.99,
+          "n_exceedances": 200,
+          "gpd_shape": 0.001766348798301599,
+          "gpd_scale": 0.0008478406891795955,
+          "bootstrap_max": 0.01884471941268488
+        }
+      }
+    },
+    {
+      "thresholds": {
+        "length_ks": 0.0467327327860855,
+        "agreement_gap": 0.03548022837005976,
+        "embedding_gap": 0.015103409263846613
+      },
+      "per_signal_alpha": 0.0003334445062139757,
+      "family_wise_budget": 0.001,
+      "bootstrap_windows": 20000,
+      "calibration_seed": 11071987,
+      "tail_fits": {
+        "length_ks": {
+          "signal": "length_ks",
+          "threshold": 0.0467327327860855,
+          "method": "pot_gpd",
+          "n_windows": 20000,
+          "alpha": 0.0003334445062139757,
+          "pot_threshold": 0.036250000000000004,
+          "pot_quantile": 0.99,
+          "n_exceedances": 185,
+          "gpd_shape": -0.28169319421502115,
+          "gpd_scale": 0.004858191031925223,
+          "bootstrap_max": 0.05124999999999991
+        },
+        "agreement_gap": {
+          "signal": "agreement_gap",
+          "threshold": 0.03548022837005976,
+          "method": "pot_gpd",
+          "n_windows": 20000,
+          "alpha": 0.0003334445062139757,
+          "pot_threshold": 0.024529100681785602,
+          "pot_quantile": 0.99,
+          "n_exceedances": 200,
+          "gpd_shape": 0.0012706331684183502,
+          "gpd_scale": 0.00321314927848164,
+          "bootstrap_max": 0.03995384706248018
+        },
+        "embedding_gap": {
+          "signal": "embedding_gap",
+          "threshold": 0.015103409263846613,
+          "method": "pot_gpd",
+          "n_windows": 20000,
+          "alpha": 0.0003334445062139757,
+          "pot_threshold": 0.012431982827746988,
+          "pot_quantile": 0.99,
+          "n_exceedances": 200,
+          "gpd_shape": -0.09638537967275113,
+          "gpd_scale": 0.0009212782589375853,
+          "bootstrap_max": 0.01678742860620984
+        }
+      }
+    }
+  ],
+  "study": "qwen",
+  "design": "rounds",
+  "pairs_hash": "sha256:c0fef85116c7b2562a5052843711df33b36e44e29fe7c337ca9f9cfc3e6c235c|sha256:59e08b49767b6b1e4c7bca8b1f058000a3916fb0953c83993de999014e841742|sha256:9c73cbe455d17cfe74217ec3a7360a0717a71ffb922c397fef53c6905d63d63b",
+  "git_commit": "faea27d44dfa",
+  "frozen_at": "2026-10-22T16:46:03.435933+00:00"
+}
