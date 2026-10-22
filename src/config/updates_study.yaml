@@ -57,9 +57,15 @@
 #     pin check refuses the round. dspro is not run for cost: at $0.0005 per
 #     answer its 56,000 answers would cost about $29. Their configs stay as
 #     written, unused. No criterion, round or analysis of `qwen` changes.
+#   1.2.0 (22 Oct 2026), after the qwen healthy and F7 rounds and part of U1,
+#     before any monitor was run on a U1 answer: qwen's reference rounds R and
+#     R2 are not generated (about $6 that the budget does not cover), so the
+#     paired `rounds` design and its criteria C1 and C2 are NOT tested on it.
+#     qwen reports the frozen v1 and v3 monitors on U1, F4, F6 and F7 as fixed
+#     above. The confirmatory test of `rounds` remains open and is reported so.
 #
 # Bump `version` on ANY edit.
 # ---------------------------------------------------------------------------
 
-version: "1.1.0"
+version: "1.2.0"
 studies: [study_qwen]
