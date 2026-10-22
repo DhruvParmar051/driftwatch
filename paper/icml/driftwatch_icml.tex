@@ -161,12 +161,27 @@ Agreement among sampled answers predicts correctness: self-consistency improves
 reasoning accuracy~\citep{wang2023selfconsistency}, and SelfCheckGPT uses sample
 disagreement to flag hallucinations~\citep{manakul2023selfcheckgpt}. We use
 agreement not to judge single answers but as a population statistic whose
-distribution shifts when the model behind it changes.
+distribution shifts when the model behind it changes. Label-free accuracy
+estimation predicts a classifier's accuracy under shift from its
+confidences~\citep{garg2022atc,deng2021labels}; semantic
+entropy~\citep{kuhn2023semantic} does the same for one generated answer. Both
+need scores that a black-box text API does not return, or estimate a level
+rather than detect a change.
 
 \paragraph{Behaviour change in deployed models}
 \citet{chen2023chatgpt} show that the behaviour of commercial models changed
-substantially across versions over a few months. Our work offers a way
-to notice such changes from traffic, without rerunning a benchmark.
+substantially across versions over a few months, and hosts of the same
+open-weight model differ as services~\citep{li2026sameservice}. Auditing work asks
+whether an API serves the model it names. Model Equality Testing sends chosen
+prompts to the API and to the reference weights and compares the answers by an
+MMD with a string kernel~\citep{gao2025model}; it flagged 11 of 31 commercial
+endpoints. \citet{cai2025substitution} find such output tests fragile against
+subtle substitution, and \citet{zhang2026shadow} document resold APIs that
+misrepresent their model. These audits probe an endpoint on purpose with prompts
+they choose. We watch the traffic a deployment already serves, where the questions
+themselves change, and treat that change as a false alarm. The paired monitor
+of \S\ref{sec:paired} meets auditing halfway: it re-asks a reference the live
+questions, and we run Model Equality Testing's statistic inside it as a baseline.
 
 \section{Method}
 \label{sec:method}
