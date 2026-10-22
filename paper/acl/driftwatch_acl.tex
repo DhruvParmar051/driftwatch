@@ -210,8 +210,7 @@ explanations; Appendix~\ref{app:fixed}), split into calibration (2{,}500), held-
 (1{,}000) and fault (1{,}500) questions. The healthy model is
 \texttt{gemma4:26b-a4b}. Four faults swap in a smaller sibling (two sizes), an
 older generation (\texttt{gemma3:12b}), or add two lines to the system prompt. A
-same-model ladder serves the healthy weights at 8-bit or samples them at
-temperature 1.0, 1.3 and 1.6.
+same-model ladder samples the healthy model at temperature 1.0, 1.3 and 1.6.
 
 \paragraph{Real updates} Two hosted models, each with its old and new version
 still served by one host: DeepSeek V4 Flash (0731 to 1017) and
@@ -414,8 +413,42 @@ streams and alarms one to two windows sooner.
 \subsection{The same model, served worse}
 \label{sec:ladder}
 
-\textbf{[pending: fault ladder L1--L4 under all monitors, and whether detection
-tracks the accuracy drop.]}
+Every fault so far swapped the model or edited its prompt. The ladder keeps both
+and only raises the sampling temperature, a real misconfiguration (a dropped
+parameter, a changed default), from 0.7 to 1.0, 1.3 and 1.6. Nothing was
+recalibrated.
+
+\paragraph{The monitors see it} Detection rises with the temperature under every
+monitor, as pre-registered:
+
+\begin{center}\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lccc}
+  \toprule
+  monitor & T 1.0 & T 1.3 & T 1.6 \\
+  \midrule
+  per-family & 55.5 & 89.0 & 98.0 \\
+  paired & 69.5 & 91.0 & 98.0 \\
+  served answer & 56.5 & 88.0 & 98.5 \\
+  MET & 11.0 & 87.0 & 98.0 \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+The answers grow more varied, and agreement between samples carries almost all of
+it. The served-answer test beats Model Equality Testing at T~1.0 (98 streams only
+it caught, 7 only MET caught, $p<10^{-20}$), with no false alarm in 14{,}533
+healthy windows.
+
+\paragraph{Accuracy does not move} The oracle finds no loss: every task family is
+within 2.4 points of the healthy model at every temperature, and the mean within
+0.4. Across all seven local faults, detection does not follow the accuracy drop
+(Spearman $\rho=0.50$, $p=0.25$). The monitors answer ``did the model change?'',
+not ``did it get worse?''. Here the change was real and harmless, so an alarm is
+a reason to look, not a verdict (\S\ref{sec:discussion}).
+
+The 8-bit rung was stopped for time before any of its answers were kept; the
+amendment is on record (Appendix~\ref{app:prereg}).
 
 \subsection{Baselines}
 \label{sec:baselines}
@@ -582,7 +615,9 @@ it existed; every later change is an amendment with its date and reason.
   fixed before it was computed on any data, after Model Equality Testing's results
   were seen.
   \item[Fault ladder and real-traffic topics.] Fixed before their answers or
-  clusters existed.
+  clusters existed. One ladder amendment, before any ladder evaluation: the 8-bit
+  rung was stopped for time with no answer kept, so the hypothesis comparing it
+  with T~1.6 was not tested.
 \end{description}
 
 \section{The paired and served monitors in full}
