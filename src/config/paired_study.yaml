@@ -72,13 +72,51 @@
 #   api    data/api/reference   14,000 answers, about $0.40
 #   chat   data/chat/reference   8,400 answers (2,100 x 4), about $0.65
 #
+# ---------------------------------------------------------------------------
+# VERSION 1.1.0 (22 Oct 2026): a THIRD design, `rounds`. Everything above stands
+# and its results are reported as they came out; v1.1 adds, it replaces nothing.
+#
+# Why, and what was already seen. v1.0's results were seen before this was
+# written: every design detects every fault at the onset, but on the benchmark
+# mixes false alarms before the onset run at 0.21-0.59%, 2-6x the 0.1% budget,
+# and lexical_gap alone raises 24-36.5% of F6 streams. A diagnostic (not a
+# result) found the excess in embedding_gap: healthy against F7 on fault
+# questions averages 0.0150 (API) where healthy against R on calib questions
+# averages 0.0136, with the same answer spread in every round. Two healthy rounds
+# drawn on different days differ a little in meaning, and a calibration that
+# sees one pair of rounds cannot know how much. An exploratory run without
+# lexical_gap (scripts/paired_without_lexical.py) was also seen: F6 falls to
+# 0.5-11%, detection is unchanged, false alarms are not reduced.
+#
+#   rounds  = fresh, with two changes fixed here before R2 exists:
+#     1. m = 3 statistics: length_ks, agreement_gap, embedding_gap (no
+#        lexical_gap); the Sidak split of the 0.1% budget is over 3.
+#     2. Calibration over three healthy rounds. A second reference round R2 -
+#        the healthy model, seeds R2_SEED_BASE (fresh, used by no other round),
+#        CALIB questions only, k = 4 - is generated per study. The frozen
+#        procedure (20,000 stratified bootstrap windows, GPD tail, the frozen
+#        calibration seed) is run on each of the three no-change pairs on calib
+#        questions: healthy-R, healthy-R2, R-R2. Each statistic's threshold is
+#        the LARGEST of its three thresholds, so the budget holds for every pair
+#        of healthy rounds the calibration has seen.
+#   Held-out windows, replay streams, F4/F6 and the McNemar comparison are
+#   fresh's, unchanged: R2 enters the calibration and nothing else.
+#
+# R2 rounds: local data/reference (round rr02, 10,000 answers, free); api
+# data/api/reference (ar02, 10,000, about $0.30); chat data/chat/reference
+# (cr02, 6,000, about $0.45). Reported beside v1.0, with the same table.
+#
 # Bump `version` on ANY edit.
 # ---------------------------------------------------------------------------
 
-version: "1.0.0"
+version: "1.1.0"
 
 statistics: [length_ks, agreement_gap, lexical_gap, embedding_gap]
-designs: [split, fresh]
+designs: [split, fresh, rounds]
+rounds:
+  statistics: [length_ks, agreement_gap, embedding_gap]
+  calibration_pairs: [[healthy, R], [healthy, R2], [R, R2]]
+  threshold: max
 studies:
   local:
     data_dir: ""
