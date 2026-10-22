@@ -109,3 +109,43 @@ def test_paired_monitor_never_imports_the_oracle():
         for a in (n.names if isinstance(n, ast.Import) else [n])
     ]
     assert not any(str(m).startswith("oracle") for m in names)
+
+
+def test_rounds_takes_the_largest_threshold_of_its_pairs():
+    from corpus.schemas import Query
+    from evaluate.paired import (
+        ROUNDS_STATISTICS,
+        SAMPLES,
+        build_table,
+        calibrate,
+        calibrate_over_rounds,
+    )
+    from settings import SLICES
+
+    assert SAMPLES["rounds"] == SAMPLES["fresh"]
+    rng = np.random.default_rng(3)
+    qids = [f"{sl}_{i:05d}" for sl in SLICES for i in range(60)]
+    calib = [
+        Query.model_construct(query_id=q, slice=q.rsplit("_", 1)[0], split="calib", prompt="p")
+        for q in qids
+    ]
+
+    def table(scale: float) -> object:
+        def texts(top: int) -> list[str]:
+            return [" ".join(rng.choice(list("abcdef"), rng.integers(5, top))) for _ in range(2)]
+
+        cur = {q: _rows(q, "healthy", texts(40)) for q in qids}
+        ref = {q: _rows(q, "R", texts(int(40 * scale))) for q in qids}
+        vecs = {}
+        for q in qids:
+            for j in range(2):
+                vecs[(q, j, "healthy")] = rng.normal(size=8)
+                vecs[(q, j, "R")] = vecs[(q, j, "healthy")] + scale * rng.normal(size=8)
+        return build_table(cur, ref, vecs, qids)
+
+    tables = [table(1.0), table(2.0)]
+    rec = calibrate_over_rounds(tables, calib, 0.1, 500, 0)
+    single = [calibrate(t, calib, 0.1, 500, 0, ROUNDS_STATISTICS) for t in tables]
+    assert list(rec["thresholds"]) == list(ROUNDS_STATISTICS)
+    for s in ROUNDS_STATISTICS:
+        assert rec["thresholds"][s] == max(r["thresholds"][s] for r in single)
