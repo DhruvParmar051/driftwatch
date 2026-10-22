@@ -1,0 +1,33 @@
+# Real-update replication, study `dspro` (Stage 7w, config/updates_study.yaml).
+# PRE-REGISTERED with that file; bump `version` on ANY edit.
+version: "1.0.0"
+data_dir: dspro
+corpus: shared
+rounds:
+  healthy:
+    deployment: dsv4pro_0423
+    round_id: p001
+    questions: all
+    seeds: healthy
+  F7:
+    deployment: dsv4pro_0423
+    round_id: p002
+    questions: fault
+    seeds: f7
+  U1:
+    deployment: dsv4pro_0813
+    round_id: p003
+    questions: fault
+    seeds: healthy
+  R:
+    deployment: dsv4pro_0423
+    round_id: pr01
+    questions: reference
+    seeds: f7
+    reference: true
+  R2:
+    deployment: dsv4pro_0423
+    round_id: pr02
+    questions: calib
+    seeds: r2
+    reference: true
