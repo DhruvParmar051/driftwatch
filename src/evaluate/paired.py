@@ -12,6 +12,10 @@ pre-registers the four statistics, the calibration and the two designs:
   fresh  a reference round R (the healthy model with F7's seeds on the calib
          and held-out questions): k = 4 per side throughout.
 
+v1.1 adds a third, `rounds`: fresh without lexical_gap, calibrated on three
+healthy rounds (healthy, R and R2, a second reference on the calib questions)
+with each threshold the largest of the three pairs'.
+
 It reads no label, like the frozen monitor (nothing here touches oracle/).
 """
 
@@ -19,7 +23,7 @@ from __future__ import annotations
 
 import hashlib
 from collections.abc import Iterable, Mapping, Sequence
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from typing import Any
 
 import numpy as np
@@ -38,11 +42,14 @@ from textnorm import word_tokens
 log = get_logger(__name__)
 
 STATISTICS: tuple[str, ...] = ("length_ks", "agreement_gap", "lexical_gap", "embedding_gap")
-DESIGNS: tuple[str, ...] = ("split", "fresh")
+DESIGNS: tuple[str, ...] = ("split", "fresh", "rounds")
+#: The `rounds` design's statistics: lexical_gap dropped (paired_study.yaml v1.1).
+ROUNDS_STATISTICS: tuple[str, ...] = ("length_ks", "agreement_gap", "embedding_gap")
 #: Which samples each side uses under each design: (current, reference).
 SAMPLES: dict[str, tuple[tuple[int, ...], tuple[int, ...]]] = {
     "split": ((0, 1), (0, 1)),
     "fresh": ((0, 1, 2, 3), (0, 1, 2, 3)),
+    "rounds": ((0, 1, 2, 3), (0, 1, 2, 3)),
 }
 #: Calibration and held-out windows under `split`: healthy 0-1 against healthy 2-3.
 SPLIT_REFERENCE_SAMPLES: tuple[int, ...] = (2, 3)
@@ -129,14 +136,19 @@ def ks_statistic(x: np.ndarray, y: np.ndarray) -> float:
 
 
 def calibrate(
-    table: PairTable, calib: Sequence[Query], budget: float, n_windows: int, seed: int
+    table: PairTable,
+    calib: Sequence[Query],
+    budget: float,
+    n_windows: int,
+    seed: int,
+    statistics: Sequence[str] = STATISTICS,
 ) -> dict[str, Any]:
     """Thresholds from stratified bootstrap windows of calib questions under no change."""
     picks = bootstrap_query_indices(list(calib), n_windows, seed)
     rows = table.rows([q.query_id for q in calib])
     values = np.stack([window_scores([table], [rows[p]]) for p in picks])
-    alpha = sidak_alpha(budget, len(STATISTICS))
-    fits = {s: tail_threshold(s, values[:, j], alpha) for j, s in enumerate(STATISTICS)}
+    alpha = sidak_alpha(budget, len(statistics))
+    fits = {s: tail_threshold(s, values[:, STATISTICS.index(s)], alpha) for s in statistics}
     return {
         "thresholds": {s: f.threshold for s, f in fits.items()},
         "per_signal_alpha": alpha,
@@ -147,6 +159,31 @@ def calibrate(
     }
 
 
+def calibrate_over_rounds(
+    tables: Sequence[PairTable],
+    calib: Sequence[Query],
+    budget: float,
+    n_windows: int,
+    seed: int,
+    statistics: Sequence[str] = ROUNDS_STATISTICS,
+) -> dict[str, Any]:
+    """`calibrate` on each no-change pair of healthy rounds; each threshold is the largest."""
+    per_pair = [calibrate(t, calib, budget, n_windows, seed, statistics) for t in tables]
+    return {
+        "thresholds": {s: max(r["thresholds"][s] for r in per_pair) for s in statistics},
+        "per_signal_alpha": per_pair[0]["per_signal_alpha"],
+        "family_wise_budget": budget,
+        "bootstrap_windows": n_windows,
+        "calibration_seed": seed,
+        "pairs": per_pair,
+    }
+
+
+def _limits(thresholds: Mapping[str, float]) -> tuple[list[int], np.ndarray]:
+    """Columns of `window_scores` the thresholds cover, and the thresholds, in order."""
+    return [STATISTICS.index(s) for s in thresholds], np.asarray(list(thresholds.values()))
+
+
 def heldout_rate(
     table: PairTable,
     heldout: Sequence[Query],
@@ -155,11 +192,12 @@ def heldout_rate(
     seed: int,
 ) -> dict[str, Any]:
     """Alarms on the real held-out windows, built exactly as for the frozen monitor."""
-    limits = np.asarray([thresholds[s] for s in STATISTICS])
+    cols, limits = _limits(thresholds)
     n = fired = 0
     for window in stream_windows(list(heldout), list(healthy_rows), seed=seed):
         n += 1
-        fired += bool((window_scores([table], [table.rows(window.query_ids)]) > limits).any())
+        scores = window_scores([table], [table.rows(window.query_ids)])[cols]
+        fired += bool((scores > limits).any())
     return {"windows": n, "alarms": fired, "rate": fired / n if n else float("nan")}
 
 
@@ -172,7 +210,7 @@ def replay(
     thresholds: Mapping[str, float],
 ) -> list[dict]:
     """Replay each run; tables[cond] = (healthy-vs-reference, condition-vs-reference)."""
-    limits = np.asarray([thresholds[s] for s in STATISTICS])
+    cols, limits = _limits(thresholds)
     records = []
     for run in runs:
         h_table, f_table = tables[run.condition]
@@ -188,14 +226,14 @@ def replay(
         for members in plan.windows():
             good = h_table.rows(q for q, bad in members if not bad)
             bad = f_table.rows(q for q, bad in members if bad)
-            hits = window_scores([h_table, f_table], [good, bad]) > limits
+            hits = window_scores([h_table, f_table], [good, bad])[cols] > limits
             fired.append(bool(hits.any()))
             by_stat.append(hits)
         onset = run.onset_window_idx
         first = next((w for w in range(onset, len(fired)) if fired[w]), None)
         stat_first = {
             s: next((w - onset for w in range(onset, len(fired)) if by_stat[w][j]), None)
-            for j, s in enumerate(STATISTICS)
+            for j, s in enumerate(thresholds)
         }
         records.append(
             {
@@ -228,7 +266,7 @@ def summarise(records: Sequence[dict], frozen: Mapping[tuple[str, int], bool] | 
             "latency_median": float(np.median(lat)) if lat else None,
             "by_statistic": {
                 s: sum(r["latency_by_statistic"][s] is not None for r in rs) / len(rs)
-                for s in STATISTICS
+                for s in rs[0]["latency_by_statistic"]
             },
         }
         if frozen is not None and all((cond, r["run_idx"]) in frozen for r in rs):
@@ -262,21 +300,22 @@ def pairs_hash(table: PairTable) -> str:
 
 def paired_markdown(results: Mapping[str, Any]) -> str:
     """Detection, false alarms and the paired comparison with the frozen monitor."""
+    names = list(results["thresholds"])
     lines = [
         f"# Paired re-query monitor - {results['study']}, {results['design']} design (Stage 7v)\n",
         "200 replayed streams per condition, the frozen monitor's streams wherever they match. "
         "Statistic columns: share of streams each statistic alone would detect. vs frozen: "
         "streams only the paired monitor detects : only the frozen monitor, exact McNemar p.\n",
         "| condition | detected | 95% interval | median latency | "
-        + " | ".join(STATISTICS)
+        + " | ".join(names)
         + " | vs frozen |",
-        "|---|---|---|---|" + "---|" * (len(STATISTICS) + 1),
+        "|---|---|---|---|" + "---|" * (len(names) + 1),
     ]
     for cond, r in results["summary"]["conditions"].items():
         med = "-" if r["latency_median"] is None else f"{r['latency_median']:g}"
         vs = r.get("vs_frozen")
         vs_cell = f"{vs['only_a']}:{vs['only_b']} p={vs['p']:.2g}" if vs else "-"
-        stats = " | ".join(f"{100 * r['by_statistic'][s]:.1f}%" for s in STATISTICS)
+        stats = " | ".join(f"{100 * r['by_statistic'][s]:.1f}%" for s in names)
         lines.append(
             f"| {cond} | {r['detected']}/{r['n_runs']} ({100 * r['rate']:.1f}%) | "
             f"{100 * r['ci_lo']:.1f}-{100 * r['ci_hi']:.1f}% | {med} | {stats} | {vs_cell} |"
@@ -324,6 +363,8 @@ class StudyPairs:
     faulty: dict[str, list[Completion]]
     tables: dict[str, tuple[PairTable, PairTable]]
     run_conditions: list[str]
+    #: `rounds` only: the other no-change pairs on calib questions, healthy-R2 and R-R2.
+    round_tables: list[PairTable] = field(default_factory=list)
 
 
 def study_pairs(
@@ -342,8 +383,8 @@ def study_pairs(
 
     if design not in DESIGNS:
         raise ValueError(f"design must be one of {DESIGNS}, got {design!r}")
-    if design == "fresh" and not reference_rows:
-        raise ValueError("the fresh design needs the reference round R")
+    if design != "split" and not reference_rows:
+        raise ValueError(f"the {design} design needs the reference round R")
     cur_s, ref_s = SAMPLES[design]
     queries = list(queries)
     healthy = [c for c in rows if c.condition == HEALTHY]
@@ -367,7 +408,7 @@ def study_pairs(
     else:
         ref_calib = _groups([c for c in reference_rows if c.condition == "R"], ref_s)
     ref_fault = _groups([c for c in rows if c.condition == "F7"], ref_s)
-    ref_any = {**ref_calib, **ref_fault} if design == "fresh" else dict(ref_fault)
+    ref_any = {**ref_calib, **ref_fault} if design != "split" else dict(ref_fault)
 
     calib = [q for q in queries if q.split == "calib"]
     heldout = [q for q in queries if q.split == "heldout"]
@@ -375,6 +416,16 @@ def study_pairs(
     calib_table = build_table(h_cur, ref_calib, vectors, [q.query_id for q in calib])
     heldout_table = build_table(h_cur, ref_calib, vectors, [q.query_id for q in heldout])
     pool_table = build_table(h_cur, ref_fault, vectors, [q.query_id for q in pool])
+    round_tables = []
+    if design == "rounds":
+        r2 = _groups([c for c in reference_rows if c.condition == "R2"], ref_s)
+        qids = [q.query_id for q in calib]
+        round_tables = [
+            build_table(h_cur, r2, vectors, qids),
+            build_table(
+                _groups([c for c in reference_rows if c.condition == "R"], cur_s), r2, vectors, qids
+            ),
+        ]
 
     faulty: dict[str, list[Completion]] = {}
     tables: dict[str, tuple[PairTable, PairTable]] = {}
@@ -404,6 +455,7 @@ def study_pairs(
         faulty,
         tables,
         run_conditions,
+        round_tables,
     )
 
 
