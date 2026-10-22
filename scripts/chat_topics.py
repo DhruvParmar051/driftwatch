@@ -191,6 +191,22 @@ def main() -> None:
     recs = paired.replay(runs, pairs.pool, pairs.healthy, pairs.faulty, pairs.tables, rounds)
     out["monitors"]["paired rounds"] = _summary(recs)
 
+    # Added 22 Oct 2026: the served-answer monitor (config/served_study.yaml),
+    # primary kernel, on the same streams. Nothing above changes.
+    from evaluate.served import calibrate_served, replay_served, served_tables
+
+    st = served_tables(pairs, rows, reference_rows, vectors, "served_hamming")
+    th = calibrate_served(
+        st.calib,
+        pairs.calib,
+        s.false_alarm_budget,
+        s.bootstrap_windows,
+        s.calibration_seed,
+        "served_hamming",
+    )["thresholds"]["served_hamming"]
+    recs = replay_served(runs, pairs, st.conditions, "served_hamming", th)
+    out["monitors"]["served answer"] = _summary(recs)
+
     import met_baseline as met  # rebinds paired.build_table, window_scores, STATISTICS
 
     mpairs = _paired_inputs("chat", "rounds")
