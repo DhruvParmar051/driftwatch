@@ -48,6 +48,12 @@ MIN_TAIL_OBSERVATIONS: int = 10
 #: in order until enough exceedances exist to fit a tail.
 POT_THRESHOLD_QUANTILES: tuple[float, ...] = (0.99, 0.98, 0.975, 0.95, 0.90)
 MIN_EXCEEDANCES: int = 50
+#: A maximum-likelihood GPD fit at or above this shape has no finite mean and is
+#: the known degenerate optimum on tied (lattice) exceedances - a KS statistic
+#: moves in steps of 1/n - not a tail; such a fit is re-estimated by
+#: probability-weighted moments (Hosking & Wallis 1987). 22 Oct 2026: one fit of
+#: 89 on record, the paired monitor's API healthy-R2 length_ks (shape 22.5).
+MAX_MLE_SHAPE: float = 1.0
 
 #: Windows checked for exact agreement between the materialised-Window path
 #: and the fast index path before the fast path is trusted.
@@ -60,7 +66,7 @@ class TailFit:
 
     signal: str
     threshold: float
-    method: str  # "empirical" | "pot_gpd"
+    method: str  # "empirical" | "pot_gpd" | "pot_gpd_pwm"
     n_windows: int
     alpha: float
     pot_threshold: float | None = None
@@ -383,6 +389,10 @@ def tail_threshold(signal: str, values: np.ndarray, alpha: float) -> TailFit:
         )
 
     shape, _loc, scale = genpareto.fit(exceed, floc=0.0)
+    method = "pot_gpd"
+    if shape >= MAX_MLE_SHAPE:
+        shape, scale = _gpd_pwm(exceed)
+        method = "pot_gpd_pwm"
     zeta = len(exceed) / n
     if abs(shape) < 1e-9:
         x = u + scale * math.log(zeta / alpha)
@@ -393,7 +403,7 @@ def tail_threshold(signal: str, values: np.ndarray, alpha: float) -> TailFit:
     return TailFit(
         signal,
         float(x),
-        "pot_gpd",
+        method,
         n,
         alpha,
         pot_threshold=u,
@@ -403,6 +413,16 @@ def tail_threshold(signal: str, values: np.ndarray, alpha: float) -> TailFit:
         gpd_scale=float(scale),
         bootstrap_max=top,
     )
+
+
+def _gpd_pwm(exceed: np.ndarray) -> tuple[float, float]:
+    """GPD (shape, scale) by probability-weighted moments (Hosking & Wallis 1987)."""
+    x = np.sort(exceed)
+    m = len(x)
+    a0 = float(x.mean())
+    a1 = float(np.mean((1.0 - (np.arange(1, m + 1) - 0.35) / m) * x))
+    k = a0 / (a0 - 2.0 * a1) - 2.0  # Hosking's k is minus the shape used here
+    return -k, 2.0 * a0 * a1 / (a0 - 2.0 * a1)
 
 
 def _assert_rows_belong(queries: Sequence[Query], completions: Sequence[Completion]) -> None:
