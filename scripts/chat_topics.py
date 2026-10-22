@@ -32,7 +32,7 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).parent))
 
 import evaluate.paired as paired
-from cli import _embeddings_path, _paired_inputs
+from cli import _paired_inputs
 from corpus.build import read_queries
 from detect import freeze
 from detect.calibrate import fit_signals
@@ -158,7 +158,7 @@ def main() -> None:
     record = freeze.verify(ROOT / "thresholds.json", calib_rows)
     names = list(record.thresholds)
     signals = fit_signals(
-        build_monitor_signals(read_embeddings(_embeddings_path()), names, record.scoring),
+        build_monitor_signals(read_embeddings(ROOT / "embeddings.parquet"), names, record.scoring),
         calib_q,
         calib_rows,
     )
