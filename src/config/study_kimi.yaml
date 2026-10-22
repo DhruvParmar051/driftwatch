@@ -1,0 +1,33 @@
+# Real-update replication, study `kimi` (Stage 7w, config/updates_study.yaml).
+# PRE-REGISTERED with that file; bump `version` on ANY edit.
+version: "1.0.0"
+data_dir: kimi
+corpus: shared
+rounds:
+  healthy:
+    deployment: kimi_k2_0711
+    round_id: k001
+    questions: all
+    seeds: healthy
+  F7:
+    deployment: kimi_k2_0711
+    round_id: k002
+    questions: fault
+    seeds: f7
+  U1:
+    deployment: kimi_k2_0905
+    round_id: k003
+    questions: fault
+    seeds: healthy
+  R:
+    deployment: kimi_k2_0711
+    round_id: kr01
+    questions: reference
+    seeds: f7
+    reference: true
+  R2:
+    deployment: kimi_k2_0711
+    round_id: kr02
+    questions: calib
+    seeds: r2
+    reference: true
