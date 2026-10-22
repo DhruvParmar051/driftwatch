@@ -52,6 +52,15 @@ roles:
     library_digest: 5571076f3d70
     download: 18 GB
 
+  # Condition: L1 of the fault ladder (config/ladder_study.yaml): the healthy
+  # weights at 8-bit instead of Q4_K_M. Digest read from the local pull on
+  # 2026-10-22.
+  healthy_q8:
+    id: gemma4:26b-a4b-it-q8_0
+    parameter_size: 25.8B (MoE, ~4B active)
+    library_digest: 0755fafe4094
+    download: 28 GB
+
   # Condition: F2 (moderate degradation) - a smaller sibling, same family.
   sibling:
     id: gemma4:e4b-it-q4_K_M
