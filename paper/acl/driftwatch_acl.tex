@@ -378,39 +378,38 @@ that sees only answers reports that the model changed, in either direction. The
 same old model served at 4-bit by another host answers almost exactly as before,
 and no monitor flags it; we read this as a correct silence, not a miss.
 
-The Qwen study was budgeted without reference rounds, so only the fixed-reference
-monitors ran on it. There the per-family monitor failed its budget: a rerun of the
-healthy model on fresh seeds alarmed in 29\% of streams, almost all through lexical
-diversity, and pre-onset false alarms reached 0.19\%.
+On Qwen the per-family monitor also raised alarms on a plain rerun of the healthy
+model, and broke its budget, for the reason \S\ref{sec:days} explains
+(Appendix~\ref{app:qwen}).
 
 \subsection{Calibration must span days}
 \label{sec:days}
 
 Our first paired monitor was calibrated on one pair of healthy rounds. It caught
-every fault, but its false alarms ran at 0.22\% locally and 0.52\% on the hosted
-model, two to five times the budget. The excess came from the embedding statistic:
-the healthy model against a fresh-seed round generated on another day sits 10\%
-further apart (0.0150 against 0.0136) than against the round it was calibrated on,
-with the same spread of answers in every round. A hosted model answers a little
-differently from one day to the next, and one pair of rounds cannot show by how
-much. Calibrating on three pairs of healthy rounds and keeping the largest
-threshold brought false alarms to 0.085\%, 0.076\% and 0.000\% in the three
-studies, with detection unchanged (Appendix~\ref{app:paired}). The Qwen failure
-above has the same cause.
+every fault, but raised two to five times as many false alarms as its budget
+allows.
+
+The reason is that a hosted model answers a little differently from one day to the
+next. Two healthy rounds generated on different days sit about 10\% further apart
+than the pair the monitor was calibrated on, although each round is just as varied.
+One pair of rounds cannot show how large this day-to-day drift is.
+
+Calibrating on three pairs of healthy rounds, and keeping the largest threshold,
+brought every study within budget with detection unchanged
+(Appendix~\ref{app:paired}). The per-family monitor's failure on Qwen has the same
+cause.
 
 \subsection{One served answer is enough}
 
-The served-answer test keeps the paired monitor's behaviour with a quarter of the
-production answers (Table~\ref{tab:monitors}). It catches the local faults in
-97.5--100\% of streams and the DeepSeek update in 95\% on benchmark and real
-traffic. Across 54{,}323 healthy windows in the three studies it raised no false
-alarm, which bounds the rate below one in 700{,}000 questions at 95\%
-confidence. Its pre-registered criteria were that false alarms stay within budget,
-that detection comes within five points of Model Equality Testing with four
-production answers, and that topic shifts alarm no more than under the per-family
-monitor. All three hold in every study; on the hosted model the gap is exactly
-five points. The price of one answer is sensitivity: Model Equality Testing
-catches 9--10 more update streams ($p\le0.004$), one to two windows earlier.
+\paragraph{What it achieves} With a quarter of the production answers, the
+served-answer test behaves like the paired monitor (Table~\ref{tab:monitors}). It
+catches the local faults and the DeepSeek update in 95--100\% of streams, ignores
+topic shifts, and raised no false alarm in 54{,}323 healthy windows. All three of
+its pre-registered criteria hold in every study (Appendix~\ref{app:paired}).
+
+\paragraph{What it costs} One answer carries less evidence than four. Model
+Equality Testing, with four production answers, catches about 5\% more update
+streams and alarms one to two windows sooner.
 
 \subsection{The same model, served worse}
 \label{sec:ladder}
@@ -456,21 +455,16 @@ four production answers per question; the served-answer test needs one.
 \subsection{How far the results reach}
 \label{sec:reach}
 
-\paragraph{Other deployed models} We reran the fixed-reference monitors with four
-other healthy deployments (\texttt{gemma3:12b}, \texttt{qwen2.5:14b},
-\texttt{llama3.1:8b}, \texttt{phi4:14b}), recalibrated with nothing tuned. The
-pooled monitor alarmed on topic shifts in 95--100\% of streams for every one, so
-the problem is not one model's. Faults were caught in 95.5--99.5\%
-(Appendix~\ref{app:transfer}).
+\paragraph{Other deployed models} With four other models as the deployment,
+recalibrated and untuned, the pooled monitor still alarmed on almost every topic
+shift: the problem is not one model's (Appendix~\ref{app:transfer}).
 
-\paragraph{Partial faults} When only part of the traffic goes to the faulty model,
-the per-family monitor catches doses of 25\% and above but only about a fifth of
-streams at 10\%. A Page--Hinkley test on the same statistics catches 53--57\% at
-10\% within budget (Appendix~\ref{app:dose}).
+\paragraph{Partial faults} When only a quarter of the traffic goes to the faulty
+model, faults are still caught; at a tenth, a sequential test is needed
+(Appendix~\ref{app:dose}).
 
-\paragraph{Faults on one task family} If only one kind of question goes to a bad
-model, detection follows how visible the change is in that family's answers:
-95--97\% for explanations, 86--91\% for maths, and at most 3.5\% for intent
+\paragraph{Faults on one task family} Detection follows how visible the change is
+in that family's answers: high for explanations and maths, near zero for intent
 labels and JSON (Appendix~\ref{sec:slice}).
 
 \section{From alarm to action}
