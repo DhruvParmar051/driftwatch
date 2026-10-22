@@ -1,0 +1,174 @@
+{
+  "thresholds": {
+    "length_ks": 0.04295679540707508,
+    "agreement_gap": 0.034260394166439036,
+    "embedding_gap": 0.013597208102482597
+  },
+  "per_signal_alpha": 0.0003334445062139757,
+  "family_wise_budget": 0.001,
+  "bootstrap_windows": 20000,
+  "calibration_seed": 11071987,
+  "pairs": [
+    {
+      "thresholds": {
+        "length_ks": 0.042386966198412736,
+        "agreement_gap": 0.034260394166439036,
+        "embedding_gap": 0.012870642389467037
+      },
+      "per_signal_alpha": 0.0003334445062139757,
+      "family_wise_budget": 0.001,
+      "bootstrap_windows": 20000,
+      "calibration_seed": 11071987,
+      "tail_fits": {
+        "length_ks": {
+          "signal": "length_ks",
+          "threshold": 0.042386966198412736,
+          "method": "pot_gpd",
+          "n_windows": 20000,
+          "alpha": 0.0003334445062139757,
+          "pot_threshold": 0.03249999999999997,
+          "pot_quantile": 0.99,
+          "n_exceedances": 170,
+          "gpd_shape": -0.12698390149222763,
+          "gpd_scale": 0.003723737472511322,
+          "bootstrap_max": 0.05125000000000002
+        },
+        "agreement_gap": {
+          "signal": "agreement_gap",
+          "threshold": 0.034260394166439036,
+          "method": "pot_gpd",
+          "n_windows": 20000,
+          "alpha": 0.0003334445062139757,
+          "pot_threshold": 0.023841142676243442,
+          "pot_quantile": 0.99,
+          "n_exceedances": 200,
+          "gpd_shape": -0.010580445721962725,
+          "gpd_scale": 0.003119157980591565,
+          "bootstrap_max": 0.0393355261050624
+        },
+        "embedding_gap": {
+          "signal": "embedding_gap",
+          "threshold": 0.012870642389467037,
+          "method": "pot_gpd",
+          "n_windows": 20000,
+          "alpha": 0.0003334445062139757,
+          "pot_threshold": 0.01089810607651618,
+          "pot_quantile": 0.99,
+          "n_exceedances": 200,
+          "gpd_shape": -0.05312862417929967,
+          "gpd_scale": 0.0006339865132388061,
+          "bootstrap_max": 0.015435396038128818
+        }
+      }
+    },
+    {
+      "thresholds": {
+        "length_ks": 0.04098206336985412,
+        "agreement_gap": 0.031962975836308985,
+        "embedding_gap": 0.013597208102482597
+      },
+      "per_signal_alpha": 0.0003334445062139757,
+      "family_wise_budget": 0.001,
+      "bootstrap_windows": 20000,
+      "calibration_seed": 11071987,
+      "tail_fits": {
+        "length_ks": {
+          "signal": "length_ks",
+          "threshold": 0.04098206336985412,
+          "method": "pot_gpd",
+          "n_windows": 20000,
+          "alpha": 0.0003334445062139757,
+          "pot_threshold": 0.03249999999999997,
+          "pot_quantile": 0.99,
+          "n_exceedances": 178,
+          "gpd_shape": -0.19226497133792783,
+          "gpd_scale": 0.0034832382380186183,
+          "bootstrap_max": 0.04500000000000004
+        },
+        "agreement_gap": {
+          "signal": "agreement_gap",
+          "threshold": 0.031962975836308985,
+          "method": "pot_gpd",
+          "n_windows": 20000,
+          "alpha": 0.0003334445062139757,
+          "pot_threshold": 0.022727322288099108,
+          "pot_quantile": 0.99,
+          "n_exceedances": 200,
+          "gpd_shape": -0.13829522392230237,
+          "gpd_scale": 0.003404178353916338,
+          "bootstrap_max": 0.03669702017081519
+        },
+        "embedding_gap": {
+          "signal": "embedding_gap",
+          "threshold": 0.013597208102482597,
+          "method": "pot_gpd",
+          "n_windows": 20000,
+          "alpha": 0.0003334445062139757,
+          "pot_threshold": 0.011232840222684929,
+          "pot_quantile": 0.99,
+          "n_exceedances": 200,
+          "gpd_shape": -0.13089227019373473,
+          "gpd_scale": 0.0008614069106493939,
+          "bootstrap_max": 0.015187990473205482
+        }
+      }
+    },
+    {
+      "thresholds": {
+        "length_ks": 0.04295679540707508,
+        "agreement_gap": 0.029874711588653298,
+        "embedding_gap": 0.012889127928595005
+      },
+      "per_signal_alpha": 0.0003334445062139757,
+      "family_wise_budget": 0.001,
+      "bootstrap_windows": 20000,
+      "calibration_seed": 11071987,
+      "tail_fits": {
+        "length_ks": {
+          "signal": "length_ks",
+          "threshold": 0.04295679540707508,
+          "method": "pot_gpd",
+          "n_windows": 20000,
+          "alpha": 0.0003334445062139757,
+          "pot_threshold": 0.03125,
+          "pot_quantile": 0.99,
+          "n_exceedances": 172,
+          "gpd_shape": -0.12044557368591537,
+          "gpd_scale": 0.004352940988187604,
+          "bootstrap_max": 0.05125000000000002
+        },
+        "agreement_gap": {
+          "signal": "agreement_gap",
+          "threshold": 0.029874711588653298,
+          "method": "pot_gpd",
+          "n_windows": 20000,
+          "alpha": 0.0003334445062139757,
+          "pot_threshold": 0.022332403783509057,
+          "pot_quantile": 0.99,
+          "n_exceedances": 200,
+          "gpd_shape": -0.07306408842436075,
+          "gpd_scale": 0.002504697410585095,
+          "bootstrap_max": 0.03651273856293912
+        },
+        "embedding_gap": {
+          "signal": "embedding_gap",
+          "threshold": 0.012889127928595005,
+          "method": "pot_gpd",
+          "n_windows": 20000,
+          "alpha": 0.0003334445062139757,
+          "pot_threshold": 0.010900025629989606,
+          "pot_quantile": 0.99,
+          "n_exceedances": 200,
+          "gpd_shape": -0.12635371998354844,
+          "gpd_scale": 0.0007195191067241072,
+          "bootstrap_max": 0.01369445483955672
+        }
+      }
+    }
+  ],
+  "study": "ladder",
+  "design": "rounds",
+  "pairs_hash": "sha256:4afacd4ede070e5ade1732c5f0086e7382a43990102c1221a4fd09821c966409|sha256:37c9043dbfa92991d715d8af3a116377d19c188cb1937f9df30d7dcf8b40aac2|sha256:ddd00564a1a7cbab36915234eaf3a04f85687734816efe8f586f1581dec1a12c",
+  "git_commit": "2e19fd37fed6",
+  "frozen_at": "2026-10-22T15:59:26.029391+00:00"
+}
