@@ -33,10 +33,17 @@
 # Hypotheses: H1 under v3, detection does not decrease from L2 to L3 to L4;
 # H2 L1 is detected in fewer streams than L4. Reported whichever way they go.
 #
+# VERSION 1.1.0 (22 Oct 2026): L1 not run. L2-L4 were generated and embedded;
+# L1's round was stopped at 916 of 6,000 answers for time and never written, so
+# no L1 answer was scored or read. The analysis runs on L2-L4 only: H1 is tested
+# as fixed above, H2 (which needs L1) is not tested, and the Spearman
+# correlation covers F1, F2, F3, F5, L2-L4. Amended before any ladder
+# evaluation was run.
+#
 # Bump `version` on ANY edit.
 # ---------------------------------------------------------------------------
 
-version: "1.0.0"
+version: "1.1.0"
 data_dir: ladder
 conditions:
   L1: {role: healthy_q8, temperature: 0.7}
