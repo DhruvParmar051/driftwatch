@@ -1628,6 +1628,7 @@ def remote_generate(
     from provider.local import generate_round
     from settings import (
         F7_SEED_BASE,
+        R2_SEED_BASE,
         get_settings,
         load_api_study,
         load_remote_config,
@@ -1652,6 +1653,8 @@ def remote_generate(
         selected = queries
     elif spec["questions"] == "reference":
         selected = [q for q in queries if q.split != "fault"]
+    elif spec["questions"] == "calib":
+        selected = [q for q in queries if q.split == "calib"]
     elif study == "api_study":
         selected = fault_subset(queries)
     else:
@@ -1665,7 +1668,7 @@ def remote_generate(
         condition,
         spec["round_id"],
         system_prompt_for_condition("healthy"),
-        F7_SEED_BASE if spec["seeds"] == "f7" else s.seed_base,
+        {"f7": F7_SEED_BASE, "r2": R2_SEED_BASE}.get(spec["seeds"], s.seed_base),
         s.temperature,
         s.max_tokens,
     )
@@ -1959,8 +1962,10 @@ def _round_rows(condition: str, round_id: str) -> tuple[list[dict], str]:
         F7_SEED_BASE,
         FIFTH_HEALTHY,
         FOURTH_HEALTHY,
+        R2_SEED_BASE,
         REFERENCE,
         SECOND_HEALTHY,
+        SECOND_REFERENCE,
         THIRD_HEALTHY,
         get_settings,
         model_id_for_role,
@@ -1984,8 +1989,11 @@ def _round_rows(condition: str, round_id: str) -> tuple[list[dict], str]:
         # H2: the fault questions are F5's round already, same model, prompt and
         # seeds. R: the fault questions are F7's round already, same seeds.
         selected = [q for q in queries if q.split != "fault"]
+    elif condition == SECOND_REFERENCE:
+        selected = [q for q in queries if q.split == "calib"]
     else:
         selected = fault_subset(queries)
+    seed_base = {"F7": F7_SEED_BASE, REFERENCE: F7_SEED_BASE, SECOND_REFERENCE: R2_SEED_BASE}
     rows = expand_queries(
         selected,
         s.k,
@@ -1993,7 +2001,7 @@ def _round_rows(condition: str, round_id: str) -> tuple[list[dict], str]:
         condition,
         round_id,
         system_prompt_for_condition(condition),
-        F7_SEED_BASE if condition in ("F7", REFERENCE) else s.seed_base,
+        seed_base.get(condition, s.seed_base),
         s.temperature,
         s.max_tokens,
     )
