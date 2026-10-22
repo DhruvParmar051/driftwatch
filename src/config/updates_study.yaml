@@ -49,8 +49,17 @@
 # A study whose host stops serving either version before its rounds finish is
 # reported as incomplete with what exists; no host is substituted.
 #
+# Amendments:
+#   1.1.0 (22 Oct 2026), after a 14-answer pilot per deployment and before any
+#     study answer: only `qwen` is run. kimi is dropped because Novita's Kimi
+#     K2 0711 now returns reasoning tokens (512 on one pilot answer) while 0905
+#     does not, so the two versions no longer share a configuration and the
+#     pin check refuses the round. dspro is not run for cost: at $0.0005 per
+#     answer its 56,000 answers would cost about $29. Their configs stay as
+#     written, unused. No criterion, round or analysis of `qwen` changes.
+#
 # Bump `version` on ANY edit.
 # ---------------------------------------------------------------------------
 
-version: "1.0.0"
-studies: [study_kimi, study_qwen, study_dspro]
+version: "1.1.0"
+studies: [study_qwen]
