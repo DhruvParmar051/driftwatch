@@ -149,3 +149,18 @@ def test_rounds_takes_the_largest_threshold_of_its_pairs():
     assert list(rec["thresholds"]) == list(ROUNDS_STATISTICS)
     for s in ROUNDS_STATISTICS:
         assert rec["thresholds"][s] == max(r["thresholds"][s] for r in single)
+
+
+def test_a_degenerate_tail_fit_falls_back_to_moments(monkeypatch):
+    from scipy.stats import genpareto
+
+    import detect.calibrate as cal
+
+    rng = np.random.default_rng(4)
+    values = np.round(rng.gamma(9.0, 0.003, 20_000) * 400) / 400  # a lattice, like KS
+    monkeypatch.setattr(cal.genpareto, "fit", lambda *a, **k: (22.5, 0.0, 3.5e-16))
+    fit = cal.tail_threshold("length_ks", values, 3.3e-4)
+    assert fit.method == "pot_gpd_pwm"
+    assert values.max() * 0.8 < fit.threshold < values.max() * 1.5
+    x = genpareto.rvs(0.2, scale=0.01, size=20_000, random_state=rng)
+    assert cal._gpd_pwm(x) == pytest.approx((0.2, 0.01), abs=0.03)
