@@ -1,0 +1,66 @@
+# ---------------------------------------------------------------------------
+# Served-answer monitor (Stage 7y). PRE-REGISTERED: fixed and committed on 22 Oct
+# 2026 before the statistic below was computed on any data.
+#
+# The constraint. A deployment serves ONE answer per request. Every paired test
+# so far, Model Equality Testing (Gao et al., ICLR 2025) included, needs several
+# answers per question from the PRODUCTION model: its MMD has a within-production
+# term k(c_i, c_j) that one answer cannot supply. Drawing extra production
+# answers costs money and is not what users were served. Here the production
+# side contributes only the answer it actually served; every extra sample is
+# drawn from the reference, which the operator controls.
+#
+# The statistic. For a question q with served answer c and reference answers
+# r_1..r_k (k = 4), and a kernel K:
+#
+#     s_q = mean_{i != j} K(r_i, r_j) - mean_j K(c, r_j)
+#
+# Under no change, c is one more draw from the reference's distribution, so the
+# two terms have equal expectation and s_q has mean zero; a served answer less
+# like the reference than the reference is like itself raises s_q. A window's
+# statistic is the mean of s_q over its questions. Like every paired statistic
+# it compares answers to the SAME question, so a change of topic alone moves
+# nothing.
+#
+# Kernels, fixed here:
+#   served_hamming   PRIMARY. Model Equality Testing's kernel: characters, the
+#                    first L = 1,000, padded, K = share of equal positions.
+#   served_cosine    SECONDARY. Cosine of the nomic-embed-text v1.5 vectors (S7).
+# Each is a monitor of its own (one statistic, the full 0.1% budget); the
+# primary is the one judged, the secondary is reported.
+#
+# Calibration: the `rounds` design's (config/paired_study.yaml v1.1.1): 20,000
+# stratified bootstrap windows of calib questions, GPD tail with the moments
+# fallback, the frozen calibration seed, on each no-change pair healthy->R,
+# healthy->R2, R->R2 (served side: sample 0 of the first; reference: all four
+# samples of the second); the threshold is the largest of the three.
+#
+# Evaluation: `rounds`' held-out windows and replay streams unchanged, served
+# side sample 0 throughout (the healthy model's before the onset, the
+# condition's after), reference F7 on fault questions and R on calib questions.
+# Studies: local, api, chat, and ladder (config/ladder_study.yaml, whose L
+# answers did not exist when `rounds` was calibrated). Qwen has no R and R2.
+#
+# Reported against, on the same streams: the paired `rounds` monitor (four
+# production samples) and Model Equality Testing under `rounds` calibration
+# (four production samples), with exact McNemar tests, and the frozen v3.
+#
+# Criteria for the primary, fixed here, per study:
+#   S1  pre-onset false alarms at or below the 0.1% budget (point estimate);
+#   S2  every generated fault and real update (F1, F2, F3, F5; U1; L1-L4)
+#       detected within 5 points of Model Equality Testing with four
+#       production samples;
+#   S3  F6 alarms at or below v3's.
+# Reported whichever way they go.
+#
+# Bump `version` on ANY edit.
+# ---------------------------------------------------------------------------
+
+version: "1.0.0"
+served_sample: 0
+reference_samples: [0, 1, 2, 3]
+primary: served_hamming
+secondary: served_cosine
+hamming_chars: 1000
+studies: [local, api, chat, ladder]
+non_inferiority_points: 5
