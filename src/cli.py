@@ -1172,7 +1172,9 @@ def triage(
 @app.command("paired-calibrate")
 def paired_calibrate(
     study: str = typer.Option(..., help="local, api or chat (config/paired_study.yaml)."),
-    design: str = typer.Option(..., help="split (no new generation) or fresh (needs R)."),
+    design: str = typer.Option(
+        ..., help="split (no new generation), fresh (needs R) or rounds (v1.1, needs R and R2)."
+    ),
 ) -> None:
     """Calibrate the paired re-query monitor on calib questions (Stage 7v).
 
@@ -1180,23 +1182,13 @@ def paired_calibrate(
     calibration pairs. Commit that file before `paired-evaluate`, which refuses
     an uncommitted or changed record. Refuses to run on a dirty tree.
     """
-    from evaluate.paired import calibrate, pairs_hash
-    from settings import get_settings
-
     _require_clean_tree()
     pairs = _paired_inputs(study, design)
-    s = get_settings()
-    record = calibrate(
-        pairs.calib_table,
-        pairs.calib,
-        s.false_alarm_budget,
-        s.bootstrap_windows,
-        s.calibration_seed,
-    )
+    record = _paired_calibration(pairs, design)
     record.update(
         study=study,
         design=design,
-        pairs_hash=pairs_hash(pairs.calib_table),
+        pairs_hash=_paired_hash(pairs),
         git_commit=_git("rev-parse", "HEAD")[:12],
         frozen_at=_now().isoformat(),
     )
@@ -1206,14 +1198,14 @@ def paired_calibrate(
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(record, indent=2) + "\n")
     for name, t in record["thresholds"].items():
-        typer.echo(f"{name:15} {t:.6f}  ({record['tail_fits'][name]['method']})")
+        typer.echo(f"{name:15} {t:.6f}")
     typer.echo(f"-> {out}; commit it before paired-evaluate")
 
 
 @app.command("paired-evaluate")
 def paired_evaluate(
     study: str = typer.Option(..., help="local, api or chat (config/paired_study.yaml)."),
-    design: str = typer.Option(..., help="split or fresh."),
+    design: str = typer.Option(..., help="split, fresh or rounds."),
 ) -> None:
     """The paired monitor's pre-registered evaluation (Stage 7v).
 
@@ -1221,14 +1213,7 @@ def paired_evaluate(
     """
     import math
 
-    from evaluate.paired import (
-        calibrate,
-        heldout_rate,
-        paired_markdown,
-        pairs_hash,
-        replay,
-        summarise,
-    )
+    from evaluate.paired import heldout_rate, paired_markdown, replay, summarise
     from evaluate.pipeline import DEFAULT_MIN_PREFIX, DEFAULT_REPLAY_WINDOWS, replay_runs
     from settings import DATA_DIR, get_settings, load_api_study
 
@@ -1238,14 +1223,8 @@ def paired_evaluate(
     record = json.loads(path.read_text())
     s = get_settings()
     pairs = _paired_inputs(study, design)
-    again = calibrate(
-        pairs.calib_table,
-        pairs.calib,
-        s.false_alarm_budget,
-        s.bootstrap_windows,
-        s.calibration_seed,
-    )
-    if pairs_hash(pairs.calib_table) != record["pairs_hash"] or any(
+    again = _paired_calibration(pairs, design)
+    if _paired_hash(pairs) != record["pairs_hash"] or any(
         not math.isclose(again["thresholds"][k], v, rel_tol=1e-9)
         for k, v in record["thresholds"].items()
     ):
@@ -1299,6 +1278,27 @@ def paired_evaluate(
     typer.echo(md.read_text())
 
 
+def _paired_calibration(pairs: Any, design: str) -> dict[str, Any]:
+    """The paired monitor's thresholds: one no-change pair, or (rounds) the largest of three."""
+    from evaluate.paired import calibrate, calibrate_over_rounds
+    from settings import get_settings
+
+    s = get_settings()
+    args = (pairs.calib, s.false_alarm_budget, s.bootstrap_windows, s.calibration_seed)
+    if design == "rounds":
+        return calibrate_over_rounds([pairs.calib_table, *pairs.round_tables], *args)
+    return calibrate(pairs.calib_table, *args)
+
+
+def _paired_hash(pairs: Any) -> str:
+    """The calibration pairs' hash; `rounds` hashes all three no-change pairs together."""
+    from evaluate.paired import pairs_hash
+
+    if not pairs.round_tables:
+        return pairs_hash(pairs.calib_table)
+    return "|".join(pairs_hash(t) for t in (pairs.calib_table, *pairs.round_tables))
+
+
 def _paired_record(study: str, design: str) -> Path:
     from settings import DATA_DIR
 
@@ -1319,7 +1319,7 @@ def _paired_inputs(study: str, design: str) -> Any:
         raise typer.BadParameter("run the chat study, and only it, with DRIFTWATCH_STUDY=chat")
     root, ref = DATA_DIR / spec["data_dir"], DATA_DIR / spec["reference_dir"]
     ref_rows, ref_emb = (), None
-    if design == "fresh":
+    if design != "split":
         ref_rows = read_completions(ref / "completions.parquet")
         ref_emb = read_embeddings(ref / "embeddings.parquet")
     return study_pairs(
