@@ -1350,6 +1350,128 @@ def _git(*args: str) -> str:
     ).stdout.strip()
 
 
+@app.command("served-evaluate")
+def served_evaluate(
+    study: str = typer.Option(..., help="local, api, chat or ladder (config/served_study.yaml)."),
+) -> None:
+    """The served-answer monitor's pre-registered evaluation (Stage 7y).
+
+    One served answer per question on the production side, four reference
+    answers, the paired `rounds` calibration and streams. Both kernels are run;
+    the Hamming kernel is the primary. Compared on the same streams with the
+    frozen v3 monitor, paired `rounds` and Model Equality Testing.
+    """
+    from evaluate.metrics import mcnemar_exact
+    from evaluate.paired import _vectors, summarise
+    from evaluate.pipeline import (
+        DEFAULT_MIN_PREFIX,
+        DEFAULT_REPLAY_WINDOWS,
+        alias_embeddings,
+        replay_runs,
+    )
+    from evaluate.served import (
+        KERNELS,
+        calibrate_served,
+        heldout_served,
+        replay_served,
+        served_tables,
+    )
+    from provider.collect import read_completions, read_embeddings
+    from settings import DATA_DIR, get_settings, load_api_study
+
+    s = get_settings()
+    spec = load_api_study("paired_study")["studies"][study]
+    root, ref = DATA_DIR / spec["data_dir"], DATA_DIR / spec["reference_dir"]
+    pairs = _paired_inputs(study, "rounds")
+    rows = read_completions(root / "completions.parquet")
+    reference_rows = read_completions(ref / "completions.parquet")
+    emb = read_embeddings(root / "embeddings.parquet")
+    for name in ("F4", "F6"):
+        if name in pairs.faulty:
+            emb = alias_embeddings(emb, pairs.faulty[name], name)
+    vectors = _vectors(emb)
+    vectors.update(_vectors(read_embeddings(ref / "embeddings.parquet")))
+    runs = replay_runs(
+        pairs.run_conditions, 200, DEFAULT_REPLAY_WINDOWS, DEFAULT_MIN_PREFIX, s.calibration_seed
+    )
+    runs = [r for r in runs if r.condition in set(spec["conditions"])]
+
+    results_dir = root / "results"
+    compare = {
+        "frozen": "chat.json" if study == "chat" else "evaluation_v3.json",
+        "rounds": "paired_rounds.json",
+        "met": "met_baseline.json",
+    }
+    others = {
+        label: {
+            (r["condition"], r["run_idx"]): r["latency"] is not None
+            for r in json.loads((results_dir / f).read_text())["records"]
+        }
+        for label, f in compare.items()
+        if (results_dir / f).exists()
+    }
+    out: dict[str, Any] = {"study": study, "kernels": {}}
+    lines = [f"# Served-answer monitor - {study} (Stage 7y)\n"]
+    for kernel in KERNELS:
+        t = served_tables(pairs, rows, reference_rows, vectors, kernel)
+        record = calibrate_served(
+            t.calib,
+            pairs.calib,
+            s.false_alarm_budget,
+            s.bootstrap_windows,
+            s.calibration_seed,
+            kernel,
+        )
+        threshold = record["thresholds"][kernel]
+        heldout = heldout_served(
+            t.heldout, pairs.heldout, pairs.heldout_healthy, threshold, s.calibration_seed
+        )
+        records = replay_served(runs, pairs, t.conditions, kernel, threshold)
+        summary = summarise(records, others.get("frozen"))
+        for cond, row in summary["conditions"].items():
+            rs = [r for r in records if r["condition"] == cond]
+            for label in ("rounds", "met"):
+                other = others.get(label)
+                if other and all((cond, r["run_idx"]) in other for r in rs):
+                    row[f"vs_{label}"] = mcnemar_exact(
+                        [r["latency"] is not None for r in rs],
+                        [other[(cond, r["run_idx"])] for r in rs],
+                    )
+        out["kernels"][kernel] = {
+            "calibration": record,
+            "heldout": heldout,
+            "summary": summary,
+            "records": records,
+        }
+        p = summary["pre_onset"]
+        lines += [
+            f"## {kernel}\n",
+            f"Threshold {threshold:.6f}. False alarms before the onset: {p['alarms']}/{p['windows']}"
+            f" = {100 * p['rate']:.3f}% (95% {100 * p['lo']:.3f}-{100 * p['hi']:.3f}%). "
+            f"Held-out windows: {heldout['alarms']}/{heldout['windows']}.\n",
+            "| condition | detected | 95% interval | median latency | vs frozen | vs rounds | vs MET |",
+            "|---|---|---|---|---|---|---|",
+        ]
+        for cond, r in summary["conditions"].items():
+            cells = [
+                f"{v['only_a']}:{v['only_b']} p={v['p']:.2g}" if (v := r.get(k)) else "-"
+                for k in ("vs_frozen", "vs_rounds", "vs_met")
+            ]
+            med = "-" if r["latency_median"] is None else f"{r['latency_median']:g}"
+            lines.append(
+                f"| {cond} | {r['detected']}/{r['n_runs']} ({100 * r['rate']:.1f}%) | "
+                f"{100 * r['ci_lo']:.1f}-{100 * r['ci_hi']:.1f}% | {med} | "
+                + " | ".join(cells)
+                + " |"
+            )
+        lines.append("")
+    results_dir.mkdir(parents=True, exist_ok=True)
+    (results_dir / "served.json").write_text(json.dumps(out, indent=2, default=float) + "\n")
+    md = DATA_DIR / "report_paired" / f"{study}_served.md"
+    md.write_text("\n".join(lines))
+    typer.echo(md.read_text())
+
+
 @app.command("chat-corpus")
 def chat_corpus(
     shard: Path = typer.Option(
