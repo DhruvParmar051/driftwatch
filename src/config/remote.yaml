@@ -62,3 +62,38 @@ deployments:
     provider_name: DeepInfra
     quantization: fp8
     thinking_switch: false
+
+  # Real-update replication (config/updates_study.yaml): each pair is two dated
+  # versions of one product, served by the same host at the same precision.
+  kimi_k2_0711:
+    model: moonshotai/kimi-k2
+    provider: novita/fp8
+    provider_name: Novita
+    quantization: fp8
+    thinking_switch: false
+  kimi_k2_0905:
+    model: moonshotai/kimi-k2-0905
+    provider: novita/fp8
+    provider_name: Novita
+    quantization: fp8
+    thinking_switch: false
+  qwen35plus_0215:
+    model: qwen/qwen3.5-plus-02-15
+    provider: alibaba
+    provider_name: Alibaba
+    quantization: unknown
+  qwen35plus_0420:
+    model: qwen/qwen3.5-plus-20260420
+    provider: alibaba
+    provider_name: Alibaba
+    quantization: unknown
+  dsv4pro_0423:
+    model: deepseek/deepseek-v4-pro
+    provider: deepinfra/fp8
+    provider_name: DeepInfra
+    quantization: fp8
+  dsv4pro_0813:
+    model: deepseek/deepseek-v4-pro-0813
+    provider: deepinfra/fp8
+    provider_name: DeepInfra
+    quantization: fp8
