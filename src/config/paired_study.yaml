@@ -106,10 +106,20 @@
 # data/api/reference (ar02, 10,000, about $0.30); chat data/chat/reference
 # (cr02, 6,000, about $0.45). Reported beside v1.0, with the same table.
 #
+# VERSION 1.1.1 (22 Oct 2026), before any `rounds` evaluation. The first API
+# `rounds` calibration (commit 332d555) froze length_ks at 2.0e16: on the
+# healthy-R2 pair the maximum-likelihood GPD fit collapsed to shape 22.5, scale
+# 3.5e-16, the known degenerate optimum on tied exceedances (a KS statistic moves
+# in steps of 1/800). It is the only such fit of 89 on record. Fixed in
+# detect/calibrate.py for every monitor: a fit with shape >= 1 is re-estimated
+# by probability-weighted moments (Hosking & Wallis 1987); no other record
+# changes. That record is withdrawn, unused, and the API is recalibrated; the
+# chat `rounds` record has no such fit and stands.
+#
 # Bump `version` on ANY edit.
 # ---------------------------------------------------------------------------
 
-version: "1.1.0"
+version: "1.1.1"
 
 statistics: [length_ks, agreement_gap, lexical_gap, embedding_gap]
 designs: [split, fresh, rounds]
