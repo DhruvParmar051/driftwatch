@@ -42,7 +42,7 @@ day to day, and one round understates their noise. We introduce a served-answer
 test that needs nothing from production beyond the one answer each user received.
 In pre-registered studies with four local faults, two real updates of hosted
 models (one raised accuracy, one lowered it) and real chatbot traffic, it detects every
-fault and update in 95--100\% of streams, raises no false alarm in 54{,}000
+fault and update in 95--100\% of streams, raises no false alarm in 83{,}000
 healthy windows, and stays quiet when topics shift, also on unlabelled real
 traffic. It comes within five points of Model Equality Testing while using a
 quarter of the production samples. An alarm reports change, not harm; a short
@@ -363,7 +363,7 @@ why on two single streams.
     \midrule
     DeepSeek update & $+0.2$ to $+8.6$ & 91.0 & 93.5 & 95.0 \\
     \quad on real traffic & -- & 89.0 & -- & 95.5 \\
-    Qwen update & $-0.3$ to $-6.9$ & 97.5 & 97.5 & -- \\
+    Qwen update & $-0.3$ to $-6.9$ & 97.5 & 97.5 & 98.5 \\
     DeepSeek at 4-bit & within $\pm1.5$ & 2.0 & 1.0 & 0.0 \\
     \bottomrule
   \end{tabular}
@@ -379,7 +379,10 @@ and no monitor flags it; we read this as a correct silence, not a miss.
 
 On Qwen the per-family monitor also raised alarms on a plain rerun of the healthy
 model, and broke its budget, for the reason \S\ref{sec:days} explains
-(Appendix~\ref{app:qwen}).
+(Appendix~\ref{app:qwen}). The re-asking monitors, calibrated on Qwen's own
+healthy rounds before they saw an update answer, held: the served-answer test
+caught the update in 98.5\% of streams, alarmed on 0.5\% of topic-shift streams
+where the per-family monitor alarmed on 73\%, and raised no false alarm.
 
 \subsection{Calibration must span days}
 \label{sec:days}
@@ -402,13 +405,14 @@ cause.
 
 \paragraph{What it achieves} With a quarter of the production answers, the
 served-answer test behaves like the paired monitor (Table~\ref{tab:monitors}). It
-catches the local faults and the DeepSeek update in 95--100\% of streams, ignores
-topic shifts, and raised no false alarm in 54{,}323 healthy windows. All three of
+catches the local faults and both real updates in 95--100\% of streams, ignores
+topic shifts, and raised no false alarm in 83{,}633 healthy windows. All three of
 its pre-registered criteria hold in every study (Appendix~\ref{app:paired}).
 
 \paragraph{What it costs} One answer carries less evidence than four. Model
-Equality Testing, with four production answers, catches about 5\% more update
-streams and alarms one to two windows sooner.
+Equality Testing, with four production answers, catches about 5\% more of
+DeepSeek's update streams (1\% more of Qwen's) and alarms one to two windows
+sooner.
 
 \subsection{The same model, served worse}
 \label{sec:ladder}
@@ -529,9 +533,7 @@ to embedding or lexical statistics, which drift between rounds; and triage every
 alarm before acting on it.
 
 \section*{Limitations}
-(i) Two real updates from two vendors; the second was run without reference rounds
-for cost, so the paired and served monitors were tested on one real update, on
-benchmark and real traffic. (ii) Local models are 8--26B open-weight models on one
+(i) Two real updates from two vendors, one of them also on real traffic. (ii) Local models are 8--26B open-weight models on one
 machine, and the local faults come from one vendor. (iii) Streams are replays of
 real answers, not live traffic. (iv) The re-asking monitors need a reference that
 stays available, such as a kept checkpoint or a pinned API version, and four
@@ -558,7 +560,7 @@ automatically against the datasets' own answers. Appendix~\ref{app:data} lists e
 on one laptop. The hosted study used a commercial model router through its public
 API, with a key paid for by the authors, a pinned host per deployment and a spending
 cap; it sent only the benchmark questions and the filtered chat turns above. The
-72B judge ran on the same service. The hosted runs cost \$20.21 in total.
+72B judge ran on the same service. The hosted runs cost \$26.11 in total.
 
 \paragraph{Use and misuse} The monitor is meant to protect the users of a deployed
 model by noticing when its behaviour changes without notice. It flags change, not
@@ -610,7 +612,10 @@ it existed; every later change is an amendment with its date and reason.
   \item[Update replication.] Three real updates were pre-registered; a pilot
   dropped Kimi K2 (its old version now returns reasoning tokens) and cost dropped
   DeepSeek V4 Pro, both before any study answer. Qwen's reference rounds were
-  then dropped for cost before any monitor saw an update answer.
+  then dropped for cost before any monitor saw an update answer, and reinstated
+  when the budget allowed: after the pooled and per-family results on Qwen were
+  read, before any re-asking monitor was computed on a Qwen answer, with the
+  criteria unchanged.
   \item[Served-answer test.] Statistic, kernels, calibration and three criteria
   fixed before it was computed on any data, after Model Equality Testing's results
   were seen.
@@ -688,6 +693,27 @@ pre-onset false alarms reach 0.192\%, with one of 17 held-out windows; lexical
 diversity raised 55 of the 58 F7 alarms. The same statistic made \vthree{} fail on
 \texttt{gemma3:12b} (Appendix~\ref{app:transfer}) and raised the paired monitor's
 F6 alarms.
+
+Two reference rounds of the old version (24{,}000 answers, \$5.90) calibrate the
+re-asking monitors. Share of 200 streams alarmed, and false alarms per healthy
+window before the onset:
+
+\begin{center}\small
+\begin{tabular}{lcccc}
+  \toprule
+  monitor & U1 & F4 & F6 & false al. \\
+  \midrule
+  paired, \emph{rounds} & 98.5 & 3.0 & 0.5 & 0.007 \\
+  served, Hamming & 98.5 & 0.0 & 0.5 & 0.000 \\
+  served, cosine & 97.5 & 0.0 & 0.0 & 0.000 \\
+  MET & 99.5 & 0.0 & 0.0 & 0.000 \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+\noindent Both criteria of the update replication (false alarms within budget, F6
+alarms no higher than \vthree{}'s) and all three of the served-answer test's hold.
+Held-out windows stayed quiet (0/17).
 
 \section{Topics on real traffic}
 \label{app:topics}
