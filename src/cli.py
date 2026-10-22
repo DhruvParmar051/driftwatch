@@ -1607,8 +1607,9 @@ def remote_generate(
     ),
     study: str = typer.Option(
         "api_study",
-        help="api_study (7r), chat_study (7u, DRIFTWATCH_STUDY=chat), or a paired-monitor "
-        "reference round: reference_api, reference_chat (7v).",
+        help="api_study (7r), chat_study (7u, DRIFTWATCH_STUDY=chat), a paired-monitor "
+        "reference round: reference_api, reference_chat (7v), or a real-update study: "
+        "study_kimi, study_qwen, study_dspro (7w).",
     ),
 ) -> None:
     """Generate one round of a hosted study (Stages 7r, 7u), resumable (SPENDS).
@@ -1641,6 +1642,7 @@ def remote_generate(
         raise typer.BadParameter(f"{condition!r} is not a round of config/{study}.yaml")
     spec = spec_all["rounds"][condition]
     data_dir = _api_data_dir(study)
+    queries = read_queries(_api_queries(data_dir, study))
     if condition != "healthy" and spec_all.get("requires_freeze", True):
         missing = [p.name for p in _api_frozen(data_dir, study) if not p.exists()]
         if missing:
@@ -1648,14 +1650,16 @@ def remote_generate(
                 f"{condition} waits for the frozen study thresholds ({', '.join(missing)} "
                 f"under {data_dir}) - calibrate and freeze on the healthy round first"
             )
-    queries = read_queries(_api_queries(data_dir, study))
+    if spec.get("reference"):  # a paired-monitor reference round: its own store (7w)
+        data_dir = data_dir / "reference"
+        _api_queries(data_dir, study)
     if spec["questions"] == "all":
         selected = queries
     elif spec["questions"] == "reference":
         selected = [q for q in queries if q.split != "fault"]
     elif spec["questions"] == "calib":
         selected = [q for q in queries if q.split == "calib"]
-    elif study == "api_study":
+    elif _shared_corpus(study):
         selected = fault_subset(queries)
     else:
         selected = sorted((q for q in queries if q.split == "fault"), key=lambda q: q.query_id)
@@ -2086,13 +2090,20 @@ def _api_data_dir(study: str = "api_study") -> Path:
     return DATA_DIR / load_api_study(study)["data_dir"]
 
 
+def _shared_corpus(study: str) -> bool:
+    """A study on the shared benchmark corpus, frozen under v1 and v3 like the API study."""
+    from settings import load_api_study
+
+    return study == "api_study" or load_api_study(study).get("corpus") == "shared"
+
+
 def _api_frozen(data_dir: Path, study: str = "api_study") -> list[Path]:
     """The frozen records a study's fault rounds wait for.
 
     v1 and v3 for the API study; one record for the chat study, whose one slice
     makes pooled and per-slice scoring coincide.
     """
-    if study != "api_study":
+    if not _shared_corpus(study):
         return [data_dir / "thresholds.json"]
     return [data_dir / "thresholds.json", data_dir / "thresholds_v3.json"]
 
@@ -2107,7 +2118,7 @@ def _api_queries(data_dir: Path, study: str = "api_study") -> Path:
 
     from settings import DATA_DIR
 
-    if study != "api_study":
+    if not _shared_corpus(study):
         path = data_dir / "queries.jsonl"
         if not path.exists():
             raise typer.BadParameter(f"{path} is missing - run `chat-corpus` first")
