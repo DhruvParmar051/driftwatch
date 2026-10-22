@@ -127,10 +127,13 @@
 # healthy, F7, R and R2 answers, so its calibration is the local study's.
 # Added before any L answer exists.
 #
+# VERSION 1.3.1 (22 Oct 2026): ladder conditions L2-L4 only; L1 was not run
+# (config/ladder_study.yaml v1.1.0). Before any ladder evaluation.
+#
 # Bump `version` on ANY edit.
 # ---------------------------------------------------------------------------
 
-version: "1.3.0"
+version: "1.3.1"
 
 statistics: [length_ks, agreement_gap, lexical_gap, embedding_gap]
 designs: [split, fresh, rounds]
@@ -173,4 +176,4 @@ studies:
     data_dir: ladder
     reference_dir: reference
     frozen: thresholds_v3.json
-    conditions: [L1, L2, L3, L4]
+    conditions: [L2, L3, L4]
