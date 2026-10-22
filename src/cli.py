@@ -1966,6 +1966,7 @@ def _round_rows(condition: str, round_id: str) -> tuple[list[dict], str]:
         F7_SEED_BASE,
         FIFTH_HEALTHY,
         FOURTH_HEALTHY,
+        LADDER_TEMPERATURE,
         R2_SEED_BASE,
         REFERENCE,
         SECOND_HEALTHY,
@@ -2006,7 +2007,7 @@ def _round_rows(condition: str, round_id: str) -> tuple[list[dict], str]:
         round_id,
         system_prompt_for_condition(condition),
         seed_base.get(condition, s.seed_base),
-        s.temperature,
+        LADDER_TEMPERATURE.get(condition, s.temperature),
         s.max_tokens,
     )
     return rows, role
