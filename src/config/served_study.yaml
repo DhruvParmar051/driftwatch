@@ -63,14 +63,17 @@
 # VERSION 1.0.3 (23 Oct 2026): ladder L1 reinstated (config/ladder_study.yaml
 # v1.2.0); S2 on the ladder covers L1-L4. Before any L1 answer exists.
 #
+# VERSION 1.0.4 (23 Oct 2026): study confirm added (config/confirm_study.yaml),
+# criteria as fixed there. Before any C answer was scored.
+#
 # Bump `version` on ANY edit.
 # ---------------------------------------------------------------------------
 
-version: "1.0.3"
+version: "1.0.4"
 served_sample: 0
 reference_samples: [0, 1, 2, 3]
 primary: served_hamming
 secondary: served_cosine
 hamming_chars: 1000
-studies: [local, api, chat, ladder, qwen]
+studies: [local, api, chat, ladder, qwen, confirm]
 non_inferiority_points: 5
