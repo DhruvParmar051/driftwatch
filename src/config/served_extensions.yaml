@@ -45,10 +45,17 @@
 #     Reported: for each condition, the accuracy change and the harm /
 #     improvement verdicts; and the number of verdicts pointing the wrong way.
 #
+# VERSION 1.0.1 (23 Oct 2026), before X3 was run: F7 cannot be X3's control.
+# On fault questions F7 IS the served test's reference, so F7 as the served
+# model would be compared with its own answers. The control it was meant to
+# give is already in every stream: before the onset, the healthy model's served
+# answers are compared with F7's, two healthy runs on different seeds. Q2 is
+# dropped and Q1 (false alarms before the onset) carries that check.
+#
 # Bump `version` on ANY edit.
 # ---------------------------------------------------------------------------
 
-version: "1.0.0"
+version: "1.0.1"
 x2:
   reference_answers: [2, 3, 4]
   fractions: [1.0, 0.5, 0.25]
@@ -57,7 +64,6 @@ x3:
   faults: [F1, F2]
   doses: [0.05, 0.10, 0.25, 0.50, 1.00]
   ramp_windows: 30
-  control: F7
   allowance: 0.5
   budget: 0.001
 x4:
