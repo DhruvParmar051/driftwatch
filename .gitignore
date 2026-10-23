@@ -32,9 +32,7 @@ data/ladder/*
 
 .env
 
-# Project brief (local only, not tracked)
-docs/PROJECT_BRIEF.md
-
-# PDFs are generated exports, never tracked
+# PDFs are generated exports, never tracked, except the project brief
 *.pdf
+!docs/PROJECT_BRIEF.pdf
 dist/
