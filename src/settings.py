@@ -228,6 +228,12 @@ class Settings(BaseSettings):
         default=2_000, ge=2_000, description="Resamples for evaluation CIs."
     )
     calibration_seed: int = 11071987
+    replay_seed: int = Field(
+        default=0,
+        ge=0,
+        description="Replay r of config/replay_seeding.yaml: 0 is primary, 1-4 repeat "
+        "every replay with thresholds fixed. Never touches calibration.",
+    )
     n_workers: int = Field(
         default=0,
         description="CPU workers for the calibration bootstrap and evaluation "
