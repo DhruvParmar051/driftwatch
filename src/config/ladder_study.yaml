@@ -34,23 +34,26 @@
 # H2 L1 is detected in fewer streams than L4. Reported whichever way they go.
 #
 # VERSION 1.1.0 (22 Oct 2026): L1 not run. L2-L4 were generated and embedded;
-# L1's round was stopped at 916 of 6,000 answers for time and never written, so
-# no L1 answer was scored or read. The analysis runs on L2-L4 only: H1 is tested
+# L1's round was stopped at 916 of 6,000 answers for time (914 checkpointed, not
+# appended to the study's completions), so no L1 answer was scored or read. The analysis runs on L2-L4 only: H1 is tested
 # as fixed above, H2 (which needs L1) is not tested, and the Spearman
 # correlation covers F1, F2, F3, F5, L2-L4. Amended before any ladder
 # evaluation was run.
 #
 # VERSION 1.2.0 (23 Oct 2026): L1 reinstated. After the L2-L4 results were
-# read (v3 detects L4 in 98.0% of streams), L1 is generated from scratch as
-# fixed above (the 916 unsaved answers of the stopped round are set aside,
-# unread). H2 is tested as written, but it is no longer blind: L4's rate was
+# read (v3 detects L4 in 98.0% of streams), L1 is completed as
+# fixed above, resuming the stopped round from its 914 checkpointed answers
+# (same seeds, none read or scored). H2 is tested as written, but it is no longer blind: L4's rate was
 # known when L1 was started. The Spearman correlation adds L1. L2-L4 results
 # stand as reported.
+#
+# VERSION 1.2.1 (23 Oct 2026): wording only. L1 resumes from its checkpoint
+# rather than restarting; the round, seeds and analysis are as in v1.2.0.
 #
 # Bump `version` on ANY edit.
 # ---------------------------------------------------------------------------
 
-version: "1.2.0"
+version: "1.2.1"
 data_dir: ladder
 conditions:
   L1: {role: healthy_q8, temperature: 0.7}
