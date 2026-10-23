@@ -42,9 +42,9 @@ day to day, and one round understates their noise. We introduce a served-answer
 test that needs nothing from production beyond the one answer each user received.
 In pre-registered studies with four local faults, two real updates of hosted
 models (one raised accuracy, one lowered it) and real chatbot traffic, it detects every
-fault and update in 95--100\% of streams, raises no false alarm in 88{,}000
+fault and update in 94--100\% of streams, raises no false alarm in 87{,}000
 healthy windows, and stays quiet when topics shift, also on unlabelled real
-traffic. It comes within five points of Model Equality Testing while using a
+traffic. It comes within six points of Model Equality Testing while using a
 quarter of the production samples. An alarm reports change, not harm; a short
 graded check tells the two apart.
 \end{abstract}
@@ -246,7 +246,8 @@ are compared on identical streams with exact McNemar tests.
   over four faults); topic shift is the share of streams alarmed on the harder
   harmless shift; false alarms are per healthy window before the onset (budget
   0.1\%). Production answers per question in brackets. Real-traffic topic shifts
-  use topics found without labels.}
+  use topics found without labels. The primary of five replays; Appendix~\ref{app:replays}
+  gives the spread.}
   \label{tab:monitors}
   \setlength{\tabcolsep}{3.6pt}
   \begin{tabular}{l|ccc|ccc|ccc}
@@ -254,12 +255,12 @@ are compared on identical streams with exact McNemar tests.
     & \multicolumn{3}{c|}{local faults} & \multicolumn{3}{c|}{DeepSeek update, benchmark} & \multicolumn{3}{c}{DeepSeek update, real traffic} \\
     monitor & detect & topic & false al. & detect & topic & false al. & detect & topic & false al. \\
     \midrule
-    pooled (4) & 96--100 & 100 & 0.076 & 91.0 & 100 & 0.092 & 89.0 & 85.0 & 0.121 \\
-    per-family (4) & 95.5--99.5 & 18.5 & 0.017 & 93.5 & 29.0 & 0.129 & \multicolumn{3}{c}{needs task labels} \\
-    paired (4) & 100 & 0.0 & 0.085 & 99.5 & 0.0 & 0.076 & 100 & 0.5 & 0.000 \\
-    \textbf{served answer (1)} & \textbf{97.5--100} & \textbf{0.5} & \textbf{0.000} & \textbf{95.0} & \textbf{0.0} & \textbf{0.000} & \textbf{95.5} & \textbf{0.0} & \textbf{0.000} \\
+    pooled (4) & 96--100 & 100 & 0.108 & 93.0 & 100 & 0.125 & 90.0 & 80.0 & 0.198 \\
+    per-family (4) & 97--100 & 23.0 & 0.053 & 94.5 & 31.0 & 0.154 & \multicolumn{3}{c}{needs task labels} \\
+    paired (4) & 100 & 0.5 & 0.102 & 98.5 & 0.5 & 0.052 & 100 & 0.0 & 0.000 \\
+    \textbf{served answer (1)} & \textbf{99--100} & \textbf{0.0} & \textbf{0.000} & \textbf{95.0} & \textbf{0.0} & \textbf{0.000} & \textbf{94.0} & \textbf{0.0} & \textbf{0.000} \\
     \midrule
-    Model Equality Testing (4) & 100 & 2.0 & 0.020 & 100 & 0.0 & 0.000 & 100 & 2.5 & 0.020 \\
+    Model Equality Testing (4) & 100 & 1.0 & 0.054 & 100 & 0.0 & 0.000 & 100 & 0.5 & 0.021 \\
     \bottomrule
   \end{tabular}
 \end{table*}
@@ -276,13 +277,13 @@ are compared on identical streams with exact McNemar tests.
       legend cell align=left,
       tick label style={font=\scriptsize}, label style={font=\small},
     ]
-      \addplot[only marks, mark=square*, mark size=2.2pt, red!70!black] coordinates {(100,96) (100,91.0) (85.0,89.0)};
+      \addplot[only marks, mark=square*, mark size=2.2pt, red!70!black] coordinates {(100,96) (100,93.0) (80.0,90.0)};
       \addlegendentry{pooled}
-      \addplot[only marks, mark=triangle*, mark size=2.8pt, orange!80!black] coordinates {(18.5,95.5) (29.0,93.5)};
+      \addplot[only marks, mark=triangle*, mark size=2.8pt, orange!80!black] coordinates {(23.0,97.0) (31.0,94.5)};
       \addlegendentry{per-family}
-      \addplot[only marks, mark=diamond*, mark size=2.8pt, blue!70!black] coordinates {(0.0,100) (0.0,99.5) (0.5,100)};
+      \addplot[only marks, mark=diamond*, mark size=2.8pt, blue!70!black] coordinates {(0.5,100) (0.5,98.5) (0.0,100)};
       \addlegendentry{paired}
-      \addplot[only marks, mark=*, mark size=2.4pt, green!50!black] coordinates {(0.5,97.5) (0.0,95.0) (0.0,95.5)};
+      \addplot[only marks, mark=*, mark size=2.4pt, green!50!black] coordinates {(0.0,99.0) (0.0,95.0) (0.0,94.0)};
       \addlegendentry{served answer}
     \end{axis}
   \end{tikzpicture}
@@ -307,9 +308,9 @@ are compared on identical streams with exact McNemar tests.
       legend style={font=\scriptsize, at={(0.02,0.97)}, anchor=north west, draw=none, fill=white, fill opacity=0.85, text opacity=1},
       legend cell align=left, clip=true,
     ]
-      \addplot[thick, red!70!black] coordinates {(-15,0.63) (-14,0.54) (-13,0.58) (-12,0.34) (-11,0.67) (-10,0.65) (-9,0.44) (-8,0.47) (-7,0.40) (-6,0.49) (-5,0.57) (-4,0.56) (-3,0.38) (-2,0.56) (-1,0.45) (0,1.16) (1,2.33) (2,5.00) (3,8.76) (4,8.66)};
+      \addplot[thick, red!70!black] coordinates {(-15,0.63) (-14,0.61) (-13,0.39) (-12,0.30) (-11,0.48) (-10,0.51) (-9,0.42) (-8,0.43) (-7,0.43) (-6,0.44) (-5,0.56) (-4,0.45) (-3,0.35) (-2,0.38) (-1,0.47) (0,1.25) (1,2.97) (2,5.49) (3,8.76) (4,9.20)};
       \addlegendentry{pooled}
-      \addplot[thick, green!50!black] coordinates {(-15,0.11) (-14,-0.11) (-13,0.01) (-12,0.05) (-11,-0.13) (-10,0.16) (-9,0.04) (-8,0.11) (-7,0.13) (-6,-0.07) (-5,-0.14) (-4,-0.23) (-3,-0.07) (-2,0.06) (-1,0.12) (0,0.21) (1,0.10) (2,-0.08) (3,-0.13) (4,-0.12)};
+      \addplot[thick, green!50!black] coordinates {(-15,0.15) (-14,-0.21) (-13,-0.16) (-12,-0.09) (-11,-0.10) (-10,0.17) (-9,0.18) (-8,0.16) (-7,0.11) (-6,-0.18) (-5,-0.35) (-4,-0.37) (-3,-0.42) (-2,-0.17) (-1,0.01) (0,0.14) (1,0.04) (2,-0.12) (3,-0.18) (4,0.14) (5,0.29) (6,0.22) (7,0.18) (8,-0.22) (9,-0.02) (10,0.04)};
       \addlegendentry{served answer}
       \addplot[gray, densely dotted, forget plot] coordinates {(-15,1) (10,1)};
       \draw[gray] (axis cs:0,-1) -- (axis cs:0,4);
@@ -324,26 +325,26 @@ are compared on identical streams with exact McNemar tests.
       legend style={font=\scriptsize, at={(0.02,0.97)}, anchor=north west, draw=none, fill=white, fill opacity=0.85, text opacity=1},
       legend cell align=left, clip=true,
     ]
-      \addplot[thick, red!70!black] coordinates {(-15,0.36) (-14,0.60) (-13,0.56) (-12,0.50) (-11,0.47) (-10,0.54) (-9,0.45) (-8,0.47) (-7,0.71) (-6,0.66) (-5,0.88) (-4,0.71) (-3,0.45) (-2,0.49) (-1,0.49) (0,0.64) (1,0.68) (2,1.00) (3,1.11) (4,1.33) (5,1.36) (6,1.48) (7,1.69) (8,1.73) (9,1.81) (10,1.73)};
-      \addplot[thick, green!50!black] coordinates {(-15,0.08) (-14,-0.08) (-13,-0.26) (-12,-0.61) (-11,-0.75) (-10,-0.46) (-9,-0.29) (-8,0.11) (-7,0.46) (-6,0.29) (-5,0.25) (-4,0.00) (-3,-0.11) (-2,-0.09) (-1,0.02) (0,0.89) (1,1.28) (2,2.08) (3,2.59) (4,2.23) (5,2.41) (6,2.37) (7,2.37) (8,2.52) (9,2.33) (10,2.22)};
+      \addplot[thick, red!70!black] coordinates {(-15,0.43) (-14,0.56) (-13,0.49) (-12,0.44) (-11,0.60) (-10,0.69) (-9,0.40) (-8,0.60) (-7,0.62) (-6,0.48) (-5,0.45) (-4,0.38) (-3,0.46) (-2,0.53) (-1,0.46) (0,0.67) (1,1.07) (2,1.33) (3,1.53) (4,1.37) (5,1.39) (6,1.46) (7,1.61) (8,1.67) (9,1.57) (10,1.59)};
+      \addplot[thick, green!50!black] coordinates {(-15,0.15) (-14,0.16) (-13,0.05) (-12,0.17) (-11,0.15) (-10,0.04) (-9,0.10) (-8,-0.16) (-7,-0.04) (-6,-0.07) (-5,-0.23) (-4,-0.19) (-3,-0.21) (-2,-0.07) (-1,0.04) (0,0.78) (1,1.64) (2,1.90) (3,2.73) (4,2.51) (5,2.26) (6,2.54) (7,2.43) (8,2.71) (9,2.64) (10,2.81)};
       \addplot[gray, densely dotted, forget plot] coordinates {(-15,1) (10,1)};
       \draw[gray] (axis cs:0,-1) -- (axis cs:0,4);
     \end{axis}
   \end{tikzpicture}
   \caption{Two replayed streams of the DeepSeek study, windows relative to the
   change (vertical line); an alarm is a value above 1 (dotted). Top: only the mix of
-  questions changes, and the pooled monitor climbs to 8.8 times its threshold
+  questions changes, and the pooled monitor climbs to 9.2 times its threshold
   (clipped) while the served-answer test stays flat. Bottom: the real update, which
-  both catch; the served-answer test crosses two windows sooner.}
+  both catch one window after it; the served-answer test by the wider margin.}
   \label{fig:streams}
 \end{figure}
 
 The pooled monitor detects every fault, and almost every stream in which only the
-topics shift: 100\% of the short-form shift on benchmark traffic, and 85\% on real
+topics shift: 100\% of the short-form shift on benchmark traffic, and 80\% on real
 traffic with topics found by clustering (Table~\ref{tab:monitors}). Its statistics
 mostly measure \emph{which kinds} of question a window holds. Comparing each task
-family only with itself cuts the shift alarms to 18.5\% locally and 29\% on the
-hosted model, but needs task labels and still alarms on one shift in five. The two
+family only with itself cuts the shift alarms to 23\% locally and 31\% on the
+hosted model, but needs task labels and still alarms on one shift in four. The two
 re-asking monitors bring them to 0--0.5\%, including on real traffic where no
 task family is known (Figure~\ref{fig:summary}). Figure~\ref{fig:streams} shows
 why on two single streams.
@@ -362,10 +363,10 @@ why on two single streams.
     \toprule
     & accuracy & pooled & per-fam. & served \\
     \midrule
-    DeepSeek update & $+0.2$ to $+8.6$ & 91.0 & 93.5 & 95.0 \\
-    \quad on real traffic & -- & 89.0 & -- & 95.5 \\
-    Qwen update & $-0.3$ to $-6.9$ & 97.5 & 97.5 & 98.5 \\
-    DeepSeek at 4-bit & within $\pm1.5$ & 2.0 & 1.0 & 0.0 \\
+    DeepSeek update & $+0.2$ to $+8.6$ & 93.0 & 94.5 & 95.0 \\
+    \quad on real traffic & -- & 90.0 & -- & 94.0 \\
+    Qwen update & $-0.3$ to $-6.9$ & 96.0 & 96.5 & 96.5 \\
+    DeepSeek at 4-bit & within $\pm1.5$ & 1.5 & 3.5 & 0.0 \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -382,8 +383,8 @@ On Qwen the per-family monitor also raised alarms on a plain rerun of the health
 model, and broke its budget, for the reason \S\ref{sec:days} explains
 (Appendix~\ref{app:qwen}). The re-asking monitors, calibrated on Qwen's own
 healthy rounds before they saw an update answer, held: the served-answer test
-caught the update in 98.5\% of streams, alarmed on 0.5\% of topic-shift streams
-where the per-family monitor alarmed on 73\%, and raised no false alarm.
+caught the update in 96.5\% of streams, alarmed on 1\% of topic-shift streams
+where the per-family monitor alarmed on 73.5\%, and raised no false alarm.
 
 \subsection{Calibration must span days}
 \label{sec:days}
@@ -398,23 +399,24 @@ than the pair the monitor was calibrated on, although each round is just as vari
 One pair of rounds cannot show how large this day-to-day drift is.
 
 Calibrating on three pairs of healthy rounds, and keeping the largest threshold,
-brought every study within budget with detection unchanged
-(Appendix~\ref{app:paired}). The per-family monitor's failure on Qwen has the same
-cause.
+cut the false alarms by two to ten times with detection unchanged
+(Appendix~\ref{app:paired}): the hosted studies sit at 0.000--0.052\%, but the local
+study sits on its budget (0.102\%; 0.092--0.136\% over five replays). The served-answer
+test, calibrated the same way, raised none anywhere. The per-family monitor's
+failure on Qwen has the same cause.
 
 \subsection{One served answer is enough}
 
 \paragraph{What it achieves} With a quarter of the production answers, the
 served-answer test behaves like the paired monitor (Table~\ref{tab:monitors}). It
-catches the local faults and both real updates in 95--100\% of streams, ignores
-topic shifts, and raised no false alarm in 88{,}457 healthy windows. Its pre-registered criteria
-hold in every study but one case, the 8-bit rung of \S\ref{sec:ladder}, missed by
-half a point (Appendix~\ref{app:paired}).
+catches the local faults and both real updates in 94--100\% of streams, ignores
+topic shifts, and raised no false alarm in 87{,}716 healthy windows. Its pre-registered
+criteria hold in every study but one: on real traffic it trails Model Equality
+Testing by 6.0 points, one more than our margin (Appendix~\ref{app:paired}).
 
 \paragraph{What it costs} One answer carries less evidence than four. Model
-Equality Testing, with four production answers, catches about 5\% more of
-DeepSeek's update streams (1\% more of Qwen's) and alarms one to two windows
-sooner.
+Equality Testing, with four production answers, catches 2.5--6 points more of the
+real updates' streams and alarms one to two windows sooner.
 
 \subsection{The same model, served worse}
 \label{sec:ladder}
@@ -431,10 +433,10 @@ recalibrated.
   \toprule
   monitor & 8-bit & T 1.0 & T 1.3 & T 1.6 \\
   \midrule
-  per-family & 0.0 & 47.5 & 95.5 & 93.5 \\
-  paired & 96.5 & 63.5 & 97.0 & 95.0 \\
-  served answer & 92.5 & 52.0 & 94.5 & 93.5 \\
-  MET & 98.0 & 14.0 & 94.0 & 94.0 \\
+  per-family & 1.0 & 50.5 & 90.5 & 99.0 \\
+  paired & 96.0 & 63.5 & 92.5 & 99.5 \\
+  served answer & 93.0 & 43.5 & 91.5 & 99.5 \\
+  MET & 96.5 & 15.5 & 89.5 & 98.5 \\
   \midrule
   accuracy change & $+2.3$ & $-0.1$ & $+0.1$ & $+0.4$ \\
   \bottomrule
@@ -443,43 +445,41 @@ recalibrated.
 
 \paragraph{Only re-asking sees the precision change} The 8-bit model writes answers
 of the same length and mix, so the per-family monitor, which compares windows with
-a fixed reference, misses it in every stream. Compared question by question with
+a fixed reference, misses it in 99\% of streams. Compared question by question with
 the 4-bit reference, its answers differ, and the re-asking monitors catch it in
-92.5--98\% of streams.
+93--96.5\% of streams.
 
 \paragraph{Temperature} Higher temperatures make samples disagree, and every
-monitor catches T~1.3 and 1.6 in 93.5--97\% of streams. At T~1.0 the served-answer
-test beats Model Equality Testing (82 streams only it caught, 6 only MET caught,
-$p<10^{-17}$). The served-answer test raised no false alarm in 19{,}357 healthy
-windows.
+monitor catches T~1.3 and 1.6 in 89.5--99.5\% of streams. At T~1.0 the
+served-answer test beats Model Equality Testing (75 streams only it caught, 15 only
+MET caught, $p<10^{-10}$). The served-answer test raised no false alarm in
+19{,}586 healthy windows.
 
 \paragraph{None of it was harmful} No rung lowered accuracy: every task family is
 within 2.4 points of the healthy model at every temperature, and the 8-bit model is
-2.3 points \emph{better} on average. Over all eight local faults detection still
-ranks with the accuracy drop (Spearman $\rho=0.86$ for the served-answer test,
-$p=0.007$), because the faults that cost most accuracy also change the answers most.
-But a rung that improved the model was caught as often as one that hurt it: the
+2.3 points \emph{better} on average. Over all eight local faults detection ranks
+only loosely with the accuracy drop (Spearman $\rho=0.55$ for the served-answer
+test, $p=0.15$): the faults that cost most accuracy also change the answers most,
+but a rung that improved the model was caught as often as one that hurt it. The
 monitors answer ``did the model change?'', not ``did it get worse?''. An alarm is a
 reason to look, not a verdict (\S\ref{sec:discussion}).
 
-\paragraph{Against the pre-registration} Two of three checks hold: the per-family
-monitor sees the 8-bit rung less often than T~1.6 (0.0 against 93.5\%; not blind,
-see Appendix~\ref{app:prereg}), and the served-answer test stays within budget. Its
-detection falls 5.5 points short of MET on the 8-bit rung, missing our five-point
-margin by half a point. Detection is not monotone in temperature: T~1.6 is caught
-two points less often than T~1.3, within the intervals. An earlier replay of T~1.0
-to 1.6 alone, whose streams draw different seeds, gave 55.5, 89.0 and 98.0\%;
-replays move these rates by up to seven points.
+\paragraph{Against the pre-registration} Every check holds: detection rises with
+the temperature, the per-family monitor sees the 8-bit rung less often than T~1.6
+(1.0 against 99.0\%; not blind, see Appendix~\ref{app:prereg}), and the
+served-answer test stays within budget and within five points of MET (3.5). Over
+five replays the rise with temperature holds every time; the gap to MET on the 8-bit
+rung ranges from 3.5 to 6.0 points, past our margin in two of five.
 
 \subsection{Baselines}
 \label{sec:baselines}
 
 Table~\ref{tab:baselines} compares every monitor with three baselines on the same
 local streams. An embedding MMD test~\citep{gretton2012kernel} catches most faults
-but also 98\% of the harmless shift, at five times the budget: it answers ``did the
+but also 94\% of the harmless shift, at six times the budget: it answers ``did the
 traffic change?''. A reference-free LLM judge, which grades every answer from 1 to
 10, grades style more than correctness: it barely sees the older-generation model
-(5.5\% at 14B, 58.5\% at 72B), whose answers read well. Model Equality Testing,
+(3.0\% at 14B, 57.0\% at 72B), whose answers read well. Model Equality Testing,
 run under our calibration and streams, is as strong as the paired monitor and needs
 four production answers per question; the served-answer test needs one.
 
@@ -494,14 +494,14 @@ four production answers per question; the served-answer test needs one.
     \toprule
     & F1 & F2 & F3 & F5 & F6 & false al. \\
     \midrule
-    per-family    & 99.0 & 98.5 & 99.5 & 95.5 & 18.5 & 0.017 \\
-    paired        & 100 & 100 & 100 & 100 & 0.0 & 0.085 \\
-    served answer & 100 & 99.0 & 97.5 & 98.5 & 0.5 & 0.000 \\
+    per-family    & 97.0 & 97.5 & 100 & 97.0 & 23.0 & 0.053 \\
+    paired        & 100 & 100 & 100 & 100 & 0.5 & 0.102 \\
+    served answer & 100 & 99.5 & 99.0 & 99.0 & 0.0 & 0.000 \\
     \midrule
-    MET           & 100 & 100 & 100 & 100 & 2.0 & 0.020 \\
-    embedding MMD & 97.5 & 87.5 & 92.5 & 83.5 & 98.0 & 0.524 \\
-    LLM judge, 14B & 93.0 & 49.5 & 91.0 & 5.5 & 18.0 & 0.437 \\
-    LLM judge, 72B & 98.5 & 90.5 & 92.0 & 58.5 & 8.5 & 0.061 \\
+    MET           & 100 & 100 & 100 & 100 & 1.0 & 0.054 \\
+    embedding MMD & 93.5 & 86.5 & 91.5 & 85.0 & 94.0 & 0.587 \\
+    LLM judge, 14B & 89.5 & 49.0 & 93.5 & 3.0 & 11.5 & 0.535 \\
+    LLM judge, 72B & 95.5 & 88.5 & 92.0 & 57.0 & 8.5 & 0.047 \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -561,6 +561,9 @@ statistic after seeing Model Equality Testing's results. Each was frozen before 
 data that judges it, and every revision is recorded (Appendix~\ref{app:prereg}).
 (vi) No monitor that reads only answers sees a fault that leaves them looking the
 same. (vii) Versions and precisions of hosted models are the hosts' own labels.
+(viii) Rates move between replays of the same answers: by up to 10 points for
+detection and 0.08 points for false alarms on the re-asking monitors
+(Appendix~\ref{app:replays}); the local paired monitor sits on its budget.
 
 \section*{Ethics Statement}
 \paragraph{Data} The benchmark questions come from six public research datasets,
@@ -641,8 +644,14 @@ it existed; every later change is an amendment with its date and reason.
   evaluated alone (an amendment made before any ladder result); it was then
   resumed from its checkpoint and completed after those results were read, so
   the hypothesis comparing it with T~1.6 was tested knowing T~1.6's rate.
-  Adding it changes the replay seeds of the other rungs; both replays are
-  reported.
+  Adding it moved the other rungs' replay streams, which exposed the next
+  amendment.
+  \item[Replay seeding.] After every result above was read, streams were reseeded
+  by condition name, so that adding a condition never moves another's, and every
+  study was replayed five times with thresholds fixed: the first replay is
+  primary, the others give the spread (Appendix~\ref{app:replays}). No threshold,
+  calibration or answer changed. Appendix~\ref{app:fixed} keeps the earlier
+  replay plan, whose conditions never changed.
 \end{description}
 
 \section{The paired and served monitors in full}
@@ -654,7 +663,8 @@ it existed; every later change is an amendment with its date and reason.
   alarmed, and false alarms per healthy window before the onset (budget 0.1\%).
   Held-out windows stayed quiet in every row (0/17 local and DeepSeek, 0/9 real
   traffic). MET: Model Equality Testing's statistic under the \emph{rounds}
-  calibration.}
+  calibration. The v1.0 rows use the earlier replay plan; the others the primary
+  replay.}
   \label{tab:paired}
   \setlength{\tabcolsep}{3.4pt}
   \begin{tabular}{l|cccccc|c|cccc|c|c|c}
@@ -664,10 +674,10 @@ it existed; every later change is an amendment with its date and reason.
     \midrule
     v1.0 split & 100 & 100 & 100 & 100 & 8.5 & 36.5 & 0.210 & 98.0 & 2.0 & 3.5 & 24.0 & 0.585 & 98.0 & 0.020 \\
     v1.0 fresh & 100 & 100 & 100 & 100 & 5.5 & 27.0 & 0.217 & 100 & 4.5 & 13.5 & 29.0 & 0.520 & 100 & 0.040 \\
-    v1.1 rounds & 100 & 100 & 100 & 100 & 4.5 & 0.0 & 0.085 & 99.5 & 0.0 & 8.0 & 0.0 & 0.076 & 100 & 0.000 \\
-    served, Hamming & 100 & 99.0 & 97.5 & 98.5 & 0.0 & 0.5 & 0.000 & 95.0 & 0.0 & 0.0 & 0.0 & 0.000 & 95.5 & 0.000 \\
-    served, cosine & 100 & 100 & 99.5 & 100 & 0.0 & 2.0 & 0.003 & 94.0 & 0.0 & 0.0 & 3.5 & 0.232 & 98.0 & 0.020 \\
-    MET & 100 & 100 & 100 & 100 & 0.5 & 2.0 & 0.020 & 100 & 0.0 & 0.0 & 0.0 & 0.000 & 100 & 0.020 \\
+    v1.1 rounds & 100 & 100 & 100 & 100 & 8.5 & 0.5 & 0.102 & 98.5 & 1.0 & 12.5 & 0.5 & 0.052 & 100 & 0.000 \\
+    served, Hamming & 100 & 99.5 & 99.0 & 99.0 & 0.0 & 0.0 & 0.000 & 95.0 & 0.0 & 0.0 & 0.0 & 0.000 & 94.0 & 0.000 \\
+    served, cosine & 100 & 100 & 100 & 100 & 0.0 & 0.5 & 0.000 & 95.5 & 0.0 & 0.0 & 2.0 & 0.234 & 98.5 & 0.000 \\
+    MET & 100 & 100 & 100 & 100 & 1.0 & 1.0 & 0.054 & 100 & 0.0 & 0.0 & 0.0 & 0.000 & 100 & 0.021 \\
     \bottomrule
   \end{tabular}
 \end{table*}
@@ -689,11 +699,13 @@ diversity (not pre-registered) cut F6 to 0.5--11\% but left false alarms over
 budget; only calibrating across rounds fixed both.
 
 \paragraph{The served test's criteria} S1, false alarms within budget, holds
-everywhere with none observed. S2, detection within five points of MET, holds
-with gaps of 0--2.5 points locally, 4.5 on real traffic, 5.0 on the DeepSeek
-benchmark study and 1.0 on Qwen, and fails once: 5.5 points on the 8-bit rung. S3, F6 alarms no higher than \vthree{}, holds (0.5\% against
-18.5\% locally, 0.0\% against 29.0\% hosted). The cosine kernel, our secondary,
-fails S1 on the hosted model (0.232\%), the same drift of embeddings between days.
+everywhere with none observed in the primary replay (one alarm in 29{,}000 local
+windows in another). S2, detection within five points of MET, holds with gaps of
+0--1 point locally, 5.0 on the DeepSeek benchmark study, 2.5 on Qwen and 0--3.5 on
+the ladder, and fails once: 6.0 points on real traffic. S3, F6 alarms no higher
+than \vthree{}, holds (0.0\% against 23.0\% locally, 0.0\% against 31.0\% on
+DeepSeek, 1.0\% against 73.5\% on Qwen). The cosine kernel, our secondary, fails S1
+on the DeepSeek study (0.234\%), the same drift of embeddings between days.
 MET's own statistic is robust to that drift: calibrated on one healthy pair it
 already stays within budget (0.020\% on the DeepSeek study).
 
@@ -704,13 +716,13 @@ Qwen3.5 Plus 2026-02-15 (healthy) against 2026-04-20 (U1), both served by Alibab
 thinking off, 32{,}000 answers for \$8.26. The update lowered accuracy on the fault
 questions: banking77 $-0.3$, gsm8k $-1.4$, squad2 $-1.5$, triviaqa $-6.9$ points,
 and strict JSON extraction $-26.7$. It lengthened explanations (218 to 252 words)
-and shortened summaries (40 to 34). \vone{} and \vthree{} both detect it in 97.5\%
-of streams at a median of one window, mostly through answer length. \vone{} stays
-within budget (0.030\% before the onset) but alarms on F4 and F6 in 98.5\% and
+and shortened summaries (40 to 34). \vone{} and \vthree{} detect it in 96.0\% and
+96.5\% of streams at a median of one window, mostly through answer length. \vone{}
+stays within budget (0.041\% before the onset) but alarms on F4 and F6 in 98.0\% and
 100\% of streams. \vthree{} fails: F7, a fresh-seed rerun with accuracy within one
-point and identical mean lengths, alarms in 29.0\% of streams, F6 in 73.0\%, and
-pre-onset false alarms reach 0.192\%, with one of 17 held-out windows; lexical
-diversity raised 55 of the 58 F7 alarms. The same statistic made \vthree{} fail on
+point and identical mean lengths, alarms in 25.0\% of streams, F6 in 73.5\%, and
+pre-onset false alarms reach 0.211\%, with one of 17 held-out windows; lexical
+diversity raised 47 of the 50 F7 alarms. The same statistic made \vthree{} fail on
 \texttt{gemma3:12b} (Appendix~\ref{app:transfer}) and raised the paired monitor's
 F6 alarms.
 
@@ -723,10 +735,10 @@ window before the onset:
   \toprule
   monitor & U1 & F4 & F6 & false al. \\
   \midrule
-  paired, \emph{rounds} & 98.5 & 3.0 & 0.5 & 0.007 \\
-  served, Hamming & 98.5 & 0.0 & 0.5 & 0.000 \\
-  served, cosine & 97.5 & 0.0 & 0.0 & 0.000 \\
-  MET & 99.5 & 0.0 & 0.0 & 0.000 \\
+  paired, \emph{rounds} & 98.5 & 0.0 & 0.5 & 0.000 \\
+  served, Hamming & 96.5 & 0.0 & 1.0 & 0.000 \\
+  served, cosine & 96.0 & 0.0 & 0.0 & 0.000 \\
+  MET & 99.0 & 0.0 & 0.5 & 0.000 \\
   \bottomrule
 \end{tabular}
 \end{center}
@@ -749,13 +761,55 @@ streams:
   \toprule
   monitor & long topics & short topics & false al. \\
   \midrule
-  pooled (frozen) & 31.5 & 85.0 & 0.332 \\
-  paired, \emph{rounds} & 0.5 & 0.5 & 0.000 \\
+  pooled (frozen) & 33.5 & 80.0 & 0.204 \\
+  paired, \emph{rounds} & 1.5 & 0.0 & 0.010 \\
   served answer & 0.0 & 0.0 & 0.000 \\
-  MET & 0.5 & 2.5 & 0.030 \\
+  MET & 2.0 & 0.5 & 0.041 \\
   \bottomrule
 \end{tabular}
 \end{center}
+
+\section{Five replays}
+\label{app:replays}
+
+Every study replayed five times with thresholds fixed and streams seeded by
+condition name (Appendix~\ref{app:prereg}): share of 200 streams alarmed, and false
+alarms per healthy window (\%), for the primary replay with the range over all five
+in brackets. Per-family: \vthree{}.
+
+\begin{center}\small
+\setlength{\tabcolsep}{2.4pt}
+\begin{tabular}{lcccc}
+  \toprule
+  & per-family & paired & served & MET \\
+  \midrule
+  \multicolumn{5}{l}{\emph{local}} \\
+  older generation & 97.0 (95.5--97.0) & 100.0 & 99.0 (97.0--99.0) & 100.0 \\
+  short-form shift & 23.0 (14.0--25.0) & 0.5 (0.0--1.5) & 0.0 (0.0--0.5) & 1.0 (1.0--2.5) \\
+  false alarms & 0.053 (0.026--0.053) & 0.102 (0.092--0.136) & 0.000 (0.000--0.003) & 0.054 (0.054--0.082) \\
+  \multicolumn{5}{l}{\emph{DeepSeek, benchmark}} \\
+  DeepSeek update & 94.5 (94.5--97.0) & 98.5 (98.5--99.0) & 95.0 (95.0--97.5) & 100.0 \\
+  short-form shift & 31.0 (26.5--35.0) & 0.5 (0.5--1.5) & 0.0 (0.0--0.5) & 0.0 \\
+  false alarms & 0.154 (0.110--0.154) & 0.052 (0.045--0.088) & 0.000 & 0.000 (0.000--0.005) \\
+  \multicolumn{5}{l}{\emph{DeepSeek, real traffic}} \\
+  update, real traffic & -- & 100.0 & 94.0 (92.5--96.0) & 100.0 \\
+  false alarms & -- & 0.000 (0.000--0.063) & 0.000 & 0.021 (0.000--0.081) \\
+  \multicolumn{5}{l}{\emph{Qwen}} \\
+  Qwen update & 96.5 (96.5--98.5) & 98.5 (98.0--99.5) & 96.5 (96.5--98.0) & 99.0 (99.0--100.0) \\
+  short-form shift & 73.5 (67.0--74.0) & 0.5 (0.0--2.0) & 1.0 (0.5--3.5) & 0.5 (0.0--0.5) \\
+  false alarms & 0.211 (0.093--0.211) & 0.000 (0.000--0.014) & 0.000 & 0.000 \\
+  \multicolumn{5}{l}{\emph{ladder}} \\
+  8-bit & 1.0 (0.5--2.0) & 96.0 (96.0--97.5) & 93.0 (90.5--94.5) & 96.5 (96.5--98.5) \\
+  T 1.0 & 50.5 (46.5--53.5) & 63.5 (63.5--69.0) & 43.5 (43.5--53.0) & 15.5 (13.5--17.5) \\
+  false alarms & 0.041 (0.020--0.041) & 0.092 (0.090--0.132) & 0.000 & 0.071 (0.025--0.071) \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+\noindent The served-answer test is the steadiest: across 25 replays of five studies
+it raised one false alarm. The local paired monitor is the least: its false alarms
+range over 0.092--0.136\%, around its 0.1\% budget. Detection at T~1.0, where
+no monitor is sure, moves by up to ten points.
 
 \section{The fixed-reference monitors in full}
 \label{app:fixed}
