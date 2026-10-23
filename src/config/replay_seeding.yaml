@@ -1,0 +1,39 @@
+# ---------------------------------------------------------------------------
+# Replay seeding (Stage 7z). AMENDMENT to every study's analysis, fixed and
+# committed on 23 Oct 2026, after all reported results were read and before
+# any replay below is run.
+#
+# Why. `evaluate.pipeline.replay_runs` gave each condition its onsets and
+# window seeds by its position in the sorted condition list. Adding the
+# ladder's L1 shifted L2-L4 to new streams and moved their detection by up to
+# 7 points, more than their Wilson intervals. A condition's streams must not
+# depend on which other conditions are run.
+#
+# Change. A condition's seeds come from a stable hash of its name (CRC-32),
+# offset by a replay seed r: onsets from seed + 1,000,003 r + crc(name), window
+# draws from that base times 1,000 plus run index. Nothing else changes: no
+# threshold, calibration record, bootstrap seed, statistic or answer. Records
+# stay as committed.
+#
+# Replays. r = 0 is primary: every reported rate, interval and McNemar test
+# comes from it. r = 1-4 are rerun with thresholds fixed and reported as the
+# min-max of each rate over r = 0-4, beside the primary.
+#
+# Scope. Rerun under the new plan, for every study (local, api, chat, qwen,
+# ladder): the frozen v1 and v3 monitors, the paired `rounds` monitor, the
+# served-answer test (both kernels) and Model Equality Testing; for r = 0 only,
+# the real-traffic topic shifts, the local baselines and the stream figure.
+# The appendix analyses of the fixed-reference monitors (ablations,
+# sensitivity, half-sample, one-slice, length-matched, sequential, mixtures,
+# seed stability) keep the earlier plan and are labelled so; their conditions
+# never changed, so their streams did not move.
+#
+# The earlier plan's numbers are kept in the appendix beside the new ones.
+#
+# Bump `version` on ANY edit.
+# ---------------------------------------------------------------------------
+
+version: "1.0.0"
+hash: crc32
+replay_seeds: [0, 1, 2, 3, 4]
+primary: 0
