@@ -52,7 +52,8 @@ graded check tells the two apart.
 \section{Introduction}
 
 Teams that build on hosted language models depend on a component they cannot
-inspect. On 17 October 2026 DeepSeek replaced V4 Flash with V4.1 Flash behind the
+inspect, and it can degrade without crashing: latency, error rates and fluency stay
+normal while the answers change. On 17 October 2026 DeepSeek replaced V4 Flash with V4.1 Flash behind the
 same API name without announcing it; in April 2026 Alibaba released a new build
 of Qwen3.5 Plus under the same product name. Behaviour of
 commercial models drifts across versions~\citep{chen2023chatgpt}, and the usual
@@ -548,6 +549,16 @@ faults confined to intent classification or JSON extraction were caught in at mo
 on at least three healthy rounds from different days; prefer the character kernel
 to embedding or lexical statistics, which drift between rounds; and triage every
 alarm before acting on it.
+
+\section{Conclusion}
+A deployed language model can change without anything crashing, and it can stay
+changed for a long time. A monitor that compares live answers with a fixed healthy
+reference notices, but cannot tell a changed model from changed users. Re-asking a
+reference the live questions can, provided its calibration spans several days, and
+the served-answer test does so with only the answer each user received: across four
+local faults, two real updates and real traffic it caught 94--100\% of streams,
+ignored topic shifts, and raised no false alarm in 87{,}716 healthy windows. What it
+reports is change; whether the change is harm takes a short graded check.
 
 \section*{Limitations}
 (i) Two real updates from two vendors, one of them also on real traffic. (ii) Local models are 8--26B open-weight models on one
