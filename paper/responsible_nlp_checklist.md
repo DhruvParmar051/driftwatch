@@ -30,9 +30,12 @@ The results report where the monitors fail:
 - §6.2 and Appendix C, the per-family monitor over budget on Qwen;
 - §6.3, the local paired monitor at its budget;
 - §6.4, the served-answer test missing one criterion on real traffic;
-- §6.7 and Appendix F.4.3, faults confined to classification or extraction.
+- §6.8 and Appendix I.4.3, faults confined to classification or extraction.
+- Appendix F, the served-answer test's blind spot when a change makes answers
+  more alike;
+- §6.5, how detection of subtle changes falls when re-asking is cut.
 
-Appendix G states the assumptions behind the false-alarm guarantee and where they
+Appendix J states the assumptions behind the false-alarm guarantee and where they
 hold only approximately.
 
 **A2. Did you discuss any potential risks of your work?**
@@ -40,16 +43,18 @@ Yes. The *Ethics Statement*, "Use and misuse", covers the main risk of misreadin
 the monitor:
 
 - An alarm signals change, not harm: the DeepSeek update (§6.2) and the 8-bit
-  build (§6.5) both improved accuracy and were caught.
-- An alarm calls for a person to look, not for an automatic decision (§7).
-- Silence is not evidence that a model is safe or correct (Appendix F.4.3).
+  build (§6.6) both improved accuracy and were caught.
+- An alarm calls for a person to look, not for an automatic decision (§7); a
+  small graded check after each alarm tells harm from improvement (Appendices P
+  and H).
+- Silence is not evidence that a model is safe or correct (Appendix I.4.3).
 
 Other risks:
 
 - **Privacy:** the real-traffic data is filtered and stripped of metadata
-  (*Ethics Statement*, "Data"; Appendix N).
+  (*Ethics Statement*, "Data"; Appendix Q).
 - **Environmental cost:** small. One laptop and $26.11 of hosted inference in total
-  (Appendix P).
+  (Appendix S).
 - **Fairness:** the work studies no model bias, so this does not apply.
 
 ## B. Did you use or create scientific artifacts?
@@ -59,19 +64,19 @@ Yes.
 **B1. Did you cite the creators of artifacts you used?**
 Yes.
 
-- **Datasets:** every benchmark dataset is cited in Appendix F.2, and WildChat in
-  §5 and Appendix N. Appendix O gives the Hugging Face id and split of each. The
+- **Datasets:** every benchmark dataset is cited in Appendix I.2, and WildChat in
+  §5 and Appendix Q. Appendix R gives the Hugging Face id and split of each. The
   exact pinned revisions are in the supplementary code (`src/corpus/build.py`,
   `src/config/chat_study.yaml`).
-- **Models:** named in §5 (local models, DeepSeek and Qwen), §6.6 (judges) and
-  Appendix J (transfer models), with sizes in Appendix P. Their build digests are in
+- **Models:** named in §5 (local models, DeepSeek and Qwen), §6.7 (judges) and
+  Appendix M (transfer models), with sizes in Appendix S. Their build digests are in
   the code.
 - **Prior method:** Model Equality Testing is cited in §2 and §4 and run as a
   baseline in §6.
-- **Embedding model and software:** cited in §4; versions in Appendix P.
+- **Embedding model and software:** cited in §4; versions in Appendix S.
 
 **B2. Did you discuss the license or terms for use and/or distribution of any artifacts?**
-Yes. Appendix O (Table "Datasets and licences") lists the licence each dataset card
+Yes. Appendix R (Table "Datasets and licences") lists the licence each dataset card
 declares:
 
 | Dataset | Licence |
@@ -86,7 +91,7 @@ The *Ethics Statement* says how the undeclared ones are used: non-commercial
 research only, with no source text redistributed.
 
 **B3. Did you discuss if your use of existing artifacts was consistent with their intended use?**
-Yes. The *Ethics Statement*, "Data", and Appendix O:
+Yes. The *Ethics Statement*, "Data", and Appendix R:
 
 - **Benchmark datasets:** used for research evaluation, as released.
 - **WildChat:** used as a research release under ODC-BY.
@@ -96,7 +101,7 @@ Yes. The *Ethics Statement*, "Data", and Appendix O:
   question or answer text, so nothing derived from the datasets is redistributed.
 
 **B4. Did you discuss the steps taken to check whether the data contains personally identifying information or offensive content?**
-Yes. The *Ethics Statement*, "Data", and Appendix N.
+Yes. The *Ethics Statement*, "Data", and Appendix Q.
 
 - **WildChat**, the only source of real user text: we keep a first user turn only
   if no flag marks the conversation or the turn as toxic or redacted (the dataset's
@@ -111,14 +116,14 @@ Yes. The *Ethics Statement*, "Data", and Appendix N.
 **B5. Did you provide documentation of the artifacts?**
 Yes.
 
-- **Tasks and quotas:** Appendix F.2 lists the seven task families, their quota per
+- **Tasks and quotas:** Appendix I.2 lists the seven task families, their quota per
   window and the oracle used.
-- **Sources and fields:** Appendix O gives sources, splits and the fields read.
-- **Real traffic:** Appendix N describes the WildChat sample, filters and split;
+- **Sources and fields:** Appendix R gives sources, splits and the fields read.
+- **Real traffic:** Appendix Q describes the WildChat sample, filters and split;
   Appendix D the topics found by clustering.
 - **Language and demographics:** all data is English. The demographics of WildChat
   users are not known to us and are not reported.
-- **jsonx:** our synthesised task is described in Appendix F.2, and its generator
+- **jsonx:** our synthesised task is described in Appendix I.2, and its generator
   and JSON schema are in the supplementary code.
 
 **B6. Did you report relevant statistics like the number of examples, details of train/test/dev splits?**
@@ -127,21 +132,21 @@ Yes. There is no training. The splits are:
 | Study | Where | Questions | Calibration | Held-out | Fault |
 |---|---|---|---|---|---|
 | Local, DeepSeek, Qwen | §5 | 5,000 | 2,500 | 1,000 | 1,500 |
-| Real traffic | §5, Appendix N | 3,000 | 1,500 | 600 | 900 |
+| Real traffic | §5, Appendix Q | 3,000 | 1,500 | 600 | 900 |
 
 - **Answer counts:**
-  - local: 64,000 main answers, 60,000 for the transfer deployments (Appendix J),
-    and 48,000 for the reference rounds and the ladder (Appendix P);
-  - hosted: 38,000 for DeepSeek (Appendix F.5), 19,200 for real traffic
-    (Appendix N), and 56,000 for Qwen with its reference rounds (Appendix C).
-- **Per-slice detail:** per-slice counts and per-window quotas are in Appendix F.2.
+  - local: 64,000 main answers, 60,000 for the transfer deployments (Appendix M),
+    and 48,000 for the reference rounds and the ladder (Appendix S);
+  - hosted: 38,000 for DeepSeek (Appendix I.5), 19,200 for real traffic
+    (Appendix Q), and 56,000 for Qwen with its reference rounds (Appendix C).
+- **Per-slice detail:** per-slice counts and per-window quotas are in Appendix I.2.
 
 ## C. Did you run computational experiments?
 
 Yes.
 
 **C1. Did you report the number of parameters in the models used, the total computational budget, and computing infrastructure used?**
-Yes. Appendix P (Compute and software) gives:
+Yes. Appendix S (Compute and software) gives:
 
 - the parameters of every local model, judge and the embedding model;
 - the hardware: one Apple M5 Pro laptop with 48 GB, running Ollama 0.40.3;
@@ -154,7 +159,7 @@ Yes. Appendix P (Compute and software) gives:
 - the hosted work: $26.11 in total, itemised by study.
 
 **C2. Did you discuss the experimental setup, including hyperparameter search and best-found hyperparameter values?**
-Yes. §3, §5 and Appendix P.
+Yes. §3, §5 and Appendix S.
 
 - **No hyperparameter search:** decoding (k = 4, temperature 0.7, 512 tokens),
   window (W = 200, S = 50), budget (0.1%) and bootstrap (20,000 windows, GPD tail)
@@ -165,7 +170,7 @@ Yes. §3, §5 and Appendix P.
 - **Pre-registration:** every study's design and criteria were committed before
   its data existed; every amendment is listed in Appendix A.
 - **Sensitivity:** calibration size and W are varied after the fact, as
-  sensitivity analyses (Appendix R).
+  sensitivity analyses (Appendix U).
 
 **C3. Did you report descriptive statistics about your results?**
 Yes.
@@ -177,13 +182,13 @@ Yes.
 - **Replays:** every study was replayed five times with thresholds fixed; the main
   text reports the primary replay, and Appendix E gives the range of each rate
   over all five.
-- **Seeds:** ranges over ten calibration seeds are in Appendix H, and intervals from
-  50 question half-samples in Appendix Q.
+- **Seeds:** ranges over ten calibration seeds are in Appendix K, and intervals from
+  50 question half-samples in Appendix T.
 - **Splits:** the calibration, held-out and fault splits are separate. Held-out
   false alarms are reported for every monitor.
 
 **C4. If you used existing packages, did you report the implementation, model, and parameter settings used?**
-Yes. Appendix P:
+Yes. Appendix S:
 
 - **Software:** Ollama 0.40.3; Python 3.11 with NumPy 2.4.6, SciPy 1.17.1,
   pandas 3.0.5, PyArrow 25.0.1 and Hugging Face Datasets 5.0.1. The supplementary
