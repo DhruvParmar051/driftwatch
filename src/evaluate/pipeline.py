@@ -17,6 +17,7 @@ Nothing in steps 1-6 sees ground truth; step 7 runs after detection is fixed.
 from __future__ import annotations
 
 import json
+import zlib
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
@@ -172,20 +173,27 @@ def fault_conditions(
         )
     }
     faults[F4] = derive_f4(queries, healthy, settings.corpus_seed)
-    # Sorted after F1-F5, so adding it leaves every earlier condition's replay seeds as they were.
     faults[F6] = derive_f6(queries, healthy, settings.corpus_seed)
     return faults
+
+
+REPLAY_STRIDE = 1_000_003  # between replays r and r + 1 (config/replay_seeding.yaml)
 
 
 def replay_runs(
     conditions: Sequence[str], n_runs: int, n_windows: int, min_prefix: int, seed: int
 ) -> list[ReplayRun]:
-    """The replay plan `evaluate` uses: same seeds, so any analysis on it sees the same streams."""
+    """The replay plan `evaluate` uses: same seeds, so any analysis on it sees the same streams.
+
+    A condition's seeds come from its name, not its place in the list, so adding
+    a condition never moves another's streams (config/replay_seeding.yaml).
+    """
     runs: list[ReplayRun] = []
-    for k, cond in enumerate(sorted(conditions)):
-        onsets = randomised_onsets(n_runs, n_windows, min_prefix, seed + k)
+    for cond in sorted(conditions):
+        base = seed + REPLAY_STRIDE * get_settings().replay_seed + zlib.crc32(cond.encode())
+        onsets = randomised_onsets(n_runs, n_windows, min_prefix, base)
         for i, onset in enumerate(onsets):
-            runs.append(ReplayRun(len(runs), cond, onset, n_windows, seed * 1000 + k * n_runs + i))
+            runs.append(ReplayRun(len(runs), cond, onset, n_windows, base * 1000 + i))
     return runs
 
 
