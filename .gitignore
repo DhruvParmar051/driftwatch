@@ -29,6 +29,7 @@ data/reference/
 data/qwen/*
 !data/qwen/thresholds*.json
 data/ladder/*
+data/confirm/*
 
 .env
 
