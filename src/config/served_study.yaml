@@ -60,10 +60,13 @@
 # v1.3.0), criteria S1-S3 unchanged, S2 on U1. Before any qwen reference answer
 # existed and before the statistic was computed on any qwen answer.
 #
+# VERSION 1.0.3 (23 Oct 2026): ladder L1 reinstated (config/ladder_study.yaml
+# v1.2.0); S2 on the ladder covers L1-L4. Before any L1 answer exists.
+#
 # Bump `version` on ANY edit.
 # ---------------------------------------------------------------------------
 
-version: "1.0.2"
+version: "1.0.3"
 served_sample: 0
 reference_samples: [0, 1, 2, 3]
 primary: served_hamming
