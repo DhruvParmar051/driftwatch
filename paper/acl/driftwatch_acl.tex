@@ -435,76 +435,39 @@ where the per-family monitor alarmed on 73.5\%, and raised no false alarm.
 \subsection{Calibration must span days}
 \label{sec:days}
 
-Our first paired monitor was calibrated on one pair of healthy rounds. It caught
-every fault, but raised two to five times as many false alarms as its budget
-allows.
+Our first paired monitor, calibrated on one pair of healthy rounds, caught every
+fault but raised two to five times its budget of false alarms. A hosted model
+answers a little differently from one day to the next: two healthy rounds from
+different days sit about 10\% further apart than the pair it was calibrated on.
+Calibrating on three pairs and keeping the largest threshold cut the false alarms
+two to ten times with detection unchanged (Appendix~\ref{app:paired}). The hosted
+studies now sit at 0.000--0.052\%, the local study on its budget (0.102\%), and the
+served-answer test, calibrated the same way, at zero everywhere.
 
-The reason is that a hosted model answers a little differently from one day to the
-next. Two healthy rounds generated on different days sit about 10\% further apart
-than the pair the monitor was calibrated on, although each round is just as varied.
-One pair of rounds cannot show how large this day-to-day drift is.
-
-Calibrating on three pairs of healthy rounds, and keeping the largest threshold,
-cut the false alarms by two to ten times with detection unchanged
-(Appendix~\ref{app:paired}): the hosted studies sit at 0.000--0.052\%, but the local
-study sits on its budget (0.102\%; 0.092--0.136\% over five replays). The served-answer
-test, calibrated the same way, raised none anywhere. The per-family monitor's
-failure on Qwen has the same cause.
-
-\subsection{One served answer is enough}
-
-\paragraph{What it achieves} With a quarter of the production answers, the
-served-answer test behaves like the paired monitor (Table~\ref{tab:monitors}). It
-catches the local faults and both real updates in 94--100\% of streams, ignores
-topic shifts, and raised no false alarm in 87{,}716 healthy windows. Its pre-registered
-criteria hold in every study but one: on real traffic it trails Model Equality
-Testing by 6.0 points, one more than our margin (Appendix~\ref{app:paired}).
-
-\paragraph{What it costs} One answer carries less evidence than four. Model
-Equality Testing, with four production answers, catches 2.5--6 points more of the
-real updates' streams and alarms one to two windows sooner.
-
-\subsection{Re-asking can be cheap}
+\subsection{One served answer is enough, and can be cheap}
 \label{sec:cost}
 
-Re-asking costs reference calls. Asking the reference fewer times per question, or
-monitoring only a share of each window's questions, cuts them; each setting was
-recalibrated as before (Table~\ref{tab:cost}). Large changes survive deep cuts:
-with one reference call per served question the local faults and the Qwen update
-are still caught in 94--97.5\% of streams. Subtle ones do not: the DeepSeek update on
-real traffic falls from 94\% to 34\%, and the 8-bit rung from 93\% to 65\%. No setting
-broke the budget except one (Qwen, three references on a quarter of the
-questions, 0.219\%).
+With a quarter of the production answers, the served-answer test behaves like the
+paired monitor (Table~\ref{tab:monitors}). It catches the local faults and both
+real updates in 94--100\% of streams, ignores topic shifts, and raised no false
+alarm in 87{,}716 healthy windows. Its criteria hold everywhere but once: on real
+traffic it trails Model Equality Testing by 6.0 points, one past our margin. MET,
+with four production answers, catches 2.5--6 points more of the real updates and
+alarms a window or two sooner; \S\ref{sec:monitors} says why. Spot-checking a
+second production answer on a tenth of the questions, the cheapest way to see what
+it misses, did not close the gap (Appendix~\ref{app:hybrid}).
 
-\begin{table}[t]
-  \centering\small
-  \caption{Cost against power for the served-answer test: \% of 200 streams
-  alarmed, by reference calls per served question ($k$ reference answers on a share
-  $f$ of the questions). Local faults: the weakest of F1, F2, F3, F5.}
-  \label{tab:cost}
-  \setlength{\tabcolsep}{3.2pt}
-  \begin{tabular}{lccccc}
-    \toprule
-    calls ($k\times f$) & 4 & 2 & 2 & 1 & 0.5 \\
-    & \scriptsize $4\times1$ & \scriptsize $2\times1$ & \scriptsize $4\times\frac12$ & \scriptsize $4\times\frac14$ & \scriptsize $2\times\frac14$ \\
-    \midrule
-    local faults & 99.0 & 95.0 & 97.0 & 95.0 & 73.0 \\
-    DeepSeek update & 95.0 & 95.0 & 93.5 & 71.5 & 62.0 \\
-    \quad real traffic & 94.0 & 94.0 & 85.0 & 34.0 & 30.5 \\
-    Qwen update & 96.5 & 96.0 & 94.5 & 94.0 & 77.5 \\
-    8-bit & 93.0 & 52.0 & 82.0 & 65.0 & 0.0 \\
-    \bottomrule
-  \end{tabular}
-\end{table}
+Reference calls can be cut. With one call per served question (four reference
+answers on a quarter of the questions), the local faults and the Qwen update are
+still caught in 94--97.5\% of streams; subtle changes are not, and the update on real
+traffic falls to 34\% (Appendix~\ref{app:costpower}).
 
 \subsection{The same model, served worse}
 \label{sec:ladder}
 
-Every fault so far swapped the model or edited its prompt. The ladder keeps both
-and changes only how the model is served: the same weights at 8-bit instead of
-4-bit, or the sampling temperature raised from 0.7 to 1.0, 1.3 and 1.6, a real
-misconfiguration (a dropped parameter, a changed default). Nothing was
-recalibrated.
+The ladder keeps model and prompt and changes only how the model is served: 8-bit
+weights instead of 4-bit, or temperature raised from 0.7 to 1.0, 1.3 and 1.6, a real
+misconfiguration. Nothing was recalibrated.
 
 \begin{center}\small
 \setlength{\tabcolsep}{4pt}
@@ -523,44 +486,28 @@ recalibrated.
 \end{center}
 
 \paragraph{Only re-asking sees the precision change} The 8-bit model writes answers
-of the same length and mix, so the per-family monitor, which compares windows with
-a fixed reference, misses it in 99\% of streams. Compared question by question with
-the 4-bit reference, its answers differ, and the re-asking monitors catch it in
-93--96.5\% of streams.
+of the same length and mix, so the per-family monitor misses it in 99\% of streams;
+compared question by question with the 4-bit reference its answers differ, and the
+re-asking monitors catch it in 93--96.5\%. Higher temperatures are caught as samples
+disagree, and at T~1.0 the served-answer test beats MET (75 streams only it caught,
+15 only MET caught, $p<10^{-10}$), as \S\ref{sec:monitors} predicts.
 
-\paragraph{Temperature} Higher temperatures make samples disagree, and every
-monitor catches T~1.3 and 1.6 in 89.5--99.5\% of streams. At T~1.0 the
-served-answer test beats Model Equality Testing (75 streams only it caught, 15 only
-MET caught, $p<10^{-10}$). The served-answer test raised no false alarm in
-19{,}586 healthy windows.
-
-\paragraph{None of it was harmful} No rung lowered accuracy: every task family is
-within 2.4 points of the healthy model at every temperature, and the 8-bit model is
-2.3 points \emph{better} on average. Over all eight local faults detection ranks
-only loosely with the accuracy drop (Spearman $\rho=0.55$ for the served-answer
-test, $p=0.15$): the faults that cost most accuracy also change the answers most,
-but a rung that improved the model was caught as often as one that hurt it. The
-monitors answer ``did the model change?'', not ``did it get worse?''. An alarm is a
-reason to look, not a verdict (\S\ref{sec:discussion}).
-
-\paragraph{Against the pre-registration} Every check holds: detection rises with
-the temperature, the per-family monitor sees the 8-bit rung less often than T~1.6
-(1.0 against 99.0\%; not blind, see Appendix~\ref{app:prereg}), and the
-served-answer test stays within budget and within five points of MET (3.5). Over
-five replays the rise with temperature holds every time; the gap to MET on the 8-bit
-rung ranges from 3.5 to 6.0 points, past our margin in two of five.
+\paragraph{None of it was harmful} No rung lowered accuracy, and the 8-bit model is
+2.3 points \emph{better}. Over the eight local faults detection ranks only loosely
+with the accuracy drop (Spearman $\rho=0.55$, $p=0.15$). The monitors answer ``did
+the model change?'', not ``did it get worse?'' (\S\ref{sec:discussion}). Every
+pre-registered check holds; over five replays the gap to MET on the 8-bit rung is
+3.5--6.0 points, past our margin in two of five.
 
 \subsection{Baselines}
 \label{sec:baselines}
 
 Table~\ref{tab:baselines} compares every monitor with three baselines on the same
-local streams. An embedding MMD test~\citep{gretton2012kernel} catches most faults
-but also 94\% of the harmless shift, at six times the budget: it answers ``did the
-traffic change?''. A reference-free LLM judge, which grades every answer from 1 to
-10, grades style more than correctness: it barely sees the older-generation model
-(3.0\% at 14B, 57.0\% at 72B), whose answers read well. Model Equality Testing,
-run under our calibration and streams, is as strong as the paired monitor and needs
-four production answers per question; the served-answer test needs one.
+local streams. An embedding MMD test~\citep{gretton2012kernel} also alarms on 94\%
+of the harmless shift, at six times the budget: it answers ``did the traffic
+change?''. A reference-free LLM judge grades style more than correctness and
+barely sees the older-generation model (3.0\% at 14B, 57.0\% at 72B), whose answers
+read well.
 
 \begin{table}[t]
   \centering\small
@@ -983,6 +930,76 @@ and it cancels part of the MMD$^2$.
     \bottomrule
   \end{tabular}}
 \end{table}
+
+\section{Cost against power}
+\label{app:costpower}
+
+The served-answer test with $k=2,3,4$ reference answers per question on a share
+$f=1,\tfrac12,\tfrac14$ of each window's questions (a question is monitored by a
+fixed hash of its id), each setting calibrated afresh as in \S\ref{sec:method}.
+Large changes survive deep cuts; subtle ones need the full budget. One setting
+broke the budget (Qwen, $k=3$, $f=\tfrac14$, 0.219\%).
+
+\begin{table}[h]
+  \centering\small
+  \caption{Cost against power for the served-answer test: \% of 200 streams
+  alarmed, by reference calls per served question ($k$ reference answers on a share
+  $f$ of the questions). Local faults: the weakest of F1, F2, F3, F5.}
+  \label{tab:costpower}
+  \setlength{\tabcolsep}{3.2pt}
+  \begin{tabular}{lccccc}
+    \toprule
+    calls ($k\times f$) & 4 & 2 & 2 & 1 & 0.5 \\
+    & \scriptsize $4\times1$ & \scriptsize $2\times1$ & \scriptsize $4\times\frac12$ & \scriptsize $4\times\frac14$ & \scriptsize $2\times\frac14$ \\
+    \midrule
+    local faults & 99.0 & 95.0 & 97.0 & 95.0 & 73.0 \\
+    DeepSeek update & 95.0 & 95.0 & 93.5 & 71.5 & 62.0 \\
+    \quad real traffic & 94.0 & 94.0 & 85.0 & 34.0 & 30.5 \\
+    Qwen update & 96.5 & 96.0 & 94.5 & 94.0 & 77.5 \\
+    8-bit & 93.0 & 52.0 & 82.0 & 65.0 & 0.0 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section{The hybrid test}
+\label{app:hybrid}
+
+The served score misses the term $\tfrac12(K_{rr}-K_{cc})$ of
+\S\ref{sec:monitors} whenever it is negative. On a share $g$ of questions, a second
+production answer $c'$ estimates it without bias,
+$d=K(c,c')-\tfrac{1}{k(k-1)}\sum_{i\neq j}K(r_i,r_j)$, and
+$h=2\,\overline{s}+\overline{d}$ estimates the window's mean MMD$^2$. The hybrid
+monitor alarms when $\overline{s}$ or $h$ crosses its threshold (Šidák over the two).
+It was pre-registered, with $g=0.10$ primary and three criteria, before it was
+computed on any data. Share of 200 streams alarmed:
+
+\begin{center}\small
+\setlength{\tabcolsep}{3pt}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{lcccc}
+  \toprule
+  & served & hybrid $g{=}0.1$ & hybrid $g{=}0.5$ & MET \\
+  \midrule
+  DeepSeek, real traffic & 94.0 & 93.5 & 96.0 & 100 \\
+  DeepSeek update & 95.0 & 95.0 & 95.5 & 100 \\
+  Qwen update & 96.5 & 96.0 & 96.0 & 99.0 \\
+  F3, prompt edit & 99.0 & 99.0 & 100 & 100 \\
+  8-bit & 93.0 & 92.5 & 93.0 & 96.5 \\
+  T 1.0 & 43.5 & 40.5 & 40.5 & 15.5 \\
+  \midrule
+  false alarms (max) & 0.000 & 0.075 & 0.014 & 0.054 \\
+  \bottomrule
+\end{tabular}}
+\end{center}
+
+\noindent HY1, false alarms within budget, holds. HY2, never more than a point below
+the served test, fails at T~1.0 (3.0 points) and T~1.3 (1.5). HY3, the two
+blind-spot cases within five points of MET, holds for F3 and fails on real traffic
+(6.5 points). One extra answer on a tenth of the questions is too noisy an estimate
+of $K_{cc}$, and splitting the budget costs as much as it gains; only at $g=0.5$,
+1.5 production answers per question, does real traffic come within five points.
+The blind spot is real and not cheap to close: MET's advantage is several
+production answers on \emph{every} question.
 
 \section{Slow faults under the served-answer test}
 \label{app:slow}
