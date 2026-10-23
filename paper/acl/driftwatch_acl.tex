@@ -1639,9 +1639,10 @@ mixture of experts, about 4B active); faults \texttt{gemma4:e2b} (4.6B, about 2B
 effective), \texttt{gemma4:e4b} (8.0B, about 4B effective) and \texttt{gemma3:12b}
 (12.2B); transfer deployments \texttt{qwen2.5:14b} (14.8B), \texttt{llama3.1:8b}
 (8.0B) and \texttt{phi4:14b} (14.7B); judges Qwen 2.5 at 14.8B and 72B; embeddings
-Nomic Embed v1.5 (137M). All local models are Q4\_K\_M builds pinned by digest. The
-hosted DeepSeek models are identified by version, host and precision
-(\S\ref{sec:api}); their size is not stated by the host.
+Nomic Embed v1.5 (137M). All local models are Q4\_K\_M builds pinned by digest,
+except the ladder's 8-bit (Q8\_0) build of the healthy model. The hosted DeepSeek V4
+Flash and Qwen3.5 Plus models are identified by version, host and precision
+(\S\ref{sec:api}); their size is not stated by the hosts.
 
 \paragraph{Compute} Every local run used one laptop (Apple M5 Pro, 48\,GB unified
 memory) with Ollama 0.40.3. Generating the 64{,}000 main answers took about 31
@@ -1649,7 +1650,11 @@ hours of wall-clock time (healthy 11.0, each fault round 1.5--5.3, the second
 healthy model 6.3); the three transfer rounds took at most 162 hours, a span that
 includes interruptions. The 14B judge took about 4.5 hours and embedding a few
 minutes per round. Hosted generation took about 8 hours (API study 4.8, real
-traffic 3.2), and all hosted work, the 72B judge included, cost about \$10.
+traffic 3.2). The local reference rounds (24{,}000 answers) and the ladder (24{,}000)
+ran on the same laptop, the ladder in about 9 hours. All hosted work cost \$26.11:
+the DeepSeek study \$1.30, real traffic \$2.08, the 72B judge \$6.81, their
+reference rounds \$1.76, the Qwen study \$8.26 and its reference rounds \$5.90.
+Five replays of every study, all monitors, take about 40 minutes.
 
 \paragraph{Settings and software} No hyperparameter was searched. Decoding ($k=4$,
 temperature 0.7, at most 512 tokens), windows ($W=200$, $S=50$), the budget
