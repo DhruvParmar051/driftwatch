@@ -28,9 +28,13 @@
 #   `subtle_errors` if it qualifies, else stop and report that no
 #   length-matched fault was found. The pilot never touches the fault split
 #   and no monitor scores it; the chosen prompt is then frozen as F8.
+#
+# C4 (VERSION 1.1.0, 23 Oct 2026; config/confirm_study.yaml) - a new edit of
+#      the healthy prompt for the blind confirmatory study, written before any
+#      C answer existed and not tuned: one sentence appended.
 # ---------------------------------------------------------------------------
 
-version: "1.0.0"
+version: "1.1.0"
 
 f8_candidates:
   careless: |
@@ -59,3 +63,10 @@ f8_candidates:
 # its length (one question in 80 changed). By the rule, F8 is not generated and
 # stays empty; the finding is reported instead of a weaker or re-tuned fault.
 f8_chosen: ""
+
+# The confirmatory study's prompt edit (C4): the healthy prompt plus one line.
+c4_plain: |
+  You are a helpful assistant. Answer the user's question directly and
+  accurately. Follow any formatting instructions in the question exactly.
+  Write for a general audience: prefer plain words, and add a short example
+  where it helps.
