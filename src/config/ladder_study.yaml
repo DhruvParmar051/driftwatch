@@ -40,10 +40,17 @@
 # correlation covers F1, F2, F3, F5, L2-L4. Amended before any ladder
 # evaluation was run.
 #
+# VERSION 1.2.0 (23 Oct 2026): L1 reinstated. After the L2-L4 results were
+# read (v3 detects L4 in 98.0% of streams), L1 is generated from scratch as
+# fixed above (the 916 unsaved answers of the stopped round are set aside,
+# unread). H2 is tested as written, but it is no longer blind: L4's rate was
+# known when L1 was started. The Spearman correlation adds L1. L2-L4 results
+# stand as reported.
+#
 # Bump `version` on ANY edit.
 # ---------------------------------------------------------------------------
 
-version: "1.1.0"
+version: "1.2.0"
 data_dir: ladder
 conditions:
   L1: {role: healthy_q8, temperature: 0.7}
