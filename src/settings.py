@@ -53,6 +53,11 @@ Condition = Literal[
     "L3",
     "L4",
     "Q1",
+    "C1",
+    "C2",
+    "C3",
+    "C4",
+    "C5",
 ]
 
 SLICES: tuple[str, ...] = ("gsm8k", "triviaqa", "squad2", "banking77", "xsum", "eli5", "jsonx")
@@ -324,7 +329,17 @@ CONDITION_ROLES: dict[str, str] = {
     "L2": "healthy",
     "L3": "healthy",
     "L4": "healthy",
+    "C1": "third_family",
+    "C2": "fourth_family",
+    "C3": "fifth_family",
+    "C4": "healthy",
+    "C5": "healthy",
 }
+
+#: The blind confirmatory study (Stage 8, config/confirm_study.yaml): C5 cuts the
+#: answer limit, C4 edits the prompt (extension_prompts.yaml, c4_plain), C1-C3
+#: reuse the H3-H5 answers to the fault questions.
+CONFIRM_MAX_TOKENS: dict[str, int] = {"C5": 256}
 
 #: The same-model fault ladder (Stage 7x, config/ladder_study.yaml): L1 serves
 #: the healthy weights at 8-bit, L2-L4 sample the healthy model hotter.
@@ -404,6 +419,8 @@ def system_prompt_for_condition(condition: str) -> str:
         if not ext["f8_chosen"]:
             raise ValueError("F8 has no prompt yet: run the pilot and set f8_chosen first")
         return ext["f8_candidates"][ext["f8_chosen"]]
+    if condition == "C4":
+        return load_extension_prompts()["c4_plain"]
     prompts = load_prompts()["system_prompts"]
     key = "f3_corrupted" if condition == "F3" else "healthy"
     return prompts[key]
