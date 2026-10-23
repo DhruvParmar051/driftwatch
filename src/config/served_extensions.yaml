@@ -1,0 +1,68 @@
+# ---------------------------------------------------------------------------
+# Served-answer test: four follow-up analyses (Stage 7z+). PRE-REGISTERED:
+# fixed and committed on 23 Oct 2026, after every result of
+# config/served_study.yaml and config/replay_seeding.yaml was read, and before
+# any analysis below was run on any data. None of them generates an answer;
+# all reuse the answers, embeddings and replay plan (r = 0) already on disk.
+# Every one is reported whichever way it goes. None changes a reported result.
+#
+# X1  Theory check. Under no change the served answer c and the reference
+#     answers r are exchangeable for each question, so E[s | q] = 0 for every
+#     question q, whatever the mix of questions. Under a change,
+#         E[s | q] = 1/2 MMD^2_q + 1/2 (E K(r, r') - E K(c, c')),
+#     half the per-question MMD^2 plus half the drop in self-similarity from
+#     reference to served model. Estimated per condition with the four
+#     production and four reference answers (unbiased U-statistics), on the
+#     fault questions, Hamming kernel, and set beside the measured mean of s.
+#
+# X2  Cost against power. The served test re-run with fewer reference answers
+#     per question (k = 2, 3, 4: samples 0..k-1) and on a fraction f of each
+#     window's questions (f = 1, 1/2, 1/4; a question is monitored iff
+#     crc32(query_id) mod 4 < 4f, so the same questions are kept everywhere).
+#     Each (k, f) is calibrated afresh exactly as fixed in served_study.yaml
+#     (three no-change pairs, largest threshold, full budget) and replayed on
+#     the primary streams. Reported per study and condition: detection, false
+#     alarms before the onset, and reference calls per served question
+#     (k * f). Descriptive; no criterion.
+#
+# X3  Slow faults. The served test on the partial and gradual streams of
+#     evaluate/gradual.py (F1 and F2 at doses 5, 10, 25, 50 and 100%, and a
+#     30-window ramp; 200 streams of 60 windows, onset at window 10-20), plus
+#     F7 (the fresh-seed rerun) at 100% as a control. Three detectors on the
+#     one statistic: the frozen threshold, one-sided CUSUM and Page-Hinkley
+#     with allowance 0.5 healthy standard deviations (as in
+#     evaluate/sequential.py). Standardisation and decision levels from fully
+#     healthy streams of calib answers for each of the three no-change pairs,
+#     keeping the largest level, at a per-window rate of at most 0.1%.
+#     Criteria: Q1 each detector's false alarms before the onset at or below
+#     0.1%; Q2 each detector alarms on at most 5% of F7 streams.
+#
+# X4  Change against harm. The triage of config (evaluate/triage.py, design
+#     unchanged) applied to the served test's alarms in the primary replay:
+#     local F1, F2, F3, F5; DeepSeek U1 and Q1; Qwen U1; ladder L1-L4. The
+#     readout (length, agreement) and the graded check (n = 50 and 100 pairs,
+#     exact McNemar at 0.05). Real traffic has no labels and is left out.
+#     Reported: for each condition, the accuracy change and the harm /
+#     improvement verdicts; and the number of verdicts pointing the wrong way.
+#
+# Bump `version` on ANY edit.
+# ---------------------------------------------------------------------------
+
+version: "1.0.0"
+x2:
+  reference_answers: [2, 3, 4]
+  fractions: [1.0, 0.5, 0.25]
+  studies: [local, api, chat, qwen, ladder]
+x3:
+  faults: [F1, F2]
+  doses: [0.05, 0.10, 0.25, 0.50, 1.00]
+  ramp_windows: 30
+  control: F7
+  allowance: 0.5
+  budget: 0.001
+x4:
+  studies:
+    local: [F1, F2, F3, F5]
+    api: [U1, Q1]
+    qwen: [U1]
+    ladder: [L1, L2, L3, L4]
