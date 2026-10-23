@@ -42,7 +42,7 @@ day to day, and one round understates their noise. We introduce a served-answer
 test that needs nothing from production beyond the one answer each user received.
 In pre-registered studies with four local faults, two real updates of hosted
 models (one raised accuracy, one lowered it) and real chatbot traffic, it detects every
-fault and update in 95--100\% of streams, raises no false alarm in 83{,}000
+fault and update in 95--100\% of streams, raises no false alarm in 88{,}000
 healthy windows, and stays quiet when topics shift, also on unlabelled real
 traffic. It comes within five points of Model Equality Testing while using a
 quarter of the production samples. An alarm reports change, not harm; a short
@@ -210,7 +210,8 @@ explanations; Appendix~\ref{app:fixed}), split into calibration (2{,}500), held-
 (1{,}000) and fault (1{,}500) questions. The healthy model is
 \texttt{gemma4:26b-a4b}. Four faults swap in a smaller sibling (two sizes), an
 older generation (\texttt{gemma3:12b}), or add two lines to the system prompt. A
-same-model ladder samples the healthy model at temperature 1.0, 1.3 and 1.6.
+same-model ladder serves the healthy weights at 8-bit or samples them at
+temperature 1.0, 1.3 and 1.6.
 
 \paragraph{Real updates} Two hosted models, each with its old and new version
 still served by one host: DeepSeek V4 Flash (0731 to 1017) and
@@ -406,8 +407,9 @@ cause.
 \paragraph{What it achieves} With a quarter of the production answers, the
 served-answer test behaves like the paired monitor (Table~\ref{tab:monitors}). It
 catches the local faults and both real updates in 95--100\% of streams, ignores
-topic shifts, and raised no false alarm in 83{,}633 healthy windows. All three of
-its pre-registered criteria hold in every study (Appendix~\ref{app:paired}).
+topic shifts, and raised no false alarm in 88{,}457 healthy windows. Its pre-registered criteria
+hold in every study but one case, the 8-bit rung of \S\ref{sec:ladder}, missed by
+half a point (Appendix~\ref{app:paired}).
 
 \paragraph{What it costs} One answer carries less evidence than four. Model
 Equality Testing, with four production answers, catches about 5\% more of
@@ -418,41 +420,56 @@ sooner.
 \label{sec:ladder}
 
 Every fault so far swapped the model or edited its prompt. The ladder keeps both
-and only raises the sampling temperature, a real misconfiguration (a dropped
-parameter, a changed default), from 0.7 to 1.0, 1.3 and 1.6. Nothing was
+and changes only how the model is served: the same weights at 8-bit instead of
+4-bit, or the sampling temperature raised from 0.7 to 1.0, 1.3 and 1.6, a real
+misconfiguration (a dropped parameter, a changed default). Nothing was
 recalibrated.
-
-\paragraph{The monitors see it} Detection rises with the temperature under every
-monitor, as pre-registered:
 
 \begin{center}\small
 \setlength{\tabcolsep}{4pt}
-\begin{tabular}{lccc}
+\begin{tabular}{lcccc}
   \toprule
-  monitor & T 1.0 & T 1.3 & T 1.6 \\
+  monitor & 8-bit & T 1.0 & T 1.3 & T 1.6 \\
   \midrule
-  per-family & 55.5 & 89.0 & 98.0 \\
-  paired & 69.5 & 91.0 & 98.0 \\
-  served answer & 56.5 & 88.0 & 98.5 \\
-  MET & 11.0 & 87.0 & 98.0 \\
+  per-family & 0.0 & 47.5 & 95.5 & 93.5 \\
+  paired & 96.5 & 63.5 & 97.0 & 95.0 \\
+  served answer & 92.5 & 52.0 & 94.5 & 93.5 \\
+  MET & 98.0 & 14.0 & 94.0 & 94.0 \\
+  \midrule
+  accuracy change & $+2.3$ & $-0.1$ & $+0.1$ & $+0.4$ \\
   \bottomrule
 \end{tabular}
 \end{center}
 
-The answers grow more varied, and agreement between samples carries almost all of
-it. The served-answer test beats Model Equality Testing at T~1.0 (98 streams only
-it caught, 7 only MET caught, $p<10^{-20}$), with no false alarm in 14{,}533
-healthy windows.
+\paragraph{Only re-asking sees the precision change} The 8-bit model writes answers
+of the same length and mix, so the per-family monitor, which compares windows with
+a fixed reference, misses it in every stream. Compared question by question with
+the 4-bit reference, its answers differ, and the re-asking monitors catch it in
+92.5--98\% of streams.
 
-\paragraph{Accuracy does not move} The oracle finds no loss: every task family is
-within 2.4 points of the healthy model at every temperature, and the mean within
-0.4. Across all seven local faults, detection does not follow the accuracy drop
-(Spearman $\rho=0.50$, $p=0.25$). The monitors answer ``did the model change?'',
-not ``did it get worse?''. Here the change was real and harmless, so an alarm is
-a reason to look, not a verdict (\S\ref{sec:discussion}).
+\paragraph{Temperature} Higher temperatures make samples disagree, and every
+monitor catches T~1.3 and 1.6 in 93.5--97\% of streams. At T~1.0 the served-answer
+test beats Model Equality Testing (82 streams only it caught, 6 only MET caught,
+$p<10^{-17}$). The served-answer test raised no false alarm in 19{,}357 healthy
+windows.
 
-The 8-bit rung was stopped for time before any of its answers were kept; the
-amendment is on record (Appendix~\ref{app:prereg}).
+\paragraph{None of it was harmful} No rung lowered accuracy: every task family is
+within 2.4 points of the healthy model at every temperature, and the 8-bit model is
+2.3 points \emph{better} on average. Over all eight local faults detection still
+ranks with the accuracy drop (Spearman $\rho=0.86$ for the served-answer test,
+$p=0.007$), because the faults that cost most accuracy also change the answers most.
+But a rung that improved the model was caught as often as one that hurt it: the
+monitors answer ``did the model change?'', not ``did it get worse?''. An alarm is a
+reason to look, not a verdict (\S\ref{sec:discussion}).
+
+\paragraph{Against the pre-registration} Two of three checks hold: the per-family
+monitor sees the 8-bit rung less often than T~1.6 (0.0 against 93.5\%; not blind,
+see Appendix~\ref{app:prereg}), and the served-answer test stays within budget. Its
+detection falls 5.5 points short of MET on the 8-bit rung, missing our five-point
+margin by half a point. Detection is not monotone in temperature: T~1.6 is caught
+two points less often than T~1.3, within the intervals. An earlier replay of T~1.0
+to 1.6 alone, whose streams draw different seeds, gave 55.5, 89.0 and 98.0\%;
+replays move these rates by up to seven points.
 
 \subsection{Baselines}
 \label{sec:baselines}
@@ -620,9 +637,12 @@ it existed; every later change is an amendment with its date and reason.
   fixed before it was computed on any data, after Model Equality Testing's results
   were seen.
   \item[Fault ladder and real-traffic topics.] Fixed before their answers or
-  clusters existed. One ladder amendment, before any ladder evaluation: the 8-bit
-  rung was stopped for time with no answer kept, so the hypothesis comparing it
-  with T~1.6 was not tested.
+  clusters existed. The 8-bit rung was paused for time and L2--L4 were
+  evaluated alone (an amendment made before any ladder result); it was then
+  resumed from its checkpoint and completed after those results were read, so
+  the hypothesis comparing it with T~1.6 was tested knowing T~1.6's rate.
+  Adding it changes the replay seeds of the other rungs; both replays are
+  reported.
 \end{description}
 
 \section{The paired and served monitors in full}
@@ -670,8 +690,8 @@ budget; only calibrating across rounds fixed both.
 
 \paragraph{The served test's criteria} S1, false alarms within budget, holds
 everywhere with none observed. S2, detection within five points of MET, holds
-with gaps of 0--2.5 points locally, 4.5 on real traffic and 5.0 on the DeepSeek
-benchmark study. S3, F6 alarms no higher than \vthree{}, holds (0.5\% against
+with gaps of 0--2.5 points locally, 4.5 on real traffic, 5.0 on the DeepSeek
+benchmark study and 1.0 on Qwen, and fails once: 5.5 points on the 8-bit rung. S3, F6 alarms no higher than \vthree{}, holds (0.5\% against
 18.5\% locally, 0.0\% against 29.0\% hosted). The cosine kernel, our secondary,
 fails S1 on the hosted model (0.232\%), the same drift of embeddings between days.
 MET's own statistic is robust to that drift: calibrated on one healthy pair it
