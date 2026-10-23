@@ -1,0 +1,80 @@
+# ---------------------------------------------------------------------------
+# The hybrid test and a blind confirmatory study (Stage 8). PRE-REGISTERED:
+# fixed and committed on 23 Oct 2026, after every earlier result was read and
+# before the hybrid statistic was computed on any data, before any confirmatory
+# answer (C4, C5) existed, and before any re-asking monitor was scored on
+# C1-C3. Reported whichever way it goes.
+#
+# Part 1: the hybrid test (closes the served test's blind spot)
+#
+#   The served score s has E[s|q] = 1/2 MMD^2_q + 1/2 (K_rr - K_cc)
+#   (config/served_extensions.yaml X1). Its blind spot is the second term: a
+#   change that makes the served model's answers more alike than the
+#   reference's lowers it. That term needs a second production answer. On a
+#   fraction g of questions (a question is spot-checked iff
+#   crc32(query_id + ":spot") mod 100 < 100 g), production returns one more
+#   answer c' (sample 1), giving d = K(c, c') - mean_{i != j} K(r_i, r_j), an
+#   unbiased estimate of K_cc - K_rr. Per window:
+#       h = 2 * mean over all questions of s + mean over spot-checked ones of d,
+#   an estimate of the window's mean MMD^2 (h = 2 mean s when a window holds
+#   no spot-checked question). The hybrid monitor alarms when s's window mean
+#   OR h crosses its threshold; the 0.1% budget is split by Sidak over the two.
+#   Kernel, reference answers (4), calibration (three no-change pairs, largest
+#   threshold), streams and replay (r = 0) as fixed in served_study.yaml.
+#   Primary g = 0.10 (1.1 production answers per question); g = 0.25 and 0.50
+#   reported beside it, and h alone at g = 0.10.
+#
+#   Criteria, per study (local, api, chat, qwen, ladder):
+#     HY1 false alarms before the onset at or below 0.1%;
+#     HY2 every fault and update detected at least as often as by the served
+#         test, less one point;
+#     HY3 the two blind-spot cases, F3 and the real-traffic update, within 5
+#         points of Model Equality Testing (four production answers).
+#
+# Part 2: the blind confirmatory study ("confirm")
+#
+#   Five changes no re-asking monitor has seen, scored by every monitor as
+#   frozen, with nothing recalibrated: the local study's frozen v1 and v3
+#   records, its paired `rounds` thresholds, the served test, the hybrid test
+#   of Part 1 at g = 0.10, and Model Equality Testing.
+#
+#     C1  the deployment silently swapped to qwen2.5:14b (another vendor)
+#     C2  swapped to llama3.1:8b
+#     C3  swapped to phi4:14b
+#         C1-C3 reuse those models' existing answers to the fault questions
+#         (rounds H3-H5, generated as healthy models of the transfer study,
+#         never scored as faults against gemma4 by a re-asking monitor)
+#     C4  a new edit of the system prompt, written here and not tuned:
+#         "Write for a general audience: prefer plain words, and add a short
+#         example where it helps." appended to the healthy prompt
+#     C5  a serving misconfiguration: the answer limit cut from 512 to 256
+#         tokens, healthy model and prompt
+#
+#   C4 and C5 are generated on the fault questions with the healthy seeds,
+#   k = 4, into data/confirm beside copies of the local study's healthy, F7
+#   and reference answers and its frozen records. Accuracy is scored by the
+#   oracle only after detection.
+#
+#   Criteria (served test and hybrid test):
+#     CF1 false alarms before the onset at or below 0.1%;
+#     CF2 C1-C3 each detected in at least 90% of streams.
+#   C4 and C5 are reported without a criterion. NO AMENDMENT is permitted
+#   once any C answer has been scored, except to record a failure to run.
+#
+# Bump `version` on ANY edit.
+# ---------------------------------------------------------------------------
+
+version: "1.0.0"
+hybrid:
+  spot_fraction: 0.10
+  spot_fractions_reported: [0.10, 0.25, 0.50]
+  spot_sample: 1
+  studies: [local, api, chat, qwen, ladder, confirm]
+confirm:
+  data_dir: confirm
+  conditions:
+    C1: {source: H3, role: third_family}
+    C2: {source: H4, role: fourth_family}
+    C3: {source: H5, role: fifth_family}
+    C4: {role: healthy, prompt: c4_plain}
+    C5: {role: healthy, max_tokens: 256}
