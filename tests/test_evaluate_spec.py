@@ -128,6 +128,25 @@ def test_replay_onsets_are_reproducible():
     assert randomised_onsets(20, 100, 10, seed=7) == randomised_onsets(20, 100, 10, seed=7)
 
 
+def test_adding_a_condition_leaves_the_others_streams_alone(monkeypatch):
+    """A condition's streams depend on its name, never on what else is replayed."""
+    from evaluate.pipeline import replay_runs
+    from settings import get_settings
+
+    def plan(conditions, cond):
+        return [
+            (r.onset_window_idx, r.seed)
+            for r in replay_runs(conditions, 20, 40, 10, 7)
+            if r.condition == cond
+        ]
+
+    assert plan(["L2", "L3"], "L3") == plan(["L1", "L2", "L3"], "L3")
+    assert plan(["L1", "L2"], "L1") != plan(["L1", "L2"], "L2")
+    first = plan(["L3"], "L3")
+    monkeypatch.setattr(get_settings(), "replay_seed", 1)
+    assert plan(["L3"], "L3") != first
+
+
 def test_replay_leaves_a_healthy_prefix():
     """Without a run-in there is no chance to observe a pre-onset false alarm."""
     from evaluate.replay import randomised_onsets
