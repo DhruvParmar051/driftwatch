@@ -2085,6 +2085,7 @@ def _round_rows(condition: str, round_id: str) -> tuple[list[dict], str]:
     from provider.expand import expand_queries
     from settings import (
         CONDITION_ROLES,
+        CONFIRM_MAX_TOKENS,
         F7_SEED_BASE,
         FIFTH_HEALTHY,
         FOURTH_HEALTHY,
@@ -2130,7 +2131,7 @@ def _round_rows(condition: str, round_id: str) -> tuple[list[dict], str]:
         system_prompt_for_condition(condition),
         seed_base.get(condition, s.seed_base),
         LADDER_TEMPERATURE.get(condition, s.temperature),
-        s.max_tokens,
+        CONFIRM_MAX_TOKENS.get(condition, s.max_tokens),
     )
     return rows, role
 
