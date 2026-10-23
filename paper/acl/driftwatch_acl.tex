@@ -108,9 +108,12 @@ Equality Testing~\citep{gao2025model} sends chosen prompts to an API and to the
 reference weights and compares several answers per prompt with an
 MMD~\citep{gretton2012kernel} under a character Hamming kernel.
 \citet{cai2025substitution} find output tests fragile against subtle substitution.
-These audits probe an endpoint with prompts they choose. We monitor the traffic a
-deployment already serves, where the questions themselves change, and our
-served-answer test needs no extra answers from production.
+These audits probe an endpoint with prompts they choose and draw several answers
+to each. Production gives neither: the prompts are the users', they change, and
+each is answered once. We monitor that traffic. Our served-answer test needs no
+extra answers from production, and we show that it estimates half of Model
+Equality Testing's MMD$^2$ plus a self-similarity term from the one served answer
+(\S\ref{sec:monitors}).
 
 \paragraph{Label-free quality signals}
 Agreement among sampled answers predicts correctness~\citep{wang2023selfconsistency,
@@ -146,7 +149,8 @@ the largest threshold. \S\ref{sec:days} shows why one pair is not enough.
 \section{Four monitors}
 \label{sec:monitors}
 
-Table~\ref{tab:what} summarises what each monitor compares and what it needs.
+Table~\ref{tab:what} and Figure~\ref{fig:what} summarise what each monitor
+compares and what it needs.
 
 \begin{table}[t]
   \centering\small
@@ -165,6 +169,31 @@ Table~\ref{tab:what} summarises what each monitor compares and what it needs.
     \bottomrule
   \end{tabular}
 \end{table}
+
+\begin{figure}[t]
+  \centering
+  \begin{tikzpicture}[font=\scriptsize, node distance=0pt,
+      box/.style={draw, rounded corners=2pt, minimum height=0.55cm, align=center, inner sep=2pt},
+      live/.style={box, fill=green!10, text width=1.85cm},
+      ref/.style={box, fill=gray!12, text width=2.15cm},
+      arr/.style={<->, >=latex, thick}]
+    \foreach \y/\name/\left/\right in {
+        0/pooled/{window of live\\answers}/{fixed healthy\\answers},
+        -0.85/per-family/{each task family\\of the window}/{that family's\\healthy answers},
+        -1.95/paired/{4 live answers\\per question}/{reference re-asked\\the same question},
+        -2.8/served answer/{the 1 answer\\the user got}/{reference re-asked\\the same question}} {
+      \node[anchor=east] at (0.2,\y) {\name};
+      \node[live] (l) at (1.45,\y) {\left};
+      \node[ref] (r) at (4.35,\y) {\right};
+      \draw[arr] (l.east) -- (r.west);
+    }
+    \draw[gray, dashed] (-1.5,-1.4) -- (5.5,-1.4);
+  \end{tikzpicture}
+  \caption{What each monitor compares. Above the line the comparison is with a
+  fixed reference, so a change of topic moves it; below, the reference answers the
+  same questions, so it does not.}
+  \label{fig:what}
+\end{figure}
 
 \paragraph{Pooled} Five label-free statistics compare the window with a fixed
 healthy reference: the distribution of answer lengths (a Kolmogorov--Smirnov
@@ -198,6 +227,21 @@ the reference than the reference is like itself, $s$ rises. The window statistic
 the mean of $s$; there is one statistic, so the full budget applies. Model Equality
 Testing needs several production answers per question for the within-production
 term of its MMD; $s$ replaces that term with one computed on the reference.
+
+\paragraph{What it measures} Let $K_{rr}$, $K_{cc}$ and $K_{cr}$ be the expected
+kernel between two reference answers, two answers of the served model, and one of
+each, to the same question $q$. Then
+\begin{align*}
+  \mathbb{E}[s\mid q] &= K_{rr}-K_{cr}\\
+  &= \tfrac12\,\mathrm{MMD}^2_q + \tfrac12\,(K_{rr}-K_{cc}).
+\end{align*}
+With no change the served answer is exchangeable with the reference answers, both
+terms vanish, and $\mathbb{E}[s\mid q]=0$ for \emph{every} question, so no mix of
+questions can move the window mean: this is why a topic shift cannot set the test
+off. A change raises it by half the per-question MMD$^2$ that Model Equality Testing
+estimates, plus half the loss of self-similarity. Answers that vary more than the
+reference's are easier to see; answers that vary less are harder
+(Appendix~\ref{app:theory}).
 
 \section{Studies}
 \label{sec:setup}
@@ -357,19 +401,20 @@ why on two single streams.
   \centering\small
   \caption{Real changes to hosted models: share of 200 streams alarmed. Accuracy
   change is measured afterwards with the benchmark answers. --: no reference rounds
-  for that study.}
+  for that study. Last column: the served test's range over five replays.}
   \label{tab:updates}
   \setlength{\tabcolsep}{3pt}
-  \begin{tabular}{lcccc}
+  \resizebox{\columnwidth}{!}{%
+\begin{tabular}{lccccc}
     \toprule
-    & accuracy & pooled & per-fam. & served \\
+    & accuracy & pooled & per-fam. & served & \scriptsize 5 replays \\
     \midrule
-    DeepSeek update & $+0.2$ to $+8.6$ & 93.0 & 94.5 & 95.0 \\
-    \quad on real traffic & -- & 90.0 & -- & 94.0 \\
-    Qwen update & $-0.3$ to $-6.9$ & 96.0 & 96.5 & 96.5 \\
-    DeepSeek at 4-bit & within $\pm1.5$ & 1.5 & 3.5 & 0.0 \\
+    DeepSeek update & $+0.2$ to $+8.6$ & 93.0 & 94.5 & 95.0 & \scriptsize 95.0--97.5 \\
+    \quad on real traffic & -- & 90.0 & -- & 94.0 & \scriptsize 92.5--96.0 \\
+    Qwen update & $-0.3$ to $-6.9$ & 96.0 & 96.5 & 96.5 & \scriptsize 96.5--98.0 \\
+    DeepSeek at 4-bit & within $\pm1.5$ & 1.5 & 3.5 & 0.0 & \scriptsize 0.0 \\
     \bottomrule
-  \end{tabular}
+  \end{tabular}}
 \end{table}
 
 Both real updates are detected within about one window (Table~\ref{tab:updates}).
@@ -418,6 +463,39 @@ Testing by 6.0 points, one more than our margin (Appendix~\ref{app:paired}).
 \paragraph{What it costs} One answer carries less evidence than four. Model
 Equality Testing, with four production answers, catches 2.5--6 points more of the
 real updates' streams and alarms one to two windows sooner.
+
+\subsection{Re-asking can be cheap}
+\label{sec:cost}
+
+Re-asking costs reference calls. Asking the reference fewer times per question, or
+monitoring only a share of each window's questions, cuts them; each setting was
+recalibrated as before (Table~\ref{tab:cost}). Large changes survive deep cuts:
+with one reference call per served question the local faults and the Qwen update
+are still caught in 94--97.5\% of streams. Subtle ones do not: the DeepSeek update on
+real traffic falls from 94\% to 34\%, and the 8-bit rung from 93\% to 65\%. No setting
+broke the budget except one (Qwen, three references on a quarter of the
+questions, 0.219\%).
+
+\begin{table}[t]
+  \centering\small
+  \caption{Cost against power for the served-answer test: \% of 200 streams
+  alarmed, by reference calls per served question ($k$ reference answers on a share
+  $f$ of the questions). Local faults: the weakest of F1, F2, F3, F5.}
+  \label{tab:cost}
+  \setlength{\tabcolsep}{3.2pt}
+  \begin{tabular}{lccccc}
+    \toprule
+    calls ($k\times f$) & 4 & 2 & 2 & 1 & 0.5 \\
+    & \scriptsize $4\times1$ & \scriptsize $2\times1$ & \scriptsize $4\times\frac12$ & \scriptsize $4\times\frac14$ & \scriptsize $2\times\frac14$ \\
+    \midrule
+    local faults & 99.0 & 95.0 & 97.0 & 95.0 & 73.0 \\
+    DeepSeek update & 95.0 & 95.0 & 93.5 & 71.5 & 62.0 \\
+    \quad real traffic & 94.0 & 94.0 & 85.0 & 34.0 & 30.5 \\
+    Qwen update & 96.5 & 96.0 & 94.5 & 94.0 & 77.5 \\
+    8-bit & 93.0 & 52.0 & 82.0 & 65.0 & 0.0 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
 
 \subsection{The same model, served worse}
 \label{sec:ladder}
@@ -514,9 +592,11 @@ four production answers per question; the served-answer test needs one.
 recalibrated and untuned, the pooled monitor still alarmed on almost every topic
 shift: the problem is not one model's (Appendix~\ref{app:transfer}).
 
-\paragraph{Partial faults} When only a quarter of the traffic goes to the faulty
-model, faults are still caught; at a tenth, a sequential test is needed
-(Appendix~\ref{app:dose}).
+\paragraph{Partial faults} When a smaller model answers only a tenth of the
+traffic, the served-answer test with a CUSUM on its statistic catches it in
+98--100\% of streams, about 14--19 windows after the start, and raised no false
+alarm before it; a CUSUM on the per-family monitor broke its budget three to six
+times over (Appendix~\ref{app:slow}). At a twentieth, the sequential tests catch 7--51\%.
 
 \paragraph{Faults on one task family} Detection follows how visible the change is
 in that family's answers: high for explanations and maths, near zero for intent
@@ -531,7 +611,11 @@ apart (Appendix~\ref{app:triage}). Comparing agreement between samples before an
 after needs no labels; it fell under the smaller models and rose under DeepSeek's
 update, as accuracy did. Grading 100 paired answers per alarm confirmed harm for 98\% of
 alarms on the smallest model and never pointed the wrong way, though it was
-inconclusive on small drops.
+inconclusive on small drops. The same check after the served-answer test's alarms
+(Appendix~\ref{app:triage2}) gave no wrong verdict in 1{,}833 alarms. It reported
+improvement after DeepSeek's update and the 8-bit build, harm after the faults,
+and ``no clear change'' after every temperature rung. Agreement alone would have
+misled there: higher temperature lowers it without costing accuracy.
 
 \section{Discussion}
 
@@ -543,7 +627,9 @@ fallback, with its limits.
 \paragraph{What it cannot see} A monitor that reads only answers misses faults
 that leave their surface unchanged. A wrong intent label looks like a right one:
 faults confined to intent classification or JSON extraction were caught in at most
-3.5\% of streams (Appendix~\ref{app:fixed}).
+3.5\% of streams (Appendix~\ref{app:fixed}). The served-answer test also loses power
+when a change makes answers more alike than the reference's, as the prompt edit
+did (Appendix~\ref{app:theory}).
 
 \paragraph{Recommendations} Re-ask a reference for the live questions; calibrate
 on at least three healthy rounds from different days; prefer the character kernel
@@ -564,8 +650,8 @@ reports is change; whether the change is harm takes a short graded check.
 (i) Two real updates from two vendors, one of them also on real traffic. (ii) Local models are 8--26B open-weight models on one
 machine, and the local faults come from one vendor. (iii) Streams are replays of
 real answers, not live traffic. (iv) The re-asking monitors need a reference that
-stays available, such as a kept checkpoint or a pinned API version, and four
-reference calls per monitored question. (v) The per-family monitor was designed
+stays available, such as a kept checkpoint or a pinned API version, and reference
+calls: four per question at full power, fewer for large changes (\S\ref{sec:cost}). (v) The per-family monitor was designed
 after seeing the pooled monitor fail on the first topic shift; the paired monitor's
 three-round calibration after seeing one-round calibration fail; the served-answer
 statistic after seeing Model Equality Testing's results. Each was frozen before the
@@ -657,6 +743,10 @@ it existed; every later change is an amendment with its date and reason.
   the hypothesis comparing it with T~1.6 was tested knowing T~1.6's rate.
   Adding it moved the other rungs' replay streams, which exposed the next
   amendment.
+  \item[Served-answer follow-ups.] The theory check, cost against power, slow
+  faults and triage were fixed before any was run, after the replays were read.
+  One amendment before the slow-fault run: F7 cannot be its control, since F7 is
+  that test's reference; the pre-onset windows, two healthy runs, carry the check.
   \item[Replay seeding.] After every result above was read, streams were reseeded
   by condition name, so that adding a condition never moves another's, and every
   study was replayed five times with thresholds fixed: the first replay is
@@ -790,6 +880,7 @@ in brackets. Per-family: \vthree{}.
 
 \begin{center}\small
 \setlength{\tabcolsep}{2.4pt}
+\resizebox{\columnwidth}{!}{%
 \begin{tabular}{lcccc}
   \toprule
   & per-family & paired & served & MET \\
@@ -814,13 +905,152 @@ in brackets. Per-family: \vthree{}.
   T 1.0 & 50.5 (46.5--53.5) & 63.5 (63.5--69.0) & 43.5 (43.5--53.0) & 15.5 (13.5--17.5) \\
   false alarms & 0.041 (0.020--0.041) & 0.092 (0.090--0.132) & 0.000 & 0.071 (0.025--0.071) \\
   \bottomrule
-\end{tabular}
+\end{tabular}}
 \end{center}
 
 \noindent The served-answer test is the steadiest: across 25 replays of five studies
 it raised one false alarm. The local paired monitor is the least: its false alarms
 range over 0.092--0.136\%, around its 0.1\% budget. Detection at T~1.0, where
 no monitor is sure, moves by up to ten points.
+
+\section{What the served statistic measures}
+\label{app:theory}
+
+\paragraph{Proposition} For a question $q$, let the served answer $c$ be drawn from
+the served model's answer distribution $P_q$ and the reference answers
+$r_1,\dots,r_k$ ($k\ge2$) independently from the reference distribution $Q_q$, and let
+$K$ be a bounded kernel. Write $K_{rr}=\mathbb{E}K(r,r')$, $K_{cc}=\mathbb{E}K(c,c')$
+and $K_{cr}=\mathbb{E}K(c,r)$ for independent draws, and
+$\mathrm{MMD}^2_q=K_{cc}+K_{rr}-2K_{cr}$. Then
+\[
+  \mathbb{E}[s\mid q]=K_{rr}-K_{cr}=\tfrac12\,\mathrm{MMD}^2_q+\tfrac12\,(K_{rr}-K_{cc}),
+\]
+and if $P_q=Q_q$ for every $q$, the window mean of $s$ has expectation zero under any
+distribution of questions.
+
+\paragraph{Proof} The first term of $s$ averages $K(r_i,r_j)$ over pairs of distinct,
+independent reference draws, so its expectation is $K_{rr}$; the second averages
+$K(c,r_j)$, with expectation $K_{cr}$. Substituting
+$K_{cr}=\tfrac12(K_{cc}+K_{rr}-\mathrm{MMD}^2_q)$ gives the decomposition. If
+$P_q=Q_q$ then $K_{cc}=K_{rr}=K_{cr}$ and $\mathbb{E}[s\mid q]=0$. The window mean is an
+average of such terms, so its expectation is zero whatever questions the window
+holds. \hfill$\square$
+
+\paragraph{Remarks} The proposition is about the mean. A shifted mix of questions can
+change the variance of the window mean, so it does not by itself guarantee the
+false-alarm rate under a topic shift; empirically the test alarmed on 0--1\% of
+topic-shift streams (\S\ref{sec:topic}). The second term has no fixed sign. The test
+sees a change best when the served model's answers vary more than the reference's,
+worst when they vary less, and not at all when the two terms cancel. Model Equality
+Testing estimates $\mathrm{MMD}^2_q$ itself and has no such blind spot, at the price
+of several production answers per question.
+
+\paragraph{Check} Table~\ref{tab:theory} estimates every term with the four
+production and four reference answers per fault question (character kernel,
+unbiased U-statistics) beside the measured mean of $s$, which uses the served
+answer only. The two agree, and the decomposition explains the served test's two
+departures from MET. At T~1.0 most of its signal is the self-similarity term,
+which MET does not see, so it beats MET. On real traffic and for the prompt edit
+the new answers are more alike than the reference's, the second term is negative,
+and it cancels part of the MMD$^2$.
+
+\begin{table}[h]
+  \centering\small
+  \caption{The decomposition, averaged over fault questions ($\times10^{-3}$,
+  character kernel). Measured: mean of $s$ from the served answer alone.
+  Predicted: $\tfrac12\mathrm{MMD}^2+\tfrac12(K_{rr}-K_{cc})$ from four answers per side.}
+  \label{tab:theory}
+  \setlength{\tabcolsep}{3.2pt}
+  \resizebox{\columnwidth}{!}{%
+\begin{tabular}{lrrrr}
+    \toprule
+    condition & measured & predicted & $\tfrac12\mathrm{MMD}^2$ & $\tfrac12(K_{rr}{-}K_{cc})$ \\
+    \midrule
+    healthy rerun & $-$1.0 & $-$0.2 & 0.0 & $-$0.2 \\
+    F1, smaller sibling & $+$58.0 & $+$57.9 & $+$54.3 & $+$3.6 \\
+    F2, smaller sibling & $+$48.3 & $+$48.3 & $+$34.6 & $+$13.7 \\
+    F3, prompt edit & $+$44.2 & $+$44.3 & $+$159.4 & $-$115.1 \\
+    F5, older generation & $+$40.8 & $+$40.9 & $+$56.8 & $-$15.8 \\
+    F6, topic shift & $-$0.9 & $-$0.3 & $+$0.2 & $-$0.6 \\
+    DeepSeek update & $+$24.2 & $+$23.7 & $+$29.6 & $-$5.9 \\
+    DeepSeek at 4-bit & $-$0.5 & $-$0.6 & $+$0.8 & $-$1.4 \\
+    DeepSeek, real traffic & $+$29.7 & $+$29.6 & $+$42.6 & $-$13.1 \\
+    Qwen update & $+$58.2 & $+$58.2 & $+$50.8 & $+$7.4 \\
+    8-bit & $+$11.8 & $+$12.4 & $+$12.4 & 0.0 \\
+    T 1.0 & $+$5.8 & $+$7.8 & $+$1.4 & $+$6.5 \\
+    T 1.3 & $+$12.7 & $+$14.6 & $+$4.2 & $+$10.4 \\
+    T 1.6 & $+$21.4 & $+$21.1 & $+$6.8 & $+$14.2 \\
+    \bottomrule
+  \end{tabular}}
+\end{table}
+
+\section{Slow faults under the served-answer test}
+\label{app:slow}
+
+The partial and gradual streams of Appendix~\ref{app:dose} (200 streams of 60
+windows, onset at window 10--20), scored by the served-answer statistic. The
+CUSUM and Page--Hinkley tests use an allowance of half a healthy standard deviation;
+their standardisation and decision levels come from 1{,}000 fully healthy streams
+of calibration answers for each no-change pair, keeping the largest level, at 0.1\%
+per window. No detector raised a false alarm before the onset in any setting, so
+both criteria hold. Detection (\%), with the median latency in windows:
+
+\begin{center}\small
+\setlength{\tabcolsep}{3.4pt}
+\begin{tabular}{llccc}
+  \toprule
+  fault & dose & threshold & CUSUM & Page--Hinkley \\
+  \midrule
+  F1 & 5\% & 10.0 (18.5) & 22.5 (27) & 50.5 (19) \\
+     & 10\% & 81.0 (14) & 100 (14) & 99.0 (11) \\
+     & 25\% & 100 (3) & 100 (5) & 100 (4) \\
+     & ramp & 100 (6) & 100 (8) & 100 (7) \\
+  F2 & 5\% & 1.5 (16) & 7.0 (35) & 25.0 (19.5) \\
+     & 10\% & 47.5 (18) & 98.0 (19) & 92.5 (12) \\
+     & 25\% & 100 (3) & 100 (5) & 100 (4) \\
+     & ramp & 100 (7) & 100 (9) & 100 (8) \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+\noindent Its sequential tests stay within budget where the per-family monitor's
+broke it, because the served statistic is centred on zero for healthy answers on
+any questions: the healthy windows before an onset sit where the calibration
+streams did, so there is no offset for CUSUM to accumulate.
+
+\section{Triage after the served-answer test's alarms}
+\label{app:triage2}
+
+The readout and check of Appendix~\ref{app:triage}, design unchanged, after every
+alarm of the served-answer test in the primary replay. Accuracy: change on the
+gradeable fault questions, sample 0. Check: harm\,/\,improvement verdicts among the
+alarms, $n$ graded pairs per alarm.
+
+\begin{center}\small
+\setlength{\tabcolsep}{3pt}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{lrrrrcc}
+  \toprule
+  condition & alarms & length & agreement & accuracy & $n{=}50$ & $n{=}100$ \\
+  \midrule
+  F1 & 200 & $-4.0\%$ & $-0.088$ & $-19.1$ & 157\,/\,0 & 199\,/\,0 \\
+  F2 & 199 & $-9.2\%$ & $-0.122$ & $-11.2$ & 71\,/\,0 & 163\,/\,0 \\
+  F3 & 198 & $-71.0\%$ & $-0.003$ & $-3.5$ & 1\,/\,0 & 31\,/\,0 \\
+  F5 & 198 & $-17.8\%$ & $-0.016$ & $-4.7$ & 16\,/\,0 & 25\,/\,0 \\
+  DeepSeek U1 & 190 & $-7.5\%$ & $+0.043$ & $+4.9$ & 0\,/\,10 & 0\,/\,29 \\
+  DeepSeek Q1 & 0 & $-0.1\%$ & $+0.006$ & $+0.1$ & -- & -- \\
+  Qwen U1 & 193 & $+8.1\%$ & $-0.037$ & $-2.1$ & 1\,/\,0 & 8\,/\,0 \\
+  8-bit & 186 & $-0.6\%$ & $+0.005$ & $+1.3$ & 0\,/\,0 & 0\,/\,3 \\
+  T 1.0 & 87 & $+0.4\%$ & $-0.028$ & $+0.4$ & 0\,/\,0 & 0\,/\,0 \\
+  T 1.3 & 183 & $+0.4\%$ & $-0.062$ & $+0.1$ & 0\,/\,0 & 0\,/\,0 \\
+  T 1.6 & 199 & $+1.0\%$ & $-0.095$ & $-0.3$ & 0\,/\,0 & 0\,/\,0 \\
+  \bottomrule
+\end{tabular}}
+\end{center}
+
+\noindent No verdict points the wrong way. The temperature rungs show why the check
+is needed: agreement falls with temperature, which under the faults went with harm,
+yet the graded check finds no change, which the oracle confirms.
 
 \section{The fixed-reference monitors in full}
 \label{app:fixed}
