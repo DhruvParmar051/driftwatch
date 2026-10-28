@@ -61,10 +61,20 @@
 #   C4 and C5 are reported without a criterion. NO AMENDMENT is permitted
 #   once any C answer has been scored, except to record a failure to run.
 #
+# VERSION 1.0.1 (28 Oct 2026), before any C answer was scored: server version.
+# Ollama updated itself from 0.40.3 to 0.40.9 on 23 Oct, so the first 1,815 C4
+# answers came from 0.40.9 while R, R2 and the ladder's L2-L4 came from 0.40.3
+# (the local healthy and F7 rounds from 0.35.0). Ollama 0.40.3 was reinstalled
+# (same model digest), those C4 answers were set aside unscored, and C4 and C5
+# are generated whole under 0.40.3. A no-change check on calibration questions,
+# made before this amendment, found no effect of the server version on the
+# served score or on MMD^2 (healthy 0.35.0 against R 0.40.3: MMD^2 -0.30 +- 0.58
+# x 10^-3; R against R2, both 0.40.3: -0.38 +- 0.55 x 10^-3); the paper reports it.
+#
 # Bump `version` on ANY edit.
 # ---------------------------------------------------------------------------
 
-version: "1.0.0"
+version: "1.0.1"
 hybrid:
   spot_fraction: 0.10
   spot_fractions_reported: [0.10, 0.25, 0.50]
