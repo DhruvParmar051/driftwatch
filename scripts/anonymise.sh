@@ -10,7 +10,7 @@ set -euo pipefail
 cd "${0:A:h}/.."
 
 OUT=dist/driftwatch-anonymous.zip
-EXCLUDE=(paper docs/WORKSTREAMS.md docs/PROJECT_BRIEF.md docs/PROJECT_BRIEF.pdf .github scripts/anonymise.sh)
+EXCLUDE=(paper docs/WORKSTREAMS.md docs/PROJECT_BRIEF.md docs/PROJECT_BRIEF.pdf docs/DRIFTWATCH_DEEP_DIVE.md .github scripts/anonymise.sh)
 PATTERN='dhruv|parmar|pronnati|tapaswi|mahak|khurdia|aditya|dhirubhai|daiict|github\.com/'
 
 TMP=$(mktemp -d)
