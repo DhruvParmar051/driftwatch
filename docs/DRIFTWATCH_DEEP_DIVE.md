@@ -317,7 +317,7 @@ They are split into calibration (2,500), held-out (1,000, used only to count fal
 
 **Real updates:**
 
-- **DeepSeek V4 Flash**, 0731 → 1017, both versions pinned to one host (DeepInfra via OpenRouter) at the same precision. Accuracy went up (+0.2 to +8.6 points across tasks).
+- **DeepSeek V4 Flash**, 0731 → 1017, both versions pinned to one host (DeepInfra via OpenRouter) at the same precision. Accuracy went up (+0.2 to +21.3 points across tasks).
 - **Qwen3.5 Plus**, 02-15 → 04-20, both served by Alibaba. Accuracy went down (strict JSON −26.7 points, trivia −6.9).
 
 **Real traffic:** 3,000 first turns from WildChat (a public collection of real chatbot conversations), answered by both DeepSeek versions. No task types are known.
@@ -398,7 +398,7 @@ No false alarm in 87,716 healthy windows of the primary replay; one in all 25 re
 
 | Change | Accuracy | v1 | v3 | Paired | Served | MET |
 |---|---|---|---|---|---|---|
-| DeepSeek update | +0.2 to +8.6 | 93.0 | 94.5 | 98.5 | 95.0 | 100 |
+| DeepSeek update | +0.2 to +21.3 | 93.0 | 94.5 | 98.5 | 95.0 | 100 |
 | … on real traffic | n/a | 90.0 | n/a | 100 | 94.0 | 100 |
 | Qwen update | −0.3 to −26.7 | 96.0 | 96.5 | 98.5 | 96.5 | 99.0 |
 | DeepSeek at 4-bit | within ±1.5 | 1.5 | 3.5 | 1.0 | 0.0 | 0.0 |
