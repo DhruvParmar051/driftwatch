@@ -45,8 +45,11 @@ models (one raised accuracy, one lowered it) and real chatbot traffic, it detect
 fault and update in 94--100\% of streams, raises no false alarm in 87{,}000
 healthy windows, and stays quiet when topics shift, also on unlabelled real
 traffic. It comes within six points of Model Equality Testing while using a
-quarter of the production samples. An alarm reports change, not harm; a short
-graded check tells the two apart.
+quarter of the production samples. In a blind test on five changes it had never
+seen, run frozen, it caught four in 98--100\% of streams with no false alarm, and
+missed the fifth, answers cut short, which lies beyond the 1{,}000 characters it
+compares. An alarm reports change, not harm; a short graded check tells the two
+apart.
 \end{abstract}
 
 \section{Introduction}
@@ -499,6 +502,48 @@ the model change?'', not ``did it get worse?'' (\S\ref{sec:discussion}). Every
 pre-registered check holds; over five replays the gap to MET on the 8-bit rung is
 3.5--6.0 points, past our margin in two of five.
 
+\subsection{A blind test}
+\label{sec:blind}
+
+Several of our designs came after an earlier one failed. To test whether the final
+pipeline is fitted to our own data, we pre-registered five changes no re-asking
+monitor had seen and scored every monitor on them frozen, with no amendment allowed
+once a result was read: the deployment silently swapped to three other vendors'
+models (C1--C3), a new edit of the system prompt (C4), and the answer limit cut from
+512 to 256 tokens (C5).
+
+\begin{center}\small
+\setlength{\tabcolsep}{3.5pt}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{lccccc}
+  \toprule
+  & accuracy & per-family & paired & served & MET \\
+  \midrule
+  C1, Qwen 2.5 14B & $-4.5$ & 97.5 & 100 & 100 & 100 \\
+  C2, Llama 3.1 8B & $-8.6$ & 99.5 & 100 & 99.0 & 100 \\
+  C3, Phi-4 14B & $+0.3$ & 98.5 & 100 & 100 & 100 \\
+  C4, prompt edit & $-0.6$ & 90.0 & 98.0 & 98.0 & 100 \\
+  C5, 256-token limit & $-6.3$ & 94.5 & 96.5 & \textbf{0.0} & 69.5 \\
+  \midrule
+  false alarms & & 0.038 & 0.078 & 0.000 & 0.053 \\
+  \bottomrule
+\end{tabular}}
+\end{center}
+
+\paragraph{The pre-registered criteria hold} The served-answer test raised no false
+alarm in 24{,}420 healthy windows and caught each vendor swap in 99--100\% of
+streams (criterion: 90\%). It also caught the new prompt edit in 98\%.
+
+\paragraph{It missed a harmful change} Cutting answers at 256 tokens cost 6.3 points
+on average and 32 on maths, whose final answer is on the last line; the served test
+saw nothing, nor did its cosine variant. The cut falls at the edge of what the
+character kernel compares: with the same seeds, a cut answer is the healthy answer
+up to the cut, and the kernel reads only the first 1{,}000 characters, about 250
+tokens. The length statistics of the per-family and paired monitors caught it in
+94.5--96.5\% of streams. Pairing the served test with a check of answer length,
+which needs no extra calls, would have caught it; that pairing is our suggestion
+here, not part of the blind test.
+
 \subsection{Baselines}
 \label{sec:baselines}
 
@@ -576,12 +621,13 @@ that leave their surface unchanged. A wrong intent label looks like a right one:
 faults confined to intent classification or JSON extraction were caught in at most
 3.5\% of streams (Appendix~\ref{app:fixed}). The served-answer test also loses power
 when a change makes answers more alike than the reference's, as the prompt edit
-did (Appendix~\ref{app:theory}).
+did (Appendix~\ref{app:theory}), and it is blind beyond the 1{,}000 characters it
+compares, as answers cut short showed (\S\ref{sec:blind}).
 
 \paragraph{Recommendations} Re-ask a reference for the live questions; calibrate
 on at least three healthy rounds from different days; prefer the character kernel
-to embedding or lexical statistics, which drift between rounds; and triage every
-alarm before acting on it.
+to embedding or lexical statistics, which drift between rounds; keep a check of
+answer length beside the served test; and triage every alarm before acting on it.
 
 \section{Conclusion}
 A deployed language model can change without anything crashing, and it can stay
@@ -608,6 +654,9 @@ same. (vii) Versions and precisions of hosted models are the hosts' own labels.
 (viii) Rates move between replays of the same answers: by up to 10 points for
 detection and 0.08 points for false alarms on the re-asking monitors
 (Appendix~\ref{app:replays}); the local paired monitor sits on its budget.
+(ix) The served test compares the first 1{,}000 characters of each answer and
+misses changes beyond them (\S\ref{sec:blind}). (x) The local server software
+changed version between rounds; a check found no effect (Appendix~\ref{app:server}).
 
 \section*{Ethics Statement}
 \paragraph{Data} The benchmark questions come from six public research datasets,
@@ -700,6 +749,11 @@ it existed; every later change is an amendment with its date and reason.
   primary, the others give the spread (Appendix~\ref{app:replays}). No threshold,
   calibration or answer changed. Appendix~\ref{app:fixed} keeps the earlier
   replay plan, whose conditions never changed.
+  \item[Hybrid test and blind study.] Both fixed before any of their data existed,
+  with no amendment allowed once a blind result was read. One amendment, before any
+  scoring: the server software had updated itself, so the first C4 answers were set
+  aside unscored and C4 and C5 were generated whole under one version
+  (Appendix~\ref{app:server}).
 \end{description}
 
 \section{The paired and served monitors in full}
@@ -1068,6 +1122,31 @@ alarms, $n$ graded pairs per alarm.
 \noindent No verdict points the wrong way. The temperature rungs show why the check
 is needed: agreement falls with temperature, which under the faults went with harm,
 yet the graded check finds no change, which the oracle confirms.
+
+\section{Server versions}
+\label{app:server}
+
+The local Ollama server updated itself between rounds: 0.35.0 for the local
+healthy, fault and F7 rounds, 0.40.3 for the reference rounds R and R2, the ladder's
+L2--L4 and the blind study's C4 and C5, and 0.40.9 for part of the 8-bit rung. A
+change of server could change answers slightly, so we compared no-change pairs of
+the healthy model on calibration questions across and within versions:
+
+\begin{center}\small
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{lcc}
+  \toprule
+  pair ($\times10^{-3}$) & mean $s$ & MMD$^2$ \\
+  \midrule
+  healthy (0.35.0) $\to$ R (0.40.3) & $-1.06\pm0.75$ & $-0.30\pm0.58$ \\
+  healthy (0.35.0) $\to$ R2 (0.40.3) & $+0.28\pm0.74$ & $-0.40\pm0.57$ \\
+  R (0.40.3) $\to$ R2 (0.40.3) & $-0.39\pm0.73$ & $-0.38\pm0.55$ \\
+  \bottomrule
+\end{tabular}}
+\end{center}
+
+\noindent Across versions looks like within one version: centred on zero with the
+same spread, about five standard errors below the smallest change we detect.
 
 \section{The fixed-reference monitors in full}
 \label{app:fixed}
