@@ -56,8 +56,8 @@ healthy windows, and stays quiet when topics shift, also on unlabelled real
 traffic. It comes within six points of Model Equality Testing while using a
 quarter of the production samples. In a blind test on five changes it had never
 seen, run frozen, it caught four in 98--100\% of streams with no false alarm, and
-missed the fifth, answers cut short, which lies beyond the 1{,}000 characters it
-compares. An alarm reports change, not harm; a short graded check tells the two
+missed the fifth, a limit that cut answers short, whose change lies mostly
+beyond the 1{,}000 characters it compares. An alarm reports change, not harm; a short graded check tells the two
 apart.
 \end{abstract}
 
@@ -94,14 +94,16 @@ test does the same with only the one answer each user was served.
   change of model from a change of users. Fixed-reference monitors cannot, even
   with task labels (\S\ref{sec:topic}).
   \item \textbf{A served-answer test.} Label-free, with one production answer per
-  question and a false-alarm rate calibrated in advance (\S\ref{sec:served}).
+  question and a false-alarm rate calibrated in advance, with a proof of what it
+  measures and where it is blind (\S\ref{sec:served}).
   \item \textbf{A calibration finding.} Hosted models drift between days, so a
   monitor calibrated on one healthy round over-alarms; calibrating across three
-  rounds fixes it (\S\ref{sec:days}).
+  rounds brings it to its budget (\S\ref{sec:days}).
   \item \textbf{Evidence.} Pre-registered studies with local faults, two real
   updates in opposite directions, real chatbot traffic, and baselines on the same
-  streams, including the closest prior test (\S\ref{sec:results}). Code and
-  records are released.
+  streams, including the closest prior test, and a blind test of the frozen
+  pipeline on five unseen changes (\S\ref{sec:results}). Code and records are
+  released.
 \end{itemize}
 
 \section{Related work}
@@ -290,7 +292,7 @@ with fresh seeds is a negative control.
 answers fill the stream until an onset at window 10 or later, then the condition's
 answers to the same questions. We report detection with Wilson
 intervals~\citep{wilson1927probable}, latency in windows, false alarms on healthy
-windows before the onset, and alarms on the real held-out windows. Paired monitors
+windows before the onset, and alarms on the real held-out windows. Two monitors
 are compared on identical streams with exact McNemar tests.
 
 \section{Results}
@@ -413,8 +415,9 @@ why on two single streams.
 \begin{table}[t]
   \centering\small
   \caption{Real changes to hosted models: share of 200 streams alarmed. Accuracy
-  change is measured afterwards with the benchmark answers. --: no reference rounds
-  for that study. Last column: the served test's range over five replays.}
+  change is measured afterwards with the benchmark answers. --: not measurable
+  (real traffic has no gradeable answers and no task labels). Last column: the
+  served test's range over five replays.}
   \label{tab:updates}
   \setlength{\tabcolsep}{3pt}
   \resizebox{\columnwidth}{!}{%
@@ -422,9 +425,9 @@ why on two single streams.
     \toprule
     & accuracy & pooled & per-fam. & served & \scriptsize 5 replays \\
     \midrule
-    DeepSeek update & $+0.2$ to $+8.6$ & 93.0 & 94.5 & 95.0 & \scriptsize 95.0--97.5 \\
+    DeepSeek update & $+0.2$ to $+21.3$ & 93.0 & 94.5 & 95.0 & \scriptsize 95.0--97.5 \\
     \quad on real traffic & -- & 90.0 & -- & 94.0 & \scriptsize 92.5--96.0 \\
-    Qwen update & $-0.3$ to $-6.9$ & 96.0 & 96.5 & 96.5 & \scriptsize 96.5--98.0 \\
+    Qwen update & $-0.3$ to $-26.7$ & 96.0 & 96.5 & 96.5 & \scriptsize 96.5--98.0 \\
     DeepSeek at 4-bit & within $\pm1.5$ & 1.5 & 3.5 & 0.0 & \scriptsize 0.0 \\
     \bottomrule
   \end{tabular}}
@@ -449,11 +452,11 @@ where the per-family monitor alarmed on 73.5\%, and raised no false alarm.
 \label{sec:days}
 
 Our first paired monitor, calibrated on one pair of healthy rounds, caught every
-fault but raised two to five times its budget of false alarms. A hosted model
+fault but raised two to six times its budget of false alarms. A hosted model
 answers a little differently from one day to the next: two healthy rounds from
 different days sit about 10\% further apart than the pair it was calibrated on.
 Calibrating on three pairs and keeping the largest threshold cut the false alarms
-two to ten times with detection unchanged (Appendix~\ref{app:paired}). The hosted
+two to eleven times with detection unchanged (Appendix~\ref{app:paired}). The hosted
 studies now sit at 0.000--0.052\%, the local study on its budget (0.102\%), and the
 served-answer test, calibrated the same way, at zero everywhere.
 
@@ -506,7 +509,7 @@ disagree, and at T~1.0 the served-answer test beats MET (75 streams only it caug
 15 only MET caught, $p<10^{-10}$), as \S\ref{sec:monitors} predicts.
 
 \paragraph{None of it was harmful} No rung lowered accuracy, and the 8-bit model is
-2.3 points \emph{better}. Over the eight local faults detection ranks only loosely
+2.3 points \emph{better}. Over the eight local changes detection ranks only loosely
 with the accuracy drop (Spearman $\rho=0.55$, $p=0.15$). The monitors answer ``did
 the model change?'', not ``did it get worse?'' (\S\ref{sec:discussion}). Every
 pre-registered check holds; over five replays the gap to MET on the 8-bit rung is
@@ -546,11 +549,12 @@ streams (criterion: 90\%). It also caught the new prompt edit in 98\%.
 
 \paragraph{It missed a harmful change} Cutting answers at 256 tokens cost 6.3 points
 on average and 32 on maths, whose final answer is on the last line; the served test
-saw nothing, nor did its cosine variant. The cut falls at the edge of what the
-character kernel compares: with the same seeds, a cut answer is the healthy answer
-up to the cut, and the kernel reads only the first 1{,}000 characters, about 250
-tokens. The length statistics of the per-family and paired monitors caught it in
-94.5--96.5\% of streams. Pairing the served test with a check of answer length,
+raised no alarm, nor did its cosine variant. Most of the change lies beyond what
+the character kernel compares: with the same seeds, a cut answer is the healthy
+answer up to the cut, and the kernel reads only the first 1{,}000 characters, about
+250 tokens, so only answers cut before that point differ. Model Equality Testing,
+reading the same characters from four answers per question, caught 69.5\%; the
+length statistics of the per-family and paired monitors caught 94.5--96.5\%. Pairing the served test with a check of answer length,
 which needs no extra calls, would have caught it; that pairing is our suggestion
 here, not part of the blind test.
 
@@ -646,12 +650,15 @@ reference notices, but cannot tell a changed model from changed users. Re-asking
 reference the live questions can, provided its calibration spans several days, and
 the served-answer test does so with only the answer each user received: across four
 local faults, two real updates and real traffic it caught 94--100\% of streams,
-ignored topic shifts, and raised no false alarm in 87{,}716 healthy windows. What it
-reports is change; whether the change is harm takes a short graded check.
+ignored topic shifts, and raised no false alarm in 87{,}716 healthy windows. Run
+frozen on five changes it had never seen, it caught four and missed answers cut
+short, a change mostly beyond the characters it reads. What it reports is change;
+whether the change is harm takes a short graded check.
 
 \section*{Limitations}
-(i) Two real updates from two vendors, one of them also on real traffic. (ii) Local models are 8--26B open-weight models on one
-machine, and the local faults come from one vendor. (iii) Streams are replays of
+(i) Two real updates from two vendors, one of them also on real traffic. (ii) Local models are 4.6--26B open-weight models on one
+machine, and the planted local faults come from one vendor (the blind test adds
+three others). (iii) Streams are replays of
 real answers, not live traffic. (iv) The re-asking monitors need a reference that
 stays available, such as a kept checkpoint or a pinned API version, and reference
 calls: four per question at full power, fewer for large changes (\S\ref{sec:cost}). (v) The per-family monitor was designed
@@ -665,7 +672,7 @@ same. (vii) Versions and precisions of hosted models are the hosts' own labels.
 detection and 0.08 points for false alarms on the re-asking monitors
 (Appendix~\ref{app:replays}); the local paired monitor sits on its budget.
 (ix) The served test compares the first 1{,}000 characters of each answer and
-misses changes beyond them (\S\ref{sec:blind}). (x) The local server software
+misses changes that lie mostly beyond them (\S\ref{sec:blind}). (x) The local server software
 changed version between rounds; a check found no effect (Appendix~\ref{app:server}).
 
 \section*{Ethics Statement}
@@ -707,7 +714,8 @@ responsibility for all claims.
 pooled monitor, \vthree{} the per-family monitor (\vtwo{} its uncapped first
 version), F1 and F2 the smaller siblings, F3 the prompt edit, F5 the older
 generation, F4 and F6 the long- and short-form topic shifts, F7 the fresh-seed
-rerun, U1 a real update and Q1 the 4-bit host.
+rerun, U1 a real update, Q1 the 4-bit host, L1--L4 the ladder's rungs (8-bit, then
+temperature 1.0, 1.3 and 1.6), and C1--C5 the blind test's five changes.
 
 \section{Pre-registration trail}
 \label{app:prereg}
@@ -863,7 +871,7 @@ Held-out windows stayed quiet (0/17).
 \section{Topics on real traffic}
 \label{app:topics}
 
-The 3{,}000 prompts were embedded with the S7 model and clustered by $k$-means
+The 3{,}000 prompts were embedded with the embedding model (Nomic Embed v1.5) and clustered by $k$-means
 ($K=6$, fitted on calibration prompts). Clusters were ranked by the median length of
 the healthy answers on calibration questions; each shift draws 900 questions from
 calibration and fault prompts, 70\% from three clusters. Alarm rates over 200
@@ -1075,7 +1083,7 @@ CUSUM and Page--Hinkley tests use an allowance of half a healthy standard deviat
 their standardisation and decision levels come from 1{,}000 fully healthy streams
 of calibration answers for each no-change pair, keeping the largest level, at 0.1\%
 per window. No detector raised a false alarm before the onset in any setting, so
-both criteria hold. Detection (\%), with the median latency in windows:
+the pre-registered criterion holds. Detection (\%), with the median latency in windows:
 
 \begin{center}\small
 \setlength{\tabcolsep}{3.4pt}
@@ -1164,7 +1172,8 @@ same spread, about five standard errors below the smallest change we detect.
 
 This appendix keeps the full description and results of the pooled and per-family
 monitors from the local and DeepSeek studies, with their baselines and robustness
-checks.
+checks. Its numbers come from the earlier replay plan (Appendix~\ref{app:prereg}),
+so they can differ by a point or two from the main text's.
 
 \subsection{Method}
 \label{app:fixed-method}
@@ -1518,7 +1527,7 @@ needs a 72B call for every answer (\$6.81 for these grades).
     \toprule
     condition & what changed & \vone{} pooled & \vthree{} capped \\
     \midrule
-    U1 & DeepSeek's update; accuracy $+0.2$ to $+8.6$ & 182 (91.0\%), 2 & 187 (93.5\%), 1 \\
+    U1 & DeepSeek's update; accuracy $+0.2$ to $+21.3$ & 182 (91.0\%), 2 & 187 (93.5\%), 1 \\
     Q1 & 4-bit host; accuracy within $\pm1.5$ & 4 (2.0\%) & 2 (1.0\%) \\
     \midrule
     F4 mix (seen) & question mix only & 198 (99.0\%) & 17 (8.5\%) \\
