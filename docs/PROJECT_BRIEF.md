@@ -419,7 +419,7 @@ does (§18).
 
 | change | accuracy | v1 | v3 | paired | served | MET |
 |---|---|---|---|---|---|---|
-| DeepSeek update | +0.2 to +8.6 | 93.0 | 94.5 | 98.5 | 95.0 | 100 |
+| DeepSeek update | +0.2 to +21.3 | 93.0 | 94.5 | 98.5 | 95.0 | 100 |
 | … on real traffic | n/a | 90.0 | n/a | 100 | 94.0 | 100 |
 | Qwen update | −0.3 to −26.7 | 96.0 | 96.5 | 98.5 | 96.5 | 99.0 |
 | DeepSeek at 4-bit | within ±1.5 | 1.5 | 3.5 | 1.0 | 0.0 | 0.0 |
