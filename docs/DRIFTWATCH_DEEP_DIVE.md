@@ -48,6 +48,7 @@ Dhirubhai Ambani University, Gandhinagar
 - It raised no false alarm in 87,716 healthy windows and alarmed on 0–1% of harmless topic shifts.
 - Hosted models drift a little from day to day, so calibration has to use several days of healthy answers.
 - An alarm means the model changed, not that it got worse: two of the changes we caught made the model better. A small graded check after each alarm told better from worse with no wrong verdict in 1,833 alarms.
+- In a blind test on five changes it had never seen, run frozen, it caught four in 98–100% of streams with no false alarm, and missed the fifth, answers cut at 256 tokens, which lies beyond the 1,000 characters it compares.
 
 **How we kept it honest.** Every study was pre-registered in a committed file before its data existed. Every threshold was frozen before any fault answer was read. Every later change is a dated amendment. Every study was replayed five times. Total paid spend: $26.11.
 
@@ -538,19 +539,34 @@ On the same local streams:
 
 **What it means.** Across versions looks exactly like within one version: centred on zero with the same spread. The server change did not drive any result. For the blind confirmatory study we reinstalled 0.40.3 so its new rounds come from one version.
 
-## 10.15 The blind confirmatory study (running)
+## 10.15 The blind confirmatory study
 
 **Why.** Several of our designs came after an earlier one failed. Each was frozen before the data that judged it, but a sceptic can still ask whether the final pipeline is tuned to our own data. The cleanest answer is to test it, frozen, on changes it has never seen, with no amendments allowed after scoring.
 
-**What it tests.** Five unseen changes, scored by every monitor as frozen:
+**What it tests.** Five unseen changes, scored by every monitor exactly as frozen:
 
 - C1, C2, C3: the deployment silently swapped to Qwen 2.5 14B, Llama 3.1 8B and Phi-4 14B;
 - C4: a new prompt edit ("write for a general audience, prefer plain words, add a short example");
 - C5: the answer limit cut from 512 to 256 tokens.
 
-**Criteria.** False alarms at or below 0.1%; C1–C3 each detected in at least 90% of streams; C4 and C5 reported without a criterion.
+**Criteria (fixed in advance).** False alarms at or below 0.1%; C1–C3 each detected in at least 90% of streams; C4 and C5 reported without a criterion.
 
-**Status.** Generation of C4 and C5 is running; the result is not in yet.
+**What came out.**
+
+| Change | Accuracy | v3 | Paired | Served | MET |
+|---|---|---|---|---|---|
+| C1, Qwen 2.5 14B | −4.5 | 97.5 | 100 | 100 | 100 |
+| C2, Llama 3.1 8B | −8.6 | 99.5 | 100 | 99.0 | 100 |
+| C3, Phi-4 14B | +0.3 | 98.5 | 100 | 100 | 100 |
+| C4, prompt edit | −0.6 | 90.0 | 98.0 | 98.0 | 100 |
+| C5, 256-token limit | −6.3 (maths −32) | 94.5 | 96.5 | **0.0** | 69.5 |
+| False alarms | | 0.038% | 0.078% | 0.000% | 0.053% |
+
+Both criteria hold: no false alarm in 24,420 healthy windows, and each vendor swap caught in 99–100% of streams. The new prompt edit was caught in 98%.
+
+**The miss.** The served test did not see C5 at all, and C5 was harmful: maths accuracy fell from 95.6% to 63.7%, because the final answer sits on the last line and was cut off. The cause is mechanical. With the same seeds, a cut answer is identical to the healthy answer up to the cut, and the character kernel compares only the first 1,000 characters, about 250 tokens, so the cut lies at the edge of what it reads. The length statistics of v3 and the paired monitor caught it in 94.5–96.5% of streams.
+
+**What it means.** The frozen pipeline is not fitted to our own data: it passed a blind test on changes it had never seen. It also has a hard edge we had not stated before: the served test cannot see what happens after the first 1,000 characters. Keeping a cheap answer-length check beside it, which needs no extra calls, would have caught C5. That pairing is our recommendation, not something the blind test tested.
 
 ---
 
@@ -562,7 +578,7 @@ On the same local streams:
 2. Keep the old model available and re-ask it the live questions. Comparing answer with answer separates a changed model from changed users, on unlabelled traffic too.
 3. You need no extra production answers. One served answer per question catches real updates in 94–96.5% of streams with no false alarm in about 88,000 windows.
 4. Re-asking can be cheap: one reference call per served question is enough for big changes; subtle ones need four. A CUSUM on the served score catches a bad model serving a tenth of traffic.
-5. Calibrate on at least three healthy rounds from different days.
+5. Calibrate on at least three healthy rounds from different days, and keep a cheap answer-length check beside the served test.
 6. Read an alarm as "something changed, go and look", then grade a few dozen answer pairs. Two of the changes we caught made the model better.
 
 ## 11.2 For research
@@ -588,6 +604,7 @@ On the same local streams:
 - **The re-asking monitors need a reference that stays available** (a kept checkpoint or a pinned API version) and reference calls: four per question at full power, fewer for large changes.
 - **Several designs came after an earlier one failed** (v3, the three-round calibration, the served test). Each was frozen before the data that judged it, and every revision is recorded; the blind study addresses this directly.
 - **No answer-only monitor sees a fault that leaves the answers looking the same.** Faults confined to intent labels or JSON were caught in at most 3.5% of streams, because a wrong label looks like a right one. The served test is also weakest when a change makes answers more alike.
+- **The served test reads only the first 1,000 characters** of each answer, so it missed answers cut at 256 tokens in the blind test.
 - **The local paired monitor sits on its budget,** and rates move between replays, by up to 10 points where detection is uncertain.
 - **Versions and precisions of hosted models are the hosts' own labels.**
 
@@ -606,6 +623,7 @@ On the same local streams:
 | 22–23 October | Same-model ladder; replay seeding fixed; five replays of every study |
 | 23 October | Proof of what the served score measures; cost against power; slow faults; triage of alarms |
 | 23–28 October | Hybrid test (pre-registered negative); blind confirmatory study pre-registered; server version checked |
+| 28 October | Blind study scored frozen: both criteria hold; answers cut short missed |
 
 ---
 
@@ -675,7 +693,7 @@ About 15 minutes for 13 slides, with time for questions. Speakers are a suggesti
 
 **Slide 12, alarm to action (Pronnati).** "An alarm means 'go and look'. Grading 50–100 answer pairs after each alarm gave no wrong verdict in 1,833 alarms. It can't see faults that leave answers looking the same, or changes that make answers more alike; our cheap fix for that didn't work, and we report it."
 
-**Slide 13, takeaways (Dhruv).** "A fixed reference can't tell a changed model from changed users; re-asking can, without labels; one served answer is enough, with zero false alarms and a proof of why. Calibrate across days; treat an alarm as a reason to look. A blind test on five unseen changes is running, and we target ACL Rolling Review on 4 January. Thank you."
+**Slide 13, takeaways (Dhruv).** "A fixed reference can't tell a changed model from changed users; re-asking can, without labels; one served answer is enough, with zero false alarms and a proof of why. Calibrate across days; treat an alarm as a reason to look. In a blind test on five unseen changes, run frozen, it caught four with no false alarm and missed answers cut short, which we explain. We target ACL Rolling Review on 4 January. Thank you."
 
 ---
 
@@ -706,7 +724,10 @@ On healthy calibration answers only: 20,000 bootstrap windows, a generalised Par
 Hosted models vary from day to day; one pair gave two to five times too many false alarms; three pairs fixed it.
 
 **Your designs changed after failures. Isn't that tuning?**
-Each revision was frozen before the data that judged it and recorded as a dated amendment. The blind confirmatory study tests the frozen pipeline on five unseen changes with no amendments allowed.
+Each revision was frozen before the data that judged it and recorded as a dated amendment. The blind confirmatory study then tested the frozen pipeline on five unseen changes with no amendments allowed: both criteria held, and it missed one change, answers cut short.
+
+**The blind test missed the 256-token cut, which hurt accuracy. Isn't that a failure?**
+Yes, for the served test alone, and we report it. It compares only the first 1,000 characters, and a cut answer equals the healthy one up to the cut. Length statistics caught it in 94.5–96.5%, so we recommend a free length check beside it.
 
 **Why replays and not live traffic?**
 Replays of real answers give an exact onset, so latency and early false alarms can be measured. A live deployment is future work.
