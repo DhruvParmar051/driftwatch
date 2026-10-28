@@ -37,6 +37,9 @@ user actually received.
   question when nothing changed. That is why topic shifts cannot move it.
 - **Calibration must span days.** Hosted models drift from day to day, so
   calibration has to use several healthy rounds.
+- **A blind test confirms it.** Run frozen on five changes it had never seen, it
+  caught four in 98–100% of streams with no false alarm, and missed answers cut
+  short, which lie beyond the 1,000 characters it compares.
 - **An alarm means change, not harm.** Two of the changes we caught made the model
   *better*, and a small graded check after each alarm told the two apart without a
   single wrong verdict.
@@ -629,11 +632,45 @@ suggests, so the paper reports the spread beside the headline rates. The rerun a
 uncovered a real weakness, the local paired monitor's budget, that a lucky single
 replay had hidden.
 
+## 25. The hybrid test, the blind test, and the server version
+
+**The hybrid test.** The served test is weaker when a change makes answers more
+alike. We pre-registered a fix: on 10% of questions, ask production for one extra
+answer and use it to estimate the missing term. It kept the false-alarm budget but
+did not help: on real traffic it caught 93.5% against the served test's 94% and
+MET's 100%. One extra answer on a tenth of the questions is too noisy, and
+splitting the budget costs as much as it gains. A pre-registered negative result.
+
+**The blind test.** Several designs came after earlier ones failed, so we froze
+everything and tested five changes the monitors had never seen, with no amendment
+allowed once a result was read.
+
+| change | accuracy | v3 | paired | served | MET |
+|---|---|---|---|---|---|
+| C1: swapped to Qwen 2.5 14B | −4.5 | 97.5 | 100 | 100 | 100 |
+| C2: swapped to Llama 3.1 8B | −8.6 | 99.5 | 100 | 99.0 | 100 |
+| C3: swapped to Phi-4 14B | +0.3 | 98.5 | 100 | 100 | 100 |
+| C4: a new prompt edit | −0.6 | 90.0 | 98.0 | 98.0 | 100 |
+| C5: answers cut at 256 tokens | −6.3 (maths −32) | 94.5 | 96.5 | **0.0** | 69.5 |
+
+Both pre-registered criteria hold: no false alarm in 24,420 windows, and each
+vendor swap caught in at least 90% of streams. But the served test missed C5, a
+harmful change. With the same seeds a cut answer is identical to the healthy one
+up to the cut, and the test compares only the first 1,000 characters (about 250
+tokens). The length statistics of v3 and the paired monitor caught it. **Keep a
+cheap answer-length check beside the served test** (our suggestion, not part of
+the blind test).
+
+**The server version.** Ollama updated itself between rounds (0.35.0, 0.40.3,
+0.40.9). Two healthy runs across versions look exactly like two runs on one version
+(MMD² −0.30 ± 0.58 against −0.38 ± 0.55, ×10⁻³), so it did not drive any result.
+For the blind test we reinstalled 0.40.3 so its new rounds come from one version.
+
 ---
 
 # PART IV: WHAT IT MEANS
 
-## 25. For someone running a model in production
+## 26. For someone running a model in production
 
 1. **A fixed reference will alarm on ordinary changes in what users ask.** Task
    labels reduce this but do not remove it, and real traffic has none.
@@ -645,11 +682,12 @@ replay had hidden.
 4. **Re-asking can be cheap.** One reference call per served question is enough for
    big changes; subtle ones need four. A CUSUM on the served score catches a bad
    model serving a tenth of traffic with no extra false alarms.
-5. **Calibrate on at least three healthy rounds from different days.**
+5. **Calibrate on at least three healthy rounds from different days,** and keep a
+   cheap answer-length check beside the served test.
 6. **Read an alarm as "something changed, go and look".** Then grade a few dozen
    answer pairs. Two of the changes we caught made the model better.
 
-## 26. For research
+## 27. For research
 
 - **Harmless-shift controls should be standard.** Without one, "100% detection"
   says nothing.
@@ -659,7 +697,7 @@ replay had hidden.
 - **The served statistic's decomposition** turns a heuristic into something with a
   stated guarantee and a stated blind spot.
 
-## 27. Limits
+## 28. Limits
 
 - **Two real updates from two vendors,** one of them also on real traffic.
 - **Local models are 4.6–26B open-weight models on one machine,** from one family.
@@ -670,6 +708,8 @@ replay had hidden.
 - **Several designs came after an earlier one failed:** v3, the three-round
   calibration and the served test. Each was frozen before the data that judged it,
   and every revision is recorded.
+- **The served test reads only the first 1,000 characters** of each answer, so it
+  missed answers cut at 256 tokens in the blind test.
 - **No answer-only monitor sees a fault that leaves the answers looking the same.**
   The served test is also weakest when a change makes answers more alike.
 - **The local paired monitor sits on its budget,** and rates move between replays,
@@ -680,7 +720,7 @@ replay had hidden.
 
 # PART V: THE PRACTICAL SIDE
 
-## 28. The ten constraints
+## 29. The ten constraints
 
 Each blocks one way to produce confidently wrong results; most are enforced by
 tests.
@@ -703,7 +743,7 @@ studies ran on one Mac through Ollama, and the hosted studies through OpenRouter
 with every request pinned to one host. The batch path is still in the code and
 tested.
 
-## 29. What it cost
+## 30. What it cost
 
 - **Local generation:** free. Well over 100,000 answers on one laptop (Apple M5 Pro,
   48 GB).
@@ -720,7 +760,7 @@ tested.
 | Qwen study | $8.26 |
 | Qwen reference rounds | $5.90 |
 
-## 30. Running it
+## 31. Running it
 
 ```bash
 uv sync
@@ -736,10 +776,10 @@ Every evaluation verifies its frozen record and refuses to run on a mismatch.
 Interrupted generation resumes from its checkpoint when the same command is run
 again. The README has the full run order.
 
-## 31. The papers
+## 32. The papers
 
 - **ACL version** (`paper/acl/`), "Did the Model Change, or Did the Users?
-  Label-Free Monitoring of Deployed Language Models". Main text 7 of 8 pages, 24 in
+  Label-Free Monitoring of Deployed Language Models". Main text 7 of 8 pages, 25 in
   all; the earlier fixed-reference work is kept in the appendix. This is the
   submission for ACL Rolling Review (deadline 4 January 2027).
 - **ICML and NeurIPS versions** are built from the ACL text by
@@ -748,7 +788,7 @@ again. The README has the full run order.
   `paper/responsible_nlp_checklist.md`; the anonymous code archive is
   `dist/driftwatch-anonymous.zip`.
 
-## 32. Who did what
+## 33. Who did what
 
 - **Dhruv:** generation on both backends, calibration and freezing, the hosted
   studies, the re-asking monitors, orchestration.
@@ -756,7 +796,7 @@ again. The README has the full run order.
 - **Aditya:** synthetic data, the length and lexical signals, the oracle and grading.
 - **Pronnati:** questions and splits, replay, metrics and intervals.
 
-## 33. What is left before submission
+## 34. What is left before submission
 
 - [ ] **Everyone proofreads the ACL version,** especially their own areas, the
       pre-registration appendix and the proof (Appendix F). After any edit, run
