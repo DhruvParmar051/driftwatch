@@ -69,7 +69,9 @@ def test_every_configured_deployment_is_fully_pinned():
     for name, dep in cfg["deployments"].items():
         required = {"model", "provider", "provider_name", "quantization"}
         assert required <= set(dep) <= required | {"thinking_switch"}, name
-        assert "/" in dep["provider"] and dep["model"] not in local_ids, name
+        # host/quantisation, or the bare host when it publishes no quantisation
+        pinned = "/" in dep["provider"] or dep["quantization"] == "unknown"
+        assert pinned and dep["model"] not in local_ids, name
 
 
 def test_every_request_is_pinned_to_one_host_without_thinking(sample_query):
