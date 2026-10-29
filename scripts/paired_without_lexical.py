@@ -34,11 +34,16 @@ paired.window_scores = lambda tables, rows: _all_scores(tables, rows)[KEEP]
 
 
 def main(study: str, design: str) -> None:
+    """Calibrate and replay the paired monitor without the dropped statistic."""
     s = get_settings()
     spec = load_api_study("paired_study")["studies"][study]
     pairs = _paired_inputs(study, design)
     record = paired.calibrate(
-        pairs.calib_table, pairs.calib, s.false_alarm_budget, s.bootstrap_windows, s.calibration_seed
+        pairs.calib_table,
+        pairs.calib,
+        s.false_alarm_budget,
+        s.bootstrap_windows,
+        s.calibration_seed,
     )
     thresholds = record["thresholds"]
     heldout = paired.heldout_rate(
@@ -50,7 +55,9 @@ def main(study: str, design: str) -> None:
     runs = [r for r in runs if r.condition in set(spec["conditions"])]
     records = paired.replay(runs, pairs.pool, pairs.healthy, pairs.faulty, pairs.tables, thresholds)
     frozen_results = (
-        DATA_DIR / spec["data_dir"] / "results"
+        DATA_DIR
+        / spec["data_dir"]
+        / "results"
         / ("chat.json" if study == "chat" else "evaluation_v3.json")
     )
     frozen = {
@@ -72,8 +79,12 @@ def main(study: str, design: str) -> None:
     out.write_text(json.dumps(results, indent=2, default=float) + "\n")
     md = DATA_DIR / "report_paired" / f"{study}_{design}_without_lexical.md"
     md.write_text(paired.paired_markdown(results))
-    print(md.read_text())
-    print({k: round(float(v), 6) for k, v in thresholds.items()}, "alpha", np.round(record["per_signal_alpha"], 8))
+    print(md.read_text())  # noqa: T201
+    print(  # noqa: T201
+        {k: round(float(v), 6) for k, v in thresholds.items()},
+        "alpha",
+        np.round(record["per_signal_alpha"], 8),
+    )
 
 
 if __name__ == "__main__":
