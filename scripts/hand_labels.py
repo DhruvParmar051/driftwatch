@@ -1,4 +1,4 @@
-"""Usage: uv run python scripts/hand_labels.py build | score
+"""Usage: uv run python scripts/hand_labels.py build | score.
 
 The hand-labelled check of the automatic accuracy scoring
 (config/hand_label_study.yaml).
@@ -18,7 +18,6 @@ import random
 import sys
 
 import numpy as np
-import pandas as pd
 
 from corpus.build import read_queries
 from evaluate.metrics import wilson_interval
@@ -40,6 +39,7 @@ def _question(prompt: str, slice_name: str) -> str:
 
 
 def build() -> None:
+    """Draw the sample, write the blind sheets and the key."""
     if KEY.exists():
         raise SystemExit(f"{KEY} exists; the sample is drawn once")
     rng = random.Random(SPEC["seed"])
@@ -101,8 +101,8 @@ def build() -> None:
             w.writeheader()
             w.writerows(sheet)
     KEY.write_text(json.dumps(key, indent=1, sort_keys=True) + "\n")
-    print(f"{len(items)} items, {sum(len(s) for s in sheets.values())} labels")
-    print(f"key sha256 {hashlib.sha256(KEY.read_bytes()).hexdigest()}")
+    print(f"{len(items)} items, {sum(len(s) for s in sheets.values())} labels")  # noqa: T201
+    print(f"key sha256 {hashlib.sha256(KEY.read_bytes()).hexdigest()}")  # noqa: T201
 
 
 def _kappa(a: list[int], b: list[int]) -> float:
@@ -118,6 +118,7 @@ def _rate(k: int, n: int) -> dict:
 
 
 def score() -> None:
+    """Compare the filled sheets with the checker and write the results."""
     key = json.loads(KEY.read_text())
     labels: dict[str, dict[str, str]] = {}
     for name in SPEC["labellers"]:
@@ -140,9 +141,9 @@ def score() -> None:
         if second in ("0", "1"):
             human_pairs.append((int(first), int(second)))
     if missing:
-        print(f"warning: {missing} items have no primary label yet")
+        print(f"warning: {missing} items have no primary label yet")  # noqa: T201
 
-    def agree(sel):
+    def agree(sel: list[tuple]) -> dict:
         return _rate(sum(c == h for *_, c, h in sel), len(sel))
 
     out = {
@@ -167,7 +168,7 @@ def score() -> None:
     hi, lo = SPEC["conditions"]
     arr = {c: np.array([(p[2], p[3]) for p in pairs if p[1] == c]) for c in (hi, lo)}
 
-    def gaps(a, b):
+    def gaps(a: np.ndarray, b: np.ndarray) -> tuple[float, float]:
         return a[:, 0].mean() - b[:, 0].mean(), a[:, 1].mean() - b[:, 1].mean()
 
     g_checker, g_human = gaps(arr[hi], arr[lo])
@@ -192,7 +193,7 @@ def score() -> None:
     }
     (OUT / "results.json").write_text(json.dumps(out, indent=1) + "\n")
 
-    def pct(r):
+    def pct(r: dict) -> str:
         return f"{100 * r['rate']:.1f}% ({r['k']}/{r['n']}, 95% {100 * r['ci_lo']:.1f}-{100 * r['ci_hi']:.1f})"
 
     md = [
@@ -212,7 +213,7 @@ def score() -> None:
         *[f"| {c} (all slices) | {pct(r)} |" for c, r in out["by_condition"].items()],
     ]
     (OUT / "results.md").write_text("\n".join(md) + "\n")
-    print("\n".join(md))
+    print("\n".join(md))  # noqa: T201
 
 
 if __name__ == "__main__":
