@@ -3,18 +3,18 @@ HL121,banking77,"Classify this customer message into exactly one of the intent l
 listed. Reply with the label only, copied exactly as written.
 
 
-Message: How long do transfers need to come through? I sent some money to a friend, she needs it urgently, but seems it's still not there yet after a couple hours.",transfer_not_received_by_recipient,transfer_timing,,
+Message: How long do transfers need to come through? I sent some money to a friend, she needs it urgently, but seems it's still not there yet after a couple hours.",transfer_not_received_by_recipient,transfer_timing,0,
 HL023,banking77,"Classify this customer message into exactly one of the intent labels
 listed. Reply with the label only, copied exactly as written.
 
 
-Message: I made an error in payment yesterday and I need it fixed asap because it's for my rent tomorrow.",cancel_transfer,cancel_transfer,,
+Message: I made an error in payment yesterday and I need it fixed asap because it's for my rent tomorrow.",cancel_transfer,cancel_transfer,1,
 HL125,squad2,"Answer the question using only the passage below. If the passage does not
 contain the answer, reply exactly: unanswerable
 
 Passage: The IPCC receives funding through the IPCC Trust Fund, established in 1989 by the United Nations Environment Programme (UNEP) and the World Meteorological Organization (WMO), Costs of the Secretary and of housing the secretariat are provided by the WMO, while UNEP meets the cost of the Depute Secretary. Annual cash contributions to the Trust Fund are made by the WMO, by UNEP, and by IPCC Members; the scale of payments is determined by the IPCC Panel, which is also responsible for considering and adopting by consensus the annual budget. The organisation is required to comply with the Financial Regulations and Rules of the WMO.
 
-Question: What rules does the IPCC have to follow?",the Financial Regulations and Rules of the WMO,The organisation is required to comply with the Financial Regulations and Rules of the WMO.,,
+Question: What rules does the IPCC have to follow?",the Financial Regulations and Rules of the WMO,The organisation is required to comply with the Financial Regulations and Rules of the WMO.,1,
 HL032,gsm8k,"Solve this problem. Show your reasoning, then give the final numeric
 answer on its own last line.
 
@@ -48,19 +48,19 @@ $L = 16$
 
 (Optional check: If $D=9$, then $B=18$. Total = $16 + 9 + 18 = 43$. The numbers are correct.)
 
-16",,
+16",1,
 HL029,squad2,"Answer the question using only the passage below. If the passage does not
 contain the answer, reply exactly: unanswerable
 
 Passage: Almost all ctenophores are predators, taking prey ranging from microscopic larvae and rotifers to the adults of small crustaceans; the exceptions are juveniles of two species, which live as parasites on the salps on which adults of their species feed. In favorable circumstances, ctenophores can eat ten times their own weight in a day. Only 100–150 species have been validated, and possibly another 25 have not been fully described and named. The textbook examples are cydippids with egg-shaped bodies and a pair of retractable tentacles fringed with tentilla (""little tentacles"") that are covered with colloblasts, sticky cells that capture prey. The phylum has a wide range of body forms, including the flattened, deep-sea platyctenids, in which the adults of most species lack combs, and the coastal beroids, which lack tentacles and prey on other ctenophores by using huge mouths armed with groups of large, stiffened cilia that act as teeth. These variations enable different species to build huge populations in the same area, because they specialize in different types of prey, which they capture by as wide a range of methods as spiders use.
 
-Question: How many species of Ctenophora have been validated?",100–150 species,Only 100–150 species have been validated.,,
+Question: How many species of Ctenophora have been validated?",100–150 species,Only 100–150 species have been validated.,1,
 HL035,squad2,"Answer the question using only the passage below. If the passage does not
 contain the answer, reply exactly: unanswerable
 
 Passage: Geographical theories such as environmental determinism also suggested that tropical environments created uncivilized people in need of European guidance. For instance, American geographer Ellen Churchill Semple argued that even though human beings originated in the tropics they were only able to become fully human in the temperate zone. Tropicality can be paralleled with Edward Said’s Orientalism as the west’s construction of the east as the “other”. According to Siad, orientalism allowed Europe to establish itself as the superior and the norm, which justified its dominance over the essentialized Orient.
 
-Question: Which theory suggested people in the tropics were civilized?",unanswerable,unanswerable,,
+Question: Which theory suggested people in the tropics were civilized?",unanswerable,unanswerable,1,
 HL120,gsm8k,"Solve this problem. Show your reasoning, then give the final numeric
 answer on its own last line.
 
@@ -81,15 +81,15 @@ The number of songs in a playlist is 300. If John has 20 such playlists, and eac
 *(Alternatively, calculate the duration of one playlist first: $300 \text{ songs} \times 10 \text{ hours/song} = 3000 \text{ hours/playlist}$. Then multiply by the number of playlists: $3000 \text{ hours/playlist} \times 20 \text{ playlists} = 60,000 \text{ hours}$.)*
 
 Final numeric answer:
-60000",,
+60000",1,
 HL006,triviaqa,"Answer the following question with the shortest correct answer.
 
-In the 1999 film Stuart Little, who plays the part of Mrs Eleanor Little?",Geena Davis,Julie Andrews,,
+In the 1999 film Stuart Little, who plays the part of Mrs Eleanor Little?",Geena Davis,Julie Andrews,0,
 HL015,banking77,"Classify this customer message into exactly one of the intent labels
 listed. Reply with the label only, copied exactly as written.
 
 
-Message: I was double charged, and the second charge is showing as ""pending"". How long will it be before I get my money back once the second charge has been refunded?",pending_card_payment,transaction_charged_twice,,
+Message: I was double charged, and the second charge is showing as ""pending"". How long will it be before I get my money back once the second charge has been refunded?",pending_card_payment,transaction_charged_twice,0,
 HL124,gsm8k,"Solve this problem. Show your reasoning, then give the final numeric
 answer on its own last line.
 
@@ -111,54 +111,54 @@ Total responses = $64 \times 5$
 Total responses = $320$ emails
 
 **Final Answer:**
-320",,
+320",1,
 HL022,banking77,"Classify this customer message into exactly one of the intent labels
 listed. Reply with the label only, copied exactly as written.
 
 
-Message: Could I open an account for my children?",age_limit,age_limit,,
+Message: Could I open an account for my children?",age_limit,age_limit,1,
 HL027,squad2,"Answer the question using only the passage below. If the passage does not
 contain the answer, reply exactly: unanswerable
 
 Passage: Fresno is the largest U.S. city not directly linked to an Interstate highway. When the Interstate Highway System was created in the 1950s, the decision was made to build what is now Interstate 5 on the west side of the Central Valley, and thus bypass many of the population centers in the region, instead of upgrading what is now State Route 99. Due to rapidly raising population and traffic in cities along SR 99, as well as the desirability of Federal funding, much discussion has been made to upgrade it to interstate standards and eventually incorporate it into the interstate system, most likely as Interstate 9. Major improvements to signage, lane width, median separation, vertical clearance, and other concerns are currently underway.
 
-Question: Which side is SR 99 built on?",unanswerable,unanswerable,,
+Question: Which side is SR 99 built on?",unanswerable,unanswerable,1,
 HL127,triviaqa,"Answer the following question with the shortest correct answer.
 
-Which scientist was Time magazine's ""Person of the 20th Century""?",Albert Einstein,Albert Einstein,,
+Which scientist was Time magazine's ""Person of the 20th Century""?",Albert Einstein,Albert Einstein,1,
 HL025,banking77,"Classify this customer message into exactly one of the intent labels
 listed. Reply with the label only, copied exactly as written.
 
 
-Message: I double checked that I have the correct account details , they're right for sure. Transfer is still pending since forever. What should be done now?",pending_transfer,pending_transfer,,
+Message: I double checked that I have the correct account details , they're right for sure. Transfer is still pending since forever. What should be done now?",pending_transfer,pending_transfer,1,
 HL122,banking77,"Classify this customer message into exactly one of the intent labels
 listed. Reply with the label only, copied exactly as written.
 
 
-Message: Will filling stations accept my card?",card_acceptance,card_acceptance,,
+Message: Will filling stations accept my card?",card_acceptance,card_acceptance,1,
 HL026,triviaqa,"Answer the following question with the shortest correct answer.
 
-Tallahassee is the capital of which US state?",Florida,Florida,,
+Tallahassee is the capital of which US state?",Florida,Florida,1,
 HL024,squad2,"Answer the question using only the passage below. If the passage does not
 contain the answer, reply exactly: unanswerable
 
 Passage: Similarly, it is not known if L (the set of all problems that can be solved in logarithmic space) is strictly contained in P or equal to P. Again, there are many complexity classes between the two, such as NL and NC, and it is not known if they are distinct or equal classes.
 
-Question: What is unknown about the complexity classes between L and P that further prevents determining the value relationship between L and P?",if they are distinct or equal classes,it is not known if L (the set of all problems that can be solved in logarithmic space) is strictly contained in P or equal to P.,,
+Question: What is unknown about the complexity classes between L and P that further prevents determining the value relationship between L and P?",if they are distinct or equal classes,it is not known if L (the set of all problems that can be solved in logarithmic space) is strictly contained in P or equal to P.,0,
 HL007,banking77,"Classify this customer message into exactly one of the intent labels
 listed. Reply with the label only, copied exactly as written.
 
 
-Message: What are the fees for a physical card?",order_physical_card,order_physical_card,,
+Message: What are the fees for a physical card?",order_physical_card,order_physical_card,1,
 HL004,squad2,"Answer the question using only the passage below. If the passage does not
 contain the answer, reply exactly: unanswerable
 
 Passage: The crisis had a major impact on international relations and created a rift within NATO. Some European nations and Japan sought to disassociate themselves from United States foreign policy in the Middle East to avoid being targeted by the boycott. Arab oil producers linked any future policy changes to peace between the belligerents. To address this, the Nixon Administration began multilateral negotiations with the combatants. They arranged for Israel to pull back from the Sinai Peninsula and the Golan Heights. By January 18, 1974, US Secretary of State Henry Kissinger had negotiated an Israeli troop withdrawal from parts of the Sinai Peninsula. The promise of a negotiated settlement between Israel and Syria was enough to convince Arab oil producers to lift the embargo in March 1974.
 
-Question: What did Israel and Syria do to avoid being targeted by the boycott?",unanswerable,Israel and Syria linked any future policy changes to peace between the belligerents.,,
+Question: What did Israel and Syria do to avoid being targeted by the boycott?",unanswerable,Israel and Syria linked any future policy changes to peace between the belligerents.,0,
 HL036,triviaqa,"Answer the following question with the shortest correct answer.
 
-What was the nickname given to premiership footballer Neil Ruddock?",Razor,The Rock,,
+What was the nickname given to premiership footballer Neil Ruddock?",Razor,The Rock,0,
 HL010,gsm8k,"Solve this problem. Show your reasoning, then give the final numeric
 answer on its own last line.
 
@@ -175,23 +175,23 @@ Pretzels eaten by the brother in a week = (Pretzels per day) $\times$ (Number of
 Pretzels eaten by the brother in a week = $9 \times 7 = 63$ pretzels.
 
 **Final Answer:**
-63",,
+63",1,
 HL031,banking77,"Classify this customer message into exactly one of the intent labels
 listed. Reply with the label only, copied exactly as written.
 
 
-Message: The service of this company sucks, I need to terminate my account.",terminate_account,terminate_account,,
+Message: The service of this company sucks, I need to terminate my account.",terminate_account,terminate_account,1,
 HL021,triviaqa,"Answer the following question with the shortest correct answer.
 
-Bjrn Ulvaeus and Benny Andersson wrote most of the songs for which pop group?",ABBA,ABBA,,
+Bjrn Ulvaeus and Benny Andersson wrote most of the songs for which pop group?",ABBA,ABBA,1,
 HL019,triviaqa,"Answer the following question with the shortest correct answer.
 
-In climatology, pluvial relates to what?",Rainfall,Rainfall,,
+In climatology, pluvial relates to what?",Rainfall,Rainfall,1,
 HL016,banking77,"Classify this customer message into exactly one of the intent labels
 listed. Reply with the label only, copied exactly as written.
 
 
-Message: I can see an extra 1£ charge on my app. Why did you charge me extra?",extra_charge_on_statement,extra_charge_on_statement,,
+Message: I can see an extra 1£ charge on my app. Why did you charge me extra?",extra_charge_on_statement,extra_charge_on_statement,1,
 HL002,gsm8k,"Solve this problem. Show your reasoning, then give the final numeric
 answer on its own last line.
 
@@ -210,26 +210,26 @@ $$\text{Car distance} = 30 \text{ mph} \times 8 \text{ hours} = 240 \text{ miles
 To find how much farther the bus went, subtract the car's distance from the bus's distance.
 $$\text{Difference} = 300 \text{ miles} - 240 \text{ miles} = 60 \text{ miles}$$
 
-60",,
+60",1,
 HL039,triviaqa,"Answer the following question with the shortest correct answer.
 
-Harvard University is situated in which American State?",MASSACHUSETTS,Massachusetts,,
+Harvard University is situated in which American State?",MASSACHUSETTS,Massachusetts,1,
 HL014,squad2,"Answer the question using only the passage below. If the passage does not
 contain the answer, reply exactly: unanswerable
 
 Passage: Many major classes of organic molecules in living organisms, such as proteins, nucleic acids, carbohydrates, and fats, contain oxygen, as do the major inorganic compounds that are constituents of animal shells, teeth, and bone. Most of the mass of living organisms is oxygen as it is a part of water, the major constituent of lifeforms. Oxygen is used in cellular respiration and released by photosynthesis, which uses the energy of sunlight to produce oxygen from water. It is too chemically reactive to remain a free element in air without being continuously replenished by the photosynthetic action of living organisms. Another form (allotrope) of oxygen, ozone (O
 3), strongly absorbs UVB radiation and consequently the high-altitude ozone layer helps protect the biosphere from ultraviolet radiation, but is a pollutant near the surface where it is a by-product of smog. At even higher low earth orbit altitudes, sufficient atomic oxygen is present to cause erosion for spacecraft.
 
-Question: From what does photosynthesis get oxygen?",water,photosynthesis uses the energy of sunlight to produce oxygen from water.,,
+Question: From what does photosynthesis get oxygen?",water,photosynthesis uses the energy of sunlight to produce oxygen from water.,1,
 HL000,triviaqa,"Answer the following question with the shortest correct answer.
 
-Astrakhan is the curly hair of which young animal?",Lamb,Lamb,,
+Astrakhan is the curly hair of which young animal?",Lamb,Lamb,1,
 HL126,squad2,"Answer the question using only the passage below. If the passage does not
 contain the answer, reply exactly: unanswerable
 
 Passage: Southern California consists of one of the more varied collections of geologic, topographic, and natural ecosystem landscapes in a diversity outnumbering other major regions in the state and country. The region spans from Pacific Ocean islands, shorelines, beaches, and coastal plains, through the Transverse and Peninsular Ranges with their peaks, into the large and small interior valleys, to the vast deserts of California.
 
-Question: What types of collections does desert California have?",unanswerable,unanswerable,,
+Question: What types of collections does desert California have?",unanswerable,unanswerable,1,
 HL001,gsm8k,"Solve this problem. Show your reasoning, then give the final numeric
 answer on its own last line.
 
@@ -266,41 +266,41 @@ Sandra must have ordered 160 red roses.
 **Answer:**
 The number of red roses Fred must deliver is 160.
 
-160",,
+160",1,
 HL013,banking77,"Classify this customer message into exactly one of the intent labels
 listed. Reply with the label only, copied exactly as written.
 
 
-Message: The day before yesterday, I performed a transfer which was within this country. It still hasn't gone through. Can you check on that? The account number is definitely correct, as I've checked and double checked.",transfer_not_received_by_recipient,pending_transfer,,
+Message: The day before yesterday, I performed a transfer which was within this country. It still hasn't gone through. Can you check on that? The account number is definitely correct, as I've checked and double checked.",transfer_not_received_by_recipient,pending_transfer,0,
 HL038,squad2,"Answer the question using only the passage below. If the passage does not
 contain the answer, reply exactly: unanswerable
 
 Passage: When the Committee for Non-Violent Action sponsored a protest in August 1957, at the Camp Mercury nuclear test site near Las Vegas, Nevada, 13 of the protesters attempted to enter the test site knowing that they faced arrest. At a pre-arranged announced time, one at a time they stepped across the ""line"" and were immediately arrested. They were put on a bus and taken to the Nye County seat of Tonopah, Nevada, and arraigned for trial before the local Justice of the Peace, that afternoon. A well known civil rights attorney, Francis Heisler, had volunteered to defend the arrested persons, advising them to plead ""nolo contendere"", as an alternative to pleading either guilty or not-guilty. The arrested persons were found ""guilty,"" nevertheless, and given suspended sentences, conditional on their not reentering the test site grounds.[citation needed]
 
-Question: How many missles were at the nuclear test site?",unanswerable,unanswerable,,
+Question: How many missles were at the nuclear test site?",unanswerable,unanswerable,1,
 HL033,squad2,"Answer the question using only the passage below. If the passage does not
 contain the answer, reply exactly: unanswerable
 
 Passage: Frederick William, Elector of Brandenburg, invited Huguenots to settle in his realms, and a number of their descendants rose to positions of prominence in Prussia. Several prominent German military, cultural, and political figures were ethnic Huguenot, including poet Theodor Fontane, General Hermann von François, the hero of the First World War Battle of Tannenberg, Luftwaffe General and fighter ace Adolf Galland, Luftwaffe flying ace Hans-Joachim Marseille, and famed U-boat captain Lothar von Arnauld de la Perière. The last Prime Minister of the (East) German Democratic Republic, Lothar de Maizière, is also a descendant of a Huguenot family, as is the German Federal Minister of the Interior, Thomas de Maizière.
 
-Question: Thomas de Maiziere serves what role in the German cabinet?",Federal Minister of the Interior,German Federal Minister of the Interior,,
+Question: Thomas de Maiziere serves what role in the German cabinet?",Federal Minister of the Interior,German Federal Minister of the Interior,1,
 HL003,squad2,"Answer the question using only the passage below. If the passage does not
 contain the answer, reply exactly: unanswerable
 
 Passage: Frederick William, Elector of Brandenburg, invited Huguenots to settle in his realms, and a number of their descendants rose to positions of prominence in Prussia. Several prominent German military, cultural, and political figures were ethnic Huguenot, including poet Theodor Fontane, General Hermann von François, the hero of the First World War Battle of Tannenberg, Luftwaffe General and fighter ace Adolf Galland, Luftwaffe flying ace Hans-Joachim Marseille, and famed U-boat captain Lothar von Arnauld de la Perière. The last Prime Minister of the (East) German Democratic Republic, Lothar de Maizière, is also a descendant of a Huguenot family, as is the German Federal Minister of the Interior, Thomas de Maizière.
 
-Question: Thomas de Maiziere serves what role in the German cabinet?",Federal Minister of the Interior,German Federal Minister of the Interior,,
+Question: Thomas de Maiziere serves what role in the German cabinet?",Federal Minister of the Interior,German Federal Minister of the Interior,1,
 HL008,triviaqa,"Answer the following question with the shortest correct answer.
 
-Who declared the 1936 summer Olympic Games open? (Both names required.)",ADOLF HITLER,Stanley Steins and Avery Brundage,,
+Who declared the 1936 summer Olympic Games open? (Both names required.)",ADOLF HITLER,Stanley Steins and Avery Brundage,0,
 HL028,banking77,"Classify this customer message into exactly one of the intent labels
 listed. Reply with the label only, copied exactly as written.
 
 
-Message: How do i transfer money using my credit card?",topping_up_by_card,top_up_by_card_charge,,
+Message: How do i transfer money using my credit card?",topping_up_by_card,top_up_by_card_charge,0,
 HL030,triviaqa,"Answer the following question with the shortest correct answer.
 
-What is the first name of Madame Bovary in Flaubert's 1856 novel?",EMMA,Emma,,
+What is the first name of Madame Bovary in Flaubert's 1856 novel?",EMMA,Emma,1,
 HL037,gsm8k,"Solve this problem. Show your reasoning, then give the final numeric
 answer on its own last line.
 
@@ -334,16 +334,16 @@ Brittany's quilted comforter has many 1-foot by 1-foot colored squares. The comf
     Total area = $68 \times 1$ square foot
     Total area = $68$ square feet
 
-68",,
+68",1,
 HL129,triviaqa,"Answer the following question with the shortest correct answer.
 
-If you were performing an orison what would you be doing?",Praying,Praying.,,
+If you were performing an orison what would you be doing?",Praying,Praying.,1,
 HL012,squad2,"Answer the question using only the passage below. If the passage does not
 contain the answer, reply exactly: unanswerable
 
 Passage: The acme of the horizontal engine was the Corliss steam engine, patented in 1849, which was a four-valve counter flow engine with separate steam admission and exhaust valves and automatic variable steam cutoff. When Corliss was given the Rumford medal the committee said that ""no one invention since Watt's time has so enhanced the efficiency of the steam engine"". In addition to using 30% less steam, it provided more uniform speed due to variable steam cut off, making it well suited to manufacturing, especially cotton spinning.
 
-Question: How many valves did the Corliss engine use?",four,The Corliss engine was a four-valve engine.,,
+Question: How many valves did the Corliss engine use?",four,The Corliss engine was a four-valve engine.,1,
 HL017,gsm8k,"Solve this problem. Show your reasoning, then give the final numeric
 answer on its own last line.
 
@@ -380,36 +380,36 @@ Alternatively, we can convert all lengths to feet first:
 **1. Length of rolls in feet:**
 * Length per roll: 4 inches
 * Length per roll in feet: $\frac{4 \text{ inches}}{12 \text{ inches/foot}} = \frac{1}{3} \text{ feet}$
-* Total length of rolls: $300 \times",,
+* Total length of rolls: $300 \times",1,
 HL005,triviaqa,"Answer the following question with the shortest correct answer.
 
-What main three countries constituted the Axis Powers?","Germany, Japan, Italy","Germany, Italy, and Japan.",,
+What main three countries constituted the Axis Powers?","Germany, Japan, Italy","Germany, Italy, and Japan.",1,
 HL018,triviaqa,"Answer the following question with the shortest correct answer.
 
-On which island are the Cuillin Hills?",The Isle of Skye,Isle of Skye,,
+On which island are the Cuillin Hills?",The Isle of Skye,Isle of Skye,1,
 HL128,triviaqa,"Answer the following question with the shortest correct answer.
 
-How many US states border Lake Superior?",3,4,,
+How many US states border Lake Superior?",3,4,0,
 HL011,triviaqa,"Answer the following question with the shortest correct answer.
 
-Which “Thom” is Radiohead’s lead singer and principal songwriter?",Thom Yorke,Thom Yorke,,
+Which “Thom” is Radiohead’s lead singer and principal songwriter?",Thom Yorke,Thom Yorke,1,
 HL020,triviaqa,"Answer the following question with the shortest correct answer.
 
-Bjrn Ulvaeus and Benny Andersson wrote most of the songs for which pop group?",ABBA,ABBA,,
+Bjrn Ulvaeus and Benny Andersson wrote most of the songs for which pop group?",ABBA,ABBA,1,
 HL123,squad2,"Answer the question using only the passage below. If the passage does not
 contain the answer, reply exactly: unanswerable
 
 Passage: Since ~3000 yr BP (= years Before Present), human impact is seen in the delta. As a result of increasing land clearance (Bronze Age agriculture), in the upland areas (central Germany), the sediment load of the Rhine has strongly increased and delta growth has sped up. This caused increased flooding and sedimentation, ending peat formation in the delta. The shifting of river channels to new locations, on the floodplain (termed avulsion), was the main process distributing sediment across the subrecent delta. Over the past 6000 years, approximately 80 avulsions have occurred. Direct human impact in the delta started with peat mining, for salt and fuel, from Roman times onward. This was followed by embankment, of the major distributaries and damming of minor distributaries, which took place in the 11–13th century AD. Thereafter, canals were dug, bends were short cut and groynes were built, to prevent the river's channels from migrating or silting up.
 
-Question: What has increased sediment and delta growth also produced in the Rhine?",increased flooding and sedimentation,"This caused increased flooding and sedimentation, ending peat formation in the delta.",,
+Question: What has increased sediment and delta growth also produced in the Rhine?",increased flooding and sedimentation,"This caused increased flooding and sedimentation, ending peat formation in the delta.",1,
 HL034,squad2,"Answer the question using only the passage below. If the passage does not
 contain the answer, reply exactly: unanswerable
 
 Passage: In many countries, there is a Gender pay gap in favor of males in the labor market. Several factors other than discrimination may contribute to this gap. On average, women are more likely than men to consider factors other than pay when looking for work, and may be less willing to travel or relocate. Thomas Sowell, in his book Knowledge and Decisions, claims that this difference is due to women not taking jobs due to marriage or pregnancy, but income studies show that that does not explain the entire difference. A U.S. Census's report stated that in US once other factors are accounted for there is still a difference in earnings between women and men. The income gap in other countries ranges from 53% in Botswana to -40% in Bahrain.
 
-Question: What is attributed to the income inequality in the United Nations?",unanswerable,unanswerable,,
+Question: What is attributed to the income inequality in the United Nations?",unanswerable,unanswerable,1,
 HL009,banking77,"Classify this customer message into exactly one of the intent labels
 listed. Reply with the label only, copied exactly as written.
 
 
-Message: How can I tell what the limit is to top-ups?",top_up_limits,top_up_limits,,
+Message: How can I tell what the limit is to top-ups?",top_up_limits,top_up_limits,1,
