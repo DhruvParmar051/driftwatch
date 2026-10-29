@@ -1,4 +1,4 @@
-"""Usage: uv run python scripts/build_confirm.py
+"""Usage: uv run python scripts/build_confirm.py.
 
 Builds data/confirm for the blind confirmatory study (config/confirm_study.yaml):
 the local study's questions, frozen records, healthy and F7 answers and their
@@ -48,4 +48,4 @@ for cond, src in SOURCES.items():
 pd.concat(parts, ignore_index=True).to_parquet(OUT / "embeddings.parquet", index=False)
 
 done = pd.read_parquet(OUT / "completions.parquet").condition.value_counts().to_dict()
-print(f"{OUT}: {done}")
+print(f"{OUT}: {done}")  # noqa: T201
