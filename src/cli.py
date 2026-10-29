@@ -1764,7 +1764,6 @@ def remote_generate(
         raise typer.BadParameter(f"{condition!r} is not a round of config/{study}.yaml")
     spec = spec_all["rounds"][condition]
     data_dir = _api_data_dir(study)
-    queries = read_queries(_api_queries(data_dir, study))
     if condition != "healthy" and spec_all.get("requires_freeze", True):
         missing = [p.name for p in _api_frozen(data_dir, study) if not p.exists()]
         if missing:
@@ -1772,6 +1771,7 @@ def remote_generate(
                 f"{condition} waits for the frozen study thresholds ({', '.join(missing)} "
                 f"under {data_dir}) - calibrate and freeze on the healthy round first"
             )
+    queries = read_queries(_api_queries(data_dir, study))
     if spec.get("reference"):  # a paired-monitor reference round: its own store (7w)
         data_dir = data_dir / "reference"
         _api_queries(data_dir, study)
