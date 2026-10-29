@@ -58,8 +58,8 @@ frozen() {  # study, data dir, v1 record, v1 out, v3 out
 
 reasking() {  # study
   run "$1 paired" dw paired-evaluate --study $1 --design rounds
-  run "$1 served" dw served-evaluate --study $1
   run "$1 met" uv run python scripts/met_baseline.py $1
+  run "$1 served" dw served-evaluate --study $1  # reads this replay's MET
 }
 
 for r in 1 2 3 4 0; do
