@@ -133,7 +133,7 @@ def test_adding_a_condition_leaves_the_others_streams_alone(monkeypatch):
     from evaluate.pipeline import replay_runs
     from settings import get_settings
 
-    def plan(conditions, cond):
+    def plan(conditions: list[str], cond: str) -> list[tuple[int, int]]:
         return [
             (r.onset_window_idx, r.seed)
             for r in replay_runs(conditions, 20, 40, 10, 7)
