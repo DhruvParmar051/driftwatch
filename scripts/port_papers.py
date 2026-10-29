@@ -1,4 +1,4 @@
-"""Usage: python3 scripts/port_papers.py
+"""Usage: python3 scripts/port_papers.py.
 
 The ACL version is the source; the ICML and NeurIPS versions are built from it.
 Each keeps its own preamble (style file, title block, authors) and takes the ACL
@@ -44,4 +44,4 @@ b = wrap(
     b, "\\begin{tabular}{lrrrrrrrr}\n    \\toprule\n    setting & threshold change", "\\textwidth"
 )
 neurips_path.write_text(pre + "\n\n" + b)
-print("ported: icml/driftwatch_icml.tex, driftwatch.tex")
+print("ported: icml/driftwatch_icml.tex, driftwatch.tex")  # noqa: T201
