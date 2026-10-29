@@ -12,8 +12,21 @@ The key stays out of git, and nobody opens it, until all four sheets are filled.
 
 ## How to label your sheet
 
-Open `sheet_<your name>.csv` in a spreadsheet. It has 50 rows; 10 of them are
-also on someone else's sheet, so label on your own, without comparing notes.
+The easy way is the labelling page, which opens in your browser and saves each
+label straight into your sheet as you go (you can stop and come back):
+
+```bash
+uv run python scripts/label_sheet.py <your name>
+```
+
+Keys: `1` correct, `0` wrong, `?` or `/` can't tell (each moves on), arrows to
+browse, `n` for a note, `g` to flag the reference as wrong. Ctrl-C in the
+terminal when you're done. It never shows the checker's verdict or which model
+answered.
+
+Or open `sheet_<your name>.csv` in a spreadsheet (in Excel, save as "CSV
+UTF-8"; don't sort or delete rows). Either way: 50 rows, 10 of them also on
+someone else's sheet, so label on your own, without comparing notes.
 
 For each row, read the question, the reference answer and the model answer, and
 fill in **label**:
