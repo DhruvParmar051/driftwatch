@@ -1,0 +1,60 @@
+# ---------------------------------------------------------------------------
+# Hand-labelled check of the automatic accuracy scoring (oracle/score.py).
+# PRE-REGISTERED: fixed and committed on 29 Oct 2026, before any answer was
+# labelled by hand. Reported whichever way it goes.
+#
+# Question: does the automatic checker grade answers as a person would? Every
+# accuracy figure in the paper (fault sizes, the ladder's "no rung was
+# harmful", C5's -6.3 points) rests on it. What matters most is not the raw
+# error rate but whether the checker errs differently on the healthy and the
+# faulty model, since that would bias every accuracy DIFFERENCE.
+#
+# Sample (scripts/hand_labels.py build):
+#   Fault questions, sample 0, local study. Conditions healthy and F1 (the
+#   largest fault), so both a strong and a weak model are graded. Slices
+#   gsm8k, triviaqa, squad2 and banking77 (jsonx is checked field by field in
+#   its own appendix). 20 answers per slice and condition, drawn with the seed
+#   below: 160 items.
+#
+# Blinding: a sheet shows the question, the reference answer and the model's
+#   answer only. Condition, model and the checker's verdict are in key.json,
+#   whose sha256 is recorded in data/hand_labels/README.md before labelling
+#   and which is committed only after every sheet is in.
+#
+# Labellers: the four authors. Each labels 40 items of their own plus 10 of
+#   another's (in a ring), so 40 items are labelled twice: 200 labels.
+#   Label: 1 the answer is correct given the reference, 0 it is wrong,
+#   ? cannot tell. Optional note; "gold wrong" in the note flags a bad
+#   reference answer. A person judges meaning, not format ("Paris, the
+#   Trojan prince" is correct for "Paris"; "18 dollars" is correct for 18).
+#   The primary labeller's label is the human label; the second label is used
+#   only for agreement between people. "?" items are left out and counted.
+#
+# Reported (scripts/hand_labels.py score), with Wilson 95% intervals:
+#   - agreement between checker and person, overall, per slice, per condition;
+#   - Cohen's kappa, checker vs person and person vs person (overlap);
+#   - checker false passes (checker 1, person 0) and false fails (0 / 1);
+#   - the healthy-minus-F1 accuracy gap by checker and by person, and their
+#     difference with a paired bootstrap 95% interval (10,000 resamples of
+#     items within condition).
+#
+# Criteria:
+#   HL1 checker-person agreement at least 90% overall;
+#   HL2 the bootstrap interval of (checker gap - person gap) contains 0, i.e.
+#       no evidence the checker biases accuracy differences.
+#   If HL1 fails on a slice, accuracy on that slice is reported as checker
+#   accuracy with the measured error beside it; nothing is re-scored.
+# ---------------------------------------------------------------------------
+version: 1.0.0
+seed: 20261029
+split: fault
+sample_idx: 0
+conditions: [healthy, F1]
+slices: [gsm8k, triviaqa, squad2, banking77]
+per_slice_condition: 20
+labellers: [dhruv, pronnati, mahak, aditya]
+own_items: 40
+overlap_items: 10
+bootstrap_resamples: 10000
+criteria:
+  agreement_min: 0.90
