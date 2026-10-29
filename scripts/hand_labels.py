@@ -121,10 +121,24 @@ def score() -> None:
     """Compare the filled sheets with the checker and write the results."""
     key = json.loads(KEY.read_text())
     labels: dict[str, dict[str, str]] = {}
+    progress, invalid = {}, []
     for name in SPEC["labellers"]:
         with (OUT / f"sheet_{name}.csv").open(encoding="utf-8") as fh:
-            for row in csv.DictReader(fh):
-                labels.setdefault(row["item"], {})[name] = row["label"].strip()
+            rows = list(csv.DictReader(fh))
+        for row in rows:
+            label = row["label"].strip()
+            labels.setdefault(row["item"], {})[name] = label
+            if label not in ("", "0", "1", "?"):
+                invalid.append(f"{name} {row['item']}: {label!r}")
+        progress[name] = (sum(1 for r in rows if r["label"].strip()), len(rows))
+
+    # Scored only once every sheet is complete (config/hand_label_study.yaml).
+    if invalid or any(done < total for done, total in progress.values()):
+        for name, (done, total) in progress.items():
+            print(f"{name:10} {done}/{total} labelled")  # noqa: T201
+        for line in invalid:
+            print(f"not 1, 0 or ?  {line}")  # noqa: T201
+        raise SystemExit("not scored: every sheet must be fully labelled with 1, 0 or ?")
 
     pairs, unclear, missing, human_pairs = [], 0, 0, []
     for item, k in key.items():
