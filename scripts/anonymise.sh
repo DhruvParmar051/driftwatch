@@ -18,8 +18,24 @@ trap 'rm -rf $TMP' EXIT
 git archive --format=tar --prefix=driftwatch/ HEAD | tar -x -C $TMP
 for p in $EXCLUDE; do rm -rf $TMP/driftwatch/$p; done
 
+# The hand-label sheets are named after the labellers: labeller_a-d in the
+# archive, in the config's list and in the sheet file names alike.
+CFG=$TMP/driftwatch/src/config/hand_label_study.yaml
+LABELLERS=(${(s:, :)$(sed -n 's/^labellers: \[\(.*\)\]$/\1/p' $CFG)})
+i=0
+for name in $LABELLERS; do
+  anon=labeller_$(printf "\\x$(printf %x $((97 + i)))")
+  mv $TMP/driftwatch/data/hand_labels/sheet_$name.csv $TMP/driftwatch/data/hand_labels/sheet_$anon.csv
+  i=$((i + 1))
+done
+sed -i '' 's/^labellers: \[.*\]$/labellers: [labeller_a, labeller_b, labeller_c, labeller_d]/' $CFG
+
 if grep -r -I -i -n -E $PATTERN $TMP/driftwatch; then
   echo "identifying text left in the archive (above); nothing written" >&2
+  exit 1
+fi
+if (cd $TMP && find driftwatch | grep -i -E $PATTERN); then
+  echo "identifying file names left in the archive (above); nothing written" >&2
   exit 1
 fi
 
