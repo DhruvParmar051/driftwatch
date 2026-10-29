@@ -1,4 +1,4 @@
-"""Usage: DRIFTWATCH_STUDY=chat uv run python scripts/chat_topics.py
+"""Usage: DRIFTWATCH_STUDY=chat uv run python scripts/chat_topics.py.
 
 Topic shifts on real traffic without task labels (Stage 7u extension). Every
 choice below was fixed and committed before this script was first run.
@@ -244,8 +244,8 @@ def main() -> None:
         lines.append(f"| {m} | {r['F4']} | {r['F6']} | {r['pre_onset']} |")
     md = "\n".join(lines) + "\n"
     (DATA_DIR / "report_paired" / "chat_topics.md").write_text(md)
-    print(json.dumps(clusters, indent=1))
-    print(md)
+    print(json.dumps(clusters, indent=1))  # noqa: T201
+    print(md)  # noqa: T201
 
 
 def _summary(records: list[dict]) -> dict:
