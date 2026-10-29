@@ -12,6 +12,19 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 PACKAGE_ROOT = PROJECT_ROOT / "src"
 
 
+@pytest.fixture(scope="session", autouse=True)
+def _fake_backend_env_for_module_fixtures() -> Iterator[None]:
+    """The same fakes for module-scoped fixtures, which run before any function fixture.
+
+    Without it they read base_url/api_key from a developer's .env, and fail on CI,
+    which has none.
+    """
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setenv("DRIFTWATCH_BASE_URL", "http://test.invalid/v1")
+        mp.setenv("DRIFTWATCH_API_KEY", "test-key-not-real")
+        yield
+
+
 @pytest.fixture(autouse=True)
 def _fake_backend_env(monkeypatch) -> Iterator[None]:
     """Settings has no default base_url/api_key by design, so tests supply fakes.
