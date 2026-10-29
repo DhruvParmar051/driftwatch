@@ -58,7 +58,10 @@ def _mmd(cur: list[str], ref: list[str]) -> float:
 def _build_with_met(current, reference, vectors, qids):  # noqa: ANN001, ANN202
     table = _build(current, reference, vectors, qids)
     _met[id(table)] = np.array(
-        [_mmd([c.text or "" for c in current[q]], [c.text or "" for c in reference[q]]) for q in qids]
+        [
+            _mmd([c.text or "" for c in current[q]], [c.text or "" for c in reference[q]])
+            for q in qids
+        ]
     )
     return table
 
@@ -120,13 +123,17 @@ def main(study: str) -> None:
         "summary": summary,
         "records": records,
     }
-    (results_dir / "met_baseline.json").write_text(json.dumps(results, indent=2, default=float) + "\n")
+    (results_dir / "met_baseline.json").write_text(
+        json.dumps(results, indent=2, default=float) + "\n"
+    )
     md = paired.paired_markdown(results)
     (DATA_DIR / "report_paired" / f"{study}_met_baseline.md").write_text(md)
-    print(md)
+    print(md)  # noqa: T201
     for cond, row in summary["conditions"].items():
         v = row["vs_rounds"]
-        print(f"{cond}: vs rounds (only MET : only rounds) {v['only_a']}:{v['only_b']} p={v['p']:.2g}")
+        print(  # noqa: T201
+            f"{cond}: vs rounds (only MET : only rounds) {v['only_a']}:{v['only_b']} p={v['p']:.2g}"
+        )
 
 
 if __name__ == "__main__":
