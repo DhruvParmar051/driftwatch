@@ -1,4 +1,4 @@
-"""Usage: DRIFTWATCH_DATA_DIR=data/api uv run python scripts/stream_figure.py
+"""Usage: DRIFTWATCH_DATA_DIR=data/api uv run python scripts/stream_figure.py.
 
 Figure data: one replayed stream of the DeepSeek study's short-form topic shift
 (F6) and one of its real update (U1), the first stream of each, scored by the
@@ -88,9 +88,9 @@ def main() -> None:
             for m in plan.windows()
         ]
         on = run.onset_window_idx
-        print(f"% {run.condition}, onset {on}")
-        print("pooled", " ".join(f"({w - on},{v:.2f})" for w, v in enumerate(ratio)))
-        print("served", " ".join(f"({w - on},{v:.2f})" for w, v in enumerate(served)))
+        print(f"% {run.condition}, onset {on}")  # noqa: T201
+        print("pooled", " ".join(f"({w - on},{v:.2f})" for w, v in enumerate(ratio)))  # noqa: T201
+        print("served", " ".join(f"({w - on},{v:.2f})" for w, v in enumerate(served)))  # noqa: T201
 
 
 if __name__ == "__main__":
