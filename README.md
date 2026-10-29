@@ -8,6 +8,21 @@ that proves it works. Four faults are injected at known onsets; the monitor is
 calibrated on healthy data only, frozen, then scored on detection latency and
 false-alarm rate.
 
+## The main result in one command
+
+```bash
+uv sync
+scripts/reproduce_main.sh
+```
+
+From the committed answers and calibration records, with no model calls, this
+reruns the served-answer test on all five studies (200 streams per condition,
+primary replay). It prints the detection rate and 95% interval for every change
+and the false alarms on all 87,716 healthy windows, then checks by checksum
+that the rewritten results are byte-identical to the ones the paper reports.
+About 2 minutes on a laptop. It needs the answer and embedding files under
+`data/` (about 1.2 GB), which are not tracked in git.
+
 ## Status
 
 **Implemented.** Every function is written to the contract in its docstring,
