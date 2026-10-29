@@ -1,5 +1,4 @@
-"""Usage: uv run python scripts/hybrid_test.py STUDY  (chat with DRIFTWATCH_STUDY=chat and
-DRIFTWATCH_DATA_DIR=data/chat).
+"""Usage: uv run python scripts/hybrid_test.py STUDY  (chat with DRIFTWATCH_STUDY=chat and DRIFTWATCH_DATA_DIR=data/chat).
 
 The hybrid test of config/confirm_study.yaml, Part 1. The served score s sees
 1/2 MMD^2 + 1/2 (K_rr - K_cc); on a spot-checked share g of questions a second
@@ -14,15 +13,17 @@ Writes data/<study>/results/hybrid.json.
 import json
 import sys
 import zlib
+from collections.abc import Callable
 
 import numpy as np
 
 import evaluate.served as served
 from cli import _paired_inputs
+from corpus.schemas import Completion
 from detect.calibrate import tail_threshold
-from evaluate.paired import _groups, summarise
+from evaluate.paired import StudyPairs, _groups, summarise
 from evaluate.pipeline import DEFAULT_MIN_PREFIX, DEFAULT_REPLAY_WINDOWS, replay_runs
-from evaluate.replay import _ReplayPlan
+from evaluate.replay import ReplayRun, _ReplayPlan
 from provider.collect import read_completions
 from settings import DATA_DIR, get_settings, load_api_study
 from signals.windows import bootstrap_query_indices
@@ -59,10 +60,12 @@ def d_table(prod: dict, ref: dict, qids: list) -> served.ServedTable:
     return served.ServedTable({q: i for i, q in enumerate(qids)}, scores)
 
 
-def tables(pairs, rows, reference_rows):
+def tables(
+    pairs: StudyPairs, rows: list[Completion], reference_rows: list[Completion]
+) -> tuple[served.ServedTables, list[served.ServedTable], served.ServedTable, dict]:
     """(s, d) tables for the calibration pairs, the pool and every condition."""
 
-    def groups(rs):
+    def groups(rs: list[Completion]) -> dict[str, list[Completion]]:
         return _groups(rs, (0, 1, 2, 3))
 
     healthy = groups(pairs.healthy)
@@ -82,10 +85,11 @@ def tables(pairs, rows, reference_rows):
     return t, calib_d, pool_d, cond_d
 
 
-def spot(g: float):
+def spot(g: float) -> Callable[[served.ServedTable], np.ndarray]:
+    """The spot-check mask of a table: a question is checked iff its hash falls under g."""
     cache = {}
 
-    def mask(table):
+    def mask(table: served.ServedTable) -> np.ndarray:
         if id(table) not in cache:
             m = np.zeros(len(table.index), dtype=bool)
             for q, i in table.index.items():
@@ -96,7 +100,12 @@ def spot(g: float):
     return mask
 
 
-def window(s_tabs, d_tabs, rows, mask):
+def window(
+    s_tabs: list[served.ServedTable],
+    d_tabs: list[served.ServedTable],
+    rows: list[np.ndarray],
+    mask: Callable[[served.ServedTable], np.ndarray],
+) -> tuple[float, float]:
     """(mean s, h) for one window drawn from the given tables."""
     n = sum(len(r) for r in rows)
     s_mean = sum(t.score[r].sum() for t, r in zip(s_tabs, rows, strict=True)) / n
@@ -108,7 +117,16 @@ def window(s_tabs, d_tabs, rows, mask):
     return s_mean, 2 * s_mean + (num / den if den else 0.0)
 
 
-def run(g: float, pairs, t, calib_d, pool_d, cond_d, runs):
+def run(
+    g: float,
+    pairs: StudyPairs,
+    t: served.ServedTables,
+    calib_d: list[served.ServedTable],
+    pool_d: served.ServedTable,
+    cond_d: dict[str, served.ServedTable],
+    runs: list[ReplayRun],
+) -> dict:
+    """Calibrate the hybrid and h-alone thresholds at spot fraction g, then replay."""
     mask = spot(g)
     picks = bootstrap_query_indices(list(pairs.calib), S.bootstrap_windows, S.calibration_seed)
     ids = [q.query_id for q in pairs.calib]
@@ -182,7 +200,7 @@ def main() -> None:
             res.pop("h_alone")
         result["by_fraction"][str(g)] = res
         for label, v in res.items():
-            print(
+            print(  # noqa: T201
                 STUDY,
                 g,
                 label,
@@ -191,7 +209,7 @@ def main() -> None:
             )
     path = ROOT / "results" / "hybrid.json"
     path.write_text(json.dumps(result, indent=2, default=float) + "\n")
-    print(f"-> {path}")
+    print(f"-> {path}")  # noqa: T201
 
 
 main()
