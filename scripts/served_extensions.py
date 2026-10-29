@@ -1,5 +1,4 @@
-"""Usage: uv run python scripts/served_extensions.py X STUDY  (chat with DRIFTWATCH_STUDY=chat
-and DRIFTWATCH_DATA_DIR=data/chat).
+"""Usage: uv run python scripts/served_extensions.py X STUDY  (chat with DRIFTWATCH_STUDY=chat and DRIFTWATCH_DATA_DIR=data/chat).
 
 The served-answer test's four follow-ups, as pre-registered in
 config/served_extensions.yaml. X is x1, x2, x3 or x4; x3 runs on the local study
@@ -17,12 +16,15 @@ plan (r = 0), and writes data/<study>/results/served_<x>.json.
 import json
 import sys
 import zlib
+from collections.abc import Callable
+from typing import Any
 
 import numpy as np
 
 import evaluate.served as served
 from cli import _paired_inputs
-from evaluate.paired import _groups, summarise
+from corpus.schemas import Completion
+from evaluate.paired import StudyPairs, _groups, summarise
 from evaluate.pipeline import DEFAULT_MIN_PREFIX, DEFAULT_REPLAY_WINDOWS, replay_runs
 from provider.collect import read_completions
 from settings import DATA_DIR, get_settings, load_api_study
@@ -35,7 +37,7 @@ KERNEL = "served_hamming"
 S = get_settings()
 
 
-def inputs():
+def inputs() -> tuple[StudyPairs, list[Completion], list[Completion], list]:
     """The study's `rounds` pairs, its rows, its reference rows and the primary runs."""
     pairs = _paired_inputs(STUDY, "rounds")
     rows = read_completions(ROOT / "completions.parquet")
@@ -47,18 +49,20 @@ def inputs():
     return pairs, rows, reference_rows, runs
 
 
-def write(name, out):
+def write(name: str, out: dict[str, Any]) -> None:
+    """Write one follow-up's results to <study>/results/served_<name>.json."""
     path = ROOT / "results" / f"served_{name}.json"
     path.write_text(json.dumps(out, indent=2, default=float) + "\n")
-    print(f"-> {path}")
+    print(f"-> {path}")  # noqa: T201
 
 
-def hamming_gram(a, b):
+def hamming_gram(a: np.ndarray, b: np.ndarray) -> np.ndarray:
     """Share of equal characters between every answer of `a` and every answer of `b`."""
     return (a[:, None, :] == b[None, :, :]).mean(axis=2)
 
 
-def x1():
+def x1() -> None:
+    """X1: the served score's decomposition into half MMD^2 and half the self-similarity drop."""
     pairs, rows, reference_rows, _ = inputs()
     r = _groups([c for c in reference_rows if c.condition == "R"], (0, 1, 2, 3))
     f7 = _groups([c for c in rows if c.condition == "F7"], (0, 1, 2, 3))
@@ -93,14 +97,16 @@ def x1():
             "predicted": float((t[:, 1] + t[:, 2]).mean() / 2),
             "mmd2": float(t[:, 1].mean()),
         }
-        print(cond, {k: round(v, 5) if isinstance(v, float) else v for k, v in out[cond].items()})
+        print(cond, {k: round(v, 5) if isinstance(v, float) else v for k, v in out[cond].items()})  # noqa: T201
     write("x1", {"study": STUDY, "kernel": KERNEL, "conditions": out})
 
 
-def masked_window_score(mask):
+def masked_window_score(
+    mask: Callable[[served.ServedTable], np.ndarray],
+) -> Callable[[list[served.ServedTable], list[np.ndarray]], float]:
     """A window_score over only the monitored questions of each table."""
 
-    def score(tables, rows):
+    def score(tables: list[served.ServedTable], rows: list[np.ndarray]) -> float:
         total = n = 0
         for t, r in zip(tables, rows, strict=True):
             m = mask(t)[r]
@@ -111,7 +117,8 @@ def masked_window_score(mask):
     return score
 
 
-def x2():
+def x2() -> None:
+    """X2: cost against power, k reference answers on a share f of the questions."""
     pairs, rows, reference_rows, runs = inputs()
     out = []
     for k in PLAN["x2"]["reference_answers"]:
@@ -120,7 +127,7 @@ def x2():
         for f in PLAN["x2"]["fractions"]:
             cache = {}
 
-            def mask(table, f=f, cache=cache):
+            def mask(table: served.ServedTable, f: float = f, cache: dict = cache) -> np.ndarray:
                 key = id(table)
                 if key not in cache:
                     m = np.zeros(len(table.index), dtype=bool)
@@ -154,7 +161,7 @@ def x2():
                 },
             }
             out.append(row)
-            print(
+            print(  # noqa: T201
                 k,
                 f,
                 f"fa {100 * summary['pre_onset']['rate']:.3f}%",
@@ -163,7 +170,8 @@ def x2():
     write("x2", {"study": STUDY, "kernel": KERNEL, "grid": out})
 
 
-def x3():
+def x3() -> None:
+    """X3: slow faults, the served score under partial and gradual doses, with sequential tests."""
     from evaluate.gradual import _STREAM, N_WINDOWS, ONSET_MAX, ONSET_MIN, SCHEDULES
     from evaluate.replay import ReplayRun, _ReplayPlan
     from evaluate.sequential import calibrate_sequential, detector_alarms, summarise_detector
@@ -262,7 +270,7 @@ def x3():
                     **summarise_detector(matrix, onsets),
                 }
                 out["rows"].append(row)
-                print(
+                print(  # noqa: T201
                     cond,
                     schedule.name,
                     det,
@@ -272,7 +280,8 @@ def x3():
     write("x3", out)
 
 
-def x4():
+def x4() -> None:
+    """X4: the graded triage check on every served-test alarm."""
     from corpus.build import read_queries
     from evaluate.triage import run_triage
 
@@ -291,7 +300,7 @@ def x4():
     ]
     out = run_triage(read_queries(ROOT / "queries.jsonl"), rows, recs)
     for cond, v in out["conditions"].items():
-        print(
+        print(  # noqa: T201
             cond,
             v["alarmed"],
             f"acc {100 * v['accuracy_change']:+.1f}",
