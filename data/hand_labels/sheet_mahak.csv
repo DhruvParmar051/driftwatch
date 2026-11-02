@@ -4,7 +4,7 @@ contain the answer, reply exactly: unanswerable
 
 Passage: In the late 17th century, Robert Boyle proved that air is necessary for combustion. English chemist John Mayow (1641–1679) refined this work by showing that fire requires only a part of air that he called spiritus nitroaereus or just nitroaereus. In one experiment he found that placing either a mouse or a lit candle in a closed container over water caused the water to rise and replace one-fourteenth of the air's volume before extinguishing the subjects. From this he surmised that nitroaereus is consumed in both respiration and combustion.
 
-Question: What years was chemist John Boyle alive?",unanswerable,unanswerable,,
+Question: What years was chemist John Boyle alive?",unanswerable,unanswerable,1,
 HL045,gsm8k,"Solve this problem. Show your reasoning, then give the final numeric
 answer on its own last line.
 
@@ -32,12 +32,12 @@ Let's interpret ""weekly minutes"" as the total time spent in the mandatory extr
 
 **3. Calculate the total weekly learning time in minutes:**
 *   Total weekly learning time = Time in extra classes + Extra learning time on weekends
-*   ",,
+*   ",?,
 HL119,banking77,"Classify this customer message into exactly one of the intent labels
 listed. Reply with the label only, copied exactly as written.
 
 
-Message: I think my statement has a fraudulent charge",card_payment_not_recognised,Refund_not_showing_up,,
+Message: I think my statement has a fraudulent charge",card_payment_not_recognised,Refund_not_showing_up,0,
 HL040,gsm8k,"Solve this problem. Show your reasoning, then give the final numeric
 answer on its own last line.
 
@@ -75,20 +75,20 @@ The amount to be paid in the twelfth month is the total amount owed minus the am
 **Answer:**
 The amount Stephen will pay in the twelfth month is $\$31$.
 
-31",,
+31",1,
 HL102,banking77,"Classify this customer message into exactly one of the intent labels
 listed. Reply with the label only, copied exactly as written.
 
 
-Message: I withdrew money but the full amount wasn't dispensed.",wrong_amount_of_cash_received,wrong_amount_of_cash_received,,
+Message: I withdrew money but the full amount wasn't dispensed.",wrong_amount_of_cash_received,wrong_amount_of_cash_received,1,
 HL083,triviaqa,"Answer the following question with the shortest correct answer.
 
-Which of the actors who portrayed Dr Who, famous from the UK TV series of the same name, appeared almost exclusively on radio, film, written works, and comic strips?",Paul McGann,William Hartnell,,
+Which of the actors who portrayed Dr Who, famous from the UK TV series of the same name, appeared almost exclusively on radio, film, written works, and comic strips?",Paul McGann,William Hartnell,0,
 HL108,banking77,"Classify this customer message into exactly one of the intent labels
 listed. Reply with the label only, copied exactly as written.
 
 
-Message: got married and need to change name",edit_personal_details,edit_personal_details,,
+Message: got married and need to change name",edit_personal_details,edit_personal_details,1,
 HL088,gsm8k,"Solve this problem. Show your reasoning, then give the final numeric
 answer on its own last line.
 
@@ -109,47 +109,47 @@ John decides to build a program capable of identifying cancer cells.  He gets in
 *   Total cost = Cost of first period + Cost of second period
 *   Total cost = $\$100,000 + \$1,350,000 = \$1,450,000$.
 
-$1,450,000",,
+$1,450,000",1,
 HL094,squad2,"Answer the question using only the passage below. If the passage does not
 contain the answer, reply exactly: unanswerable
 
 Passage: If a problem X is in C and hard for C, then X is said to be complete for C. This means that X is the hardest problem in C. (Since many problems could be equally hard, one might say that X is one of the hardest problems in C.) Thus the class of NP-complete problems contains the most difficult problems in NP, in the sense that they are the ones most likely not to be in P. Because the problem P = NP is not solved, being able to reduce a known NP-complete problem, Π2, to another problem, Π1, would indicate that there is no known polynomial-time solution for Π1. This is because a polynomial-time solution to Π1 would yield a polynomial-time solution to Π2. Similarly, because all NP problems can be reduced to the set, finding an NP-complete problem that can be solved in polynomial time would mean that P = NP.
 
-Question: NP complete problems contain the lowest likelihood of being located in what problem class?",NP,P,,
+Question: NP complete problems contain the lowest likelihood of being located in what problem class?",NP,P,0,
 HL042,triviaqa,"Answer the following question with the shortest correct answer.
 
-What was the nickname given to premiership footballer Neil Ruddock?",Razor,The Lion.,,
+What was the nickname given to premiership footballer Neil Ruddock?",Razor,The Lion.,0,
 HL105,squad2,"Answer the question using only the passage below. If the passage does not
 contain the answer, reply exactly: unanswerable
 
 Passage: The concept of inertia can be further generalized to explain the tendency of objects to continue in many different forms of constant motion, even those that are not strictly constant velocity. The rotational inertia of planet Earth is what fixes the constancy of the length of a day and the length of a year. Albert Einstein extended the principle of inertia further when he explained that reference frames subject to constant acceleration, such as those free-falling toward a gravitating object, were physically equivalent to inertial reference frames. This is why, for example, astronauts experience weightlessness when in free-fall orbit around the Earth, and why Newton's Laws of Motion are more easily discernible in such environments. If an astronaut places an object with mass in mid-air next to himself, it will remain stationary with respect to the astronaut due to its inertia. This is the same thing that would occur if the astronaut and the object were in intergalactic space with no net force of gravity acting on their shared reference frame. This principle of equivalence was one of the foundational underpinnings for the development of the general theory of relativity.
 
-Question: Who explained that reference frames subject to constant deceleration?",unanswerable,"Albert Einstein extended the principle of inertia further when he explained that reference frames subject to constant acceleration, such as those free-falling toward a gravitating object, were physically equivalent to inertial reference frames.",,
+Question: Who explained that reference frames subject to constant deceleration?",unanswerable,"Albert Einstein extended the principle of inertia further when he explained that reference frames subject to constant acceleration, such as those free-falling toward a gravitating object, were physically equivalent to inertial reference frames.",0,
 HL092,squad2,"Answer the question using only the passage below. If the passage does not
 contain the answer, reply exactly: unanswerable
 
 Passage: As in the House of Commons, a number of qualifications apply to being an MSP. Such qualifications were introduced under the House of Commons Disqualification Act 1975 and the British Nationality Act 1981. Specifically, members must be over the age of 18 and must be a citizen of the United Kingdom, the Republic of Ireland, one of the countries in the Commonwealth of Nations, a citizen of a British overseas territory, or a European Union citizen resident in the UK. Members of the police and the armed forces are disqualified from sitting in the Scottish Parliament as elected MSPs, and similarly, civil servants and members of foreign legislatures are disqualified. An individual may not sit in the Scottish Parliament if he or she is judged to be insane under the terms of the Mental Health (Care and Treatment) (Scotland) Act 2003.
 
-Question: Which job requires that member be under 18?",unanswerable,unanswerable,,
+Question: Which job requires that member be under 18?",unanswerable,unanswerable,1,
 HL043,squad2,"Answer the question using only the passage below. If the passage does not
 contain the answer, reply exactly: unanswerable
 
 Passage: Dendritic cells (DC) are phagocytes in tissues that are in contact with the external environment; therefore, they are located mainly in the skin, nose, lungs, stomach, and intestines. They are named for their resemblance to neuronal dendrites, as both have many spine-like projections, but dendritic cells are in no way connected to the nervous system. Dendritic cells serve as a link between the bodily tissues and the innate and adaptive immune systems, as they present antigens to T cells, one of the key cell types of the adaptive immune system.
 
-Question: Dendritic cells are named that because they resemble what?",neuronal dendrites,Dendritic cells are named for their resemblance to neuronal dendrites.,,
+Question: Dendritic cells are named that because they resemble what?",neuronal dendrites,Dendritic cells are named for their resemblance to neuronal dendrites.,1,
 HL111,banking77,"Classify this customer message into exactly one of the intent labels
 listed. Reply with the label only, copied exactly as written.
 
 
-Message: I transferred the wrong amount and would like to cancel the transaction.",cancel_transfer,cancel_transfer,,
+Message: I transferred the wrong amount and would like to cancel the transaction.",cancel_transfer,cancel_transfer,1,
 HL046,triviaqa,"Answer the following question with the shortest correct answer.
 
-Which is the fourth largest of the Balearic Islands?",FORMENTERA,Menorca,,
+Which is the fourth largest of the Balearic Islands?",FORMENTERA,Menorca,0,
 HL080,banking77,"Classify this customer message into exactly one of the intent labels
 listed. Reply with the label only, copied exactly as written.
 
 
-Message: Why am I required to verify my identity?",why_verify_identity,why_verify_identity,,
+Message: Why am I required to verify my identity?",why_verify_identity,why_verify_identity,1,
 HL084,gsm8k,"Solve this problem. Show your reasoning, then give the final numeric
 answer on its own last line.
 
@@ -174,16 +174,16 @@ $4 \text{ hours} \times 3,600 \text{ seconds/hour} = 14,400 \text{ seconds}$.
 Multiply the total rate by the total time:
 $5 \text{ jellyfish/second} \times 14,400 \text{ seconds} = 72,000 \text{ jellyfish}$.
 
-72000",,
+72000",1,
 HL049,squad2,"Answer the question using only the passage below. If the passage does not
 contain the answer, reply exactly: unanswerable
 
 Passage: Other evidence of the Walloons and Huguenots in Canterbury includes a block of houses in Turnagain Lane, where weavers' windows survive on the top floor, as many Huguenots worked as weavers. The Weavers, a half-timbered house by the river, was the site of a weaving school from the late 16th century to about 1830. (It has been adapted as a restaurant—see illustration above. The house derives its name from a weaving school which was moved there in the last years of the 19th century, reviving an earlier use.) Others refugees practised the variety of occupations necessary to sustain the community as distinct from the indigenous population. Such economic separation was the condition of the refugees' initial acceptance in the City. They also settled elsewhere in Kent, particularly Sandwich, Faversham and Maidstone—towns in which there used to be refugee churches.
 
-Question: In which English town did the most Walloons live?",unanswerable,unanswerable,,
+Question: In which English town did the most Walloons live?",unanswerable,unanswerable,1,
 HL085,triviaqa,"Answer the following question with the shortest correct answer.
 
-Singer Dan Reynolds is the frontman for which US rock band?",Imagine Dragons,The Lumineers,,
+Singer Dan Reynolds is the frontman for which US rock band?",Imagine Dragons,The Lumineers,0,
 HL103,gsm8k,"Solve this problem. Show your reasoning, then give the final numeric
 answer on its own last line.
 
@@ -206,13 +206,13 @@ Adam wants to eat some sliced apples. A large apple can be sliced into 5 pieces,
     Remaining slices = Total slices - Slices eaten
     $30 - 15 = 15$ slices.
 
-15",,
+15",1,
 HL097,squad2,"Answer the question using only the passage below. If the passage does not
 contain the answer, reply exactly: unanswerable
 
 Passage: LeGrande writes that ""the formulation of a single all-encompassing definition of the term is extremely difficult, if not impossible. In reviewing the voluminous literature on the subject, the student of civil disobedience rapidly finds himself surrounded by a maze of semantical problems and grammatical niceties. Like Alice in Wonderland, he often finds that specific terminology has no more (or no less) meaning than the individual orator intends it to have."" He encourages a distinction between lawful protest demonstration, nonviolent civil disobedience, and violent civil disobedience.
 
-Question: How much has been written about the subject of grammar?",unanswerable,"In reviewing the voluminous literature on the subject, the student of civil disobedience rapidly finds himself surrounded by a maze of semantical problems and grammatical niceties.",,
+Question: How much has been written about the subject of grammar?",unanswerable,"In reviewing the voluminous literature on the subject, the student of civil disobedience rapidly finds himself surrounded by a maze of semantical problems and grammatical niceties.",0,
 HL086,gsm8k,"Solve this problem. Show your reasoning, then give the final numeric
 answer on its own last line.
 
@@ -243,24 +243,24 @@ Madeline ate 6 grapes. Her brother wanted to make grape juice and used up 5 time
 *   Start with 84 grapes.
 *   Madeline eats 6: $84 - 6 = 78$.
 *   Brother uses 5 times Madeline's amount ($5 \times 6 = 30$): $78 - 30 = 48$. (These are the remaining grapes.)
-*   ",,
+*   ",1,
 HL107,banking77,"Classify this customer message into exactly one of the intent labels
 listed. Reply with the label only, copied exactly as written.
 
 
-Message: Why was a charged a fee for using the card?",card_payment_fee_charged,card_payment_fee_charged,,
+Message: Why was a charged a fee for using the card?",card_payment_fee_charged,card_payment_fee_charged,1,
 HL087,triviaqa,"Answer the following question with the shortest correct answer.
 
-The voice of Bugs Bunny, Daffy Duck, Porky Pig, Sylvester the Cat, Tweety Bird, Foghorn Leghorn, Yosemite Sam, Wile E. Coyote, Woody Woodpecker, Barney Rubble, Mr. Spacely, Speed Buggy, Captain Caveman, Heathcliff, Speedy Gonzales, Elmer Fudd and hundreds of others, which American voice actor was born on May 30, 1908?",Mel Blanc,Mel Blanc,,
+The voice of Bugs Bunny, Daffy Duck, Porky Pig, Sylvester the Cat, Tweety Bird, Foghorn Leghorn, Yosemite Sam, Wile E. Coyote, Woody Woodpecker, Barney Rubble, Mr. Spacely, Speed Buggy, Captain Caveman, Heathcliff, Speedy Gonzales, Elmer Fudd and hundreds of others, which American voice actor was born on May 30, 1908?",Mel Blanc,Mel Blanc,1,
 HL101,triviaqa,"Answer the following question with the shortest correct answer.
 
-Name Google's service launched in 2009 from which support was withdrawn in 2010, which offered 'next-generation email', messaging and twitter-style micro-blogging?",Wave,Google+,,
+Name Google's service launched in 2009 from which support was withdrawn in 2010, which offered 'next-generation email', messaging and twitter-style micro-blogging?",Wave,Google+,0,
 HL047,squad2,"Answer the question using only the passage below. If the passage does not
 contain the answer, reply exactly: unanswerable
 
 Passage: AppleTalk was a proprietary suite of networking protocols developed by Apple Inc. in 1985 for Apple Macintosh computers. It was the primary protocol used by Apple devices through the 1980s and 90s. AppleTalk included features that allowed local area networks to be established ad hoc without the requirement for a centralized router or server. The AppleTalk system automatically assigned addresses, updated the distributed namespace, and configured any required inter-network routing. It was a plug-n-play system.
 
-Question: What was Apple Talk",a proprietary suite of networking protocols developed by Apple Inc. in 1985,AppleTalk was a proprietary suite of networking protocols developed by Apple Inc. in 1985 for Apple Macintosh computers.,,
+Question: What was Apple Talk",a proprietary suite of networking protocols developed by Apple Inc. in 1985,AppleTalk was a proprietary suite of networking protocols developed by Apple Inc. in 1985 for Apple Macintosh computers.,1,
 HL106,gsm8k,"Solve this problem. Show your reasoning, then give the final numeric
 answer on its own last line.
 
@@ -280,12 +280,12 @@ Three friends: Mike, Jim, and Tony decided to play a game. After 3 rounds Mike h
 *   **Mike:** 21 points is $> 20$, so Mike gets 1 extra point. $21 + 1 = 22$.
 *   **Jim:** 18 points is not $> 20$, so Jim stays at 18.
 *   **Tony:** (Assuming 2 times as many for standard math problem logic) $21 \times 2 = 42$. Since $42 > 20$, Tony gets 1 extra point. $42 + 1 = 43$.
-    *(If using the literal ""2 times",,
+    *(If using the literal ""2 times",1,
 HL093,banking77,"Classify this customer message into exactly one of the intent labels
 listed. Reply with the label only, copied exactly as written.
 
 
-Message: how much can i top up?",top_up_limits,top_up_limits,,
+Message: how much can i top up?",top_up_limits,top_up_limits,1,
 HL099,gsm8k,"Solve this problem. Show your reasoning, then give the final numeric
 answer on its own last line.
 
@@ -303,17 +303,17 @@ Molly is catering a birthday party for her sister and invited 16 people. 10 peop
     Add the cost of the chicken salad and the pasta salad.
     $\$65.00 + \$36.00 = \$101.00$
 
-$101.00",,
+$101.00",1,
 HL112,banking77,"Classify this customer message into exactly one of the intent labels
 listed. Reply with the label only, copied exactly as written.
 
 
-Message: Is there any way to Auto top-up?",automatic_top_up,automatic_top_up,,
+Message: Is there any way to Auto top-up?",automatic_top_up,automatic_top_up,1,
 HL048,banking77,"Classify this customer message into exactly one of the intent labels
 listed. Reply with the label only, copied exactly as written.
 
 
-Message: My transfer to beneficiary didn't go through",beneficiary_not_allowed,failed_transfer,,
+Message: My transfer to beneficiary didn't go through",beneficiary_not_allowed,failed_transfer,0,
 HL089,gsm8k,"Solve this problem. Show your reasoning, then give the final numeric
 answer on its own last line.
 
@@ -341,7 +341,7 @@ Votes for C = Total voters - (Votes for A + Votes for B)
 Votes for C = $100 - 50 = 50$ votes.
 
 Final numeric answer:
-50",,
+50",1,
 HL117,gsm8k,"Solve this problem. Show your reasoning, then give the final numeric
 answer on its own last line.
 
@@ -371,13 +371,13 @@ The problem states that by not buying the super ticket (choosing the regular opt
 
 The regular price of the popcorn is $4.
 
-4",,
+4",1,
 HL044,squad2,"Answer the question using only the passage below. If the passage does not
 contain the answer, reply exactly: unanswerable
 
 Passage: Gamma delta T cells (γδ T cells) possess an alternative T cell receptor (TCR) as opposed to CD4+ and CD8+ (αβ) T cells and share the characteristics of helper T cells, cytotoxic T cells and NK cells. The conditions that produce responses from γδ T cells are not fully understood. Like other 'unconventional' T cell subsets bearing invariant TCRs, such as CD1d-restricted Natural Killer T cells, γδ T cells straddle the border between innate and adaptive immunity. On one hand, γδ T cells are a component of adaptive immunity as they rearrange TCR genes to produce receptor diversity and can also develop a memory phenotype. On the other hand, the various subsets are also part of the innate immune system, as restricted TCR or NK receptors may be used as pattern recognition receptors. For example, large numbers of human Vγ9/Vδ2 T cells respond within hours to common molecules produced by microbes, and highly restricted Vδ1+ T cells in epithelia respond to stressed epithelial cells.
 
-Question: What responds in small numbers to common molecules produced by microbes?",unanswerable,unanswerable,,
+Question: What responds in small numbers to common molecules produced by microbes?",unanswerable,unanswerable,1,
 HL091,gsm8k,"Solve this problem. Show your reasoning, then give the final numeric
 answer on its own last line.
 
@@ -404,23 +404,23 @@ Mary is an avid gardener. Yesterday, she received 18 new potted plants from her 
     Total remaining plants = $40 + 18 = 58$ plants.
 
 Final numeric answer:
-58",,
+58",1,
 HL096,banking77,"Classify this customer message into exactly one of the intent labels
 listed. Reply with the label only, copied exactly as written.
 
 
-Message: how come my transfer didn't work",failed_transfer,failed_transfer,,
+Message: how come my transfer didn't work",failed_transfer,failed_transfer,1,
 HL090,triviaqa,"Answer the following question with the shortest correct answer.
 
-Mary Mallon was effectively imprisoned for life in New York for being an irresponsible immune carrier of what disease?",Typhoid,Typhoid fever,,
+Mary Mallon was effectively imprisoned for life in New York for being an irresponsible immune carrier of what disease?",Typhoid,Typhoid fever,1,
 HL041,banking77,"Classify this customer message into exactly one of the intent labels
 listed. Reply with the label only, copied exactly as written.
 
 
-Message: Do you support any currency?",fiat_currency_support,supported_cards_and_currencies,,
+Message: Do you support any currency?",fiat_currency_support,supported_cards_and_currencies,0,
 HL113,triviaqa,"Answer the following question with the shortest correct answer.
 
-Who hosts the TV quiz show 'Cleverdicks'?",Ann Widdecombe,The show is hosted by Dave.,,
+Who hosts the TV quiz show 'Cleverdicks'?",Ann Widdecombe,The show is hosted by Dave.,0,
 HL116,squad2,"Answer the question using only the passage below. If the passage does not
 contain the answer, reply exactly: unanswerable
 
@@ -428,13 +428,13 @@ Passage: The other major method of producing O
 2 gas involves passing a stream of clean, dry air through one bed of a pair of identical zeolite molecular sieves, which absorbs the nitrogen and delivers a gas stream that is 90% to 93% O
 2. Simultaneously, nitrogen gas is released from the other nitrogen-saturated zeolite bed, by reducing the chamber operating pressure and diverting part of the oxygen gas from the producer bed through it, in the reverse direction of flow. After a set cycle time the operation of the two beds is interchanged, thereby allowing for a continuous supply of gaseous oxygen to be pumped through a pipeline. This is known as pressure swing adsorption. Oxygen gas is increasingly obtained by these non-cryogenic technologies (see also the related vacuum swing adsorption).
 
-Question: How much is the sieve method of gas production used?",major method,unanswerable,,
+Question: How much is the sieve method of gas production used?",major method,unanswerable,0,
 HL100,squad2,"Answer the question using only the passage below. If the passage does not
 contain the answer, reply exactly: unanswerable
 
 Passage: Through stream capture, the Rhine extended its watershed southward. By the Pliocene period, the Rhine had captured streams down to the Vosges Mountains, including the Mosel, the Main and the Neckar. The northern Alps were then drained by the Rhone. By the early Pleistocene period, the Rhine had captured most of its current Alpine watershed from the Rhône, including the Aar. Since that time, the Rhine has added the watershed above Lake Constance (Vorderrhein, Hinterrhein, Alpenrhein; captured from the Rhône), the upper reaches of the Main, beyond Schweinfurt and the Vosges Mountains, captured from the Meuse, to its watershed.
 
-Question: What were the northern Alps flooded by?",unanswerable,The northern Alps were then drained by the Rhone.,,
+Question: What were the northern Alps flooded by?",unanswerable,The northern Alps were then drained by the Rhone.,0,
 HL115,gsm8k,"Solve this problem. Show your reasoning, then give the final numeric
 answer on its own last line.
 
@@ -483,10 +483,10 @@ Total legs: $10 + 60 = 70$ legs. (This matches the given information.)
 
 The number of chickens is 5.
 
-5",,
+5",1,
 HL081,triviaqa,"Answer the following question with the shortest correct answer.
 
-Which 1976 Nobel laureate popularised Monetarist theory?",Milton Friedman,Milton Friedman,,
+Which 1976 Nobel laureate popularised Monetarist theory?",Milton Friedman,Milton Friedman,1,
 HL110,gsm8k,"Solve this problem. Show your reasoning, then give the final numeric
 answer on its own last line.
 
@@ -512,29 +512,29 @@ Cedar Falls Middle School has students in grades 4 – 7 and each year they are 
 To express this in hours and minutes:
 *   $225 \text{ minutes} = 3 \text{ hours and } 45 \text{ minutes}$.
 
-225 minutes",,
+225 minutes",1,
 HL098,squad2,"Answer the question using only the passage below. If the passage does not
 contain the answer, reply exactly: unanswerable
 
 Passage: These attacks resonated with conservative Muslims and the problem did not go away with Saddam's defeat either, since American troops remained stationed in the kingdom, and a de facto cooperation with the Palestinian-Israeli peace process developed. Saudi Arabia attempted to compensate for its loss of prestige among these groups by repressing those domestic Islamists who attacked it (bin Laden being a prime example), and increasing aid to Islamic groups (Islamist madrassas around the world and even aiding some violent Islamist groups) that did not, but its pre-war influence on behalf of moderation was greatly reduced. One result of this was a campaign of attacks on government officials and tourists in Egypt, a bloody civil war in Algeria and Osama bin Laden's terror attacks climaxing in the 9/11 attack.
 
-Question: Who did the attacks resonate most with?",conservative Muslims,conservative Muslims,,
+Question: Who did the attacks resonate most with?",conservative Muslims,conservative Muslims,1,
 HL095,banking77,"Classify this customer message into exactly one of the intent labels
 listed. Reply with the label only, copied exactly as written.
 
 
-Message: I accidentally made a transaction to the wrong account.",cancel_transfer,cancel_transfer,,
+Message: I accidentally made a transaction to the wrong account.",cancel_transfer,cancel_transfer,1,
 HL104,banking77,"Classify this customer message into exactly one of the intent labels
 listed. Reply with the label only, copied exactly as written.
 
 
-Message: I just have one other card from the US. Is that okay?",supported_cards_and_currencies,supported_cards_and_currencies,,
+Message: I just have one other card from the US. Is that okay?",supported_cards_and_currencies,supported_cards_and_currencies,1,
 HL114,squad2,"Answer the question using only the passage below. If the passage does not
 contain the answer, reply exactly: unanswerable
 
 Passage: The biodiversity of plant species is the highest on Earth with one 2001 study finding a quarter square kilometer (62 acres) of Ecuadorian rainforest supports more than 1,100 tree species. A study in 1999 found one square kilometer (247 acres) of Amazon rainforest can contain about 90,790 tonnes of living plants. The average plant biomass is estimated at 356 ± 47 tonnes per hectare. To date, an estimated 438,000 species of plants of economic and social interest have been registered in the region with many more remaining to be discovered or catalogued. The total number of tree species in the region is estimated at 16,000.
 
-Question: What is the average plant biosmass?",356 ± 47 tonnes per hectare,The average plant biomass is estimated at 356 ± 47 tonnes per hectare.,,
+Question: What is the average plant biosmass?",356 ± 47 tonnes per hectare,The average plant biomass is estimated at 356 ± 47 tonnes per hectare.,1,
 HL082,gsm8k,"Solve this problem. Show your reasoning, then give the final numeric
 answer on its own last line.
 
@@ -548,10 +548,10 @@ Great Grandma Jones has three children.  And each of her children has three chil
 
 The question specifically asks how many **great grand-babies** will be there.
 
-27",,
+27",1,
 HL109,squad2,"Answer the question using only the passage below. If the passage does not
 contain the answer, reply exactly: unanswerable
 
 Passage: Deforestation is the conversion of forested areas to non-forested areas. The main sources of deforestation in the Amazon are human settlement and development of the land. Prior to the early 1960s, access to the forest's interior was highly restricted, and the forest remained basically intact. Farms established during the 1960s were based on crop cultivation and the slash and burn method. However, the colonists were unable to manage their fields and the crops because of the loss of soil fertility and weed invasion. The soils in the Amazon are productive for just a short period of time, so farmers are constantly moving to new areas and clearing more land. These farming practices led to deforestation and caused extensive environmental damage. Deforestation is considerable, and areas cleared of forest are visible to the naked eye from outer space.
 
-Question: What is notable about the Amazon forest when it is seen from space?",areas cleared of forest are visible to the naked eye,areas cleared of forest are visible to the naked eye from outer space.,,
+Question: What is notable about the Amazon forest when it is seen from space?",areas cleared of forest are visible to the naked eye,areas cleared of forest are visible to the naked eye from outer space.,1,
