@@ -4,10 +4,10 @@ contain the answer, reply exactly: unanswerable
 
 Passage: AppleTalk was a proprietary suite of networking protocols developed by Apple Inc. in 1985 for Apple Macintosh computers. It was the primary protocol used by Apple devices through the 1980s and 90s. AppleTalk included features that allowed local area networks to be established ad hoc without the requirement for a centralized router or server. The AppleTalk system automatically assigned addresses, updated the distributed namespace, and configured any required inter-network routing. It was a plug-n-play system.
 
-Question: What was Apple Talk",a proprietary suite of networking protocols developed by Apple Inc. in 1985,AppleTalk was a proprietary suite of networking protocols developed by Apple Inc. in 1985 for Apple Macintosh computers.,,
+Question: What was Apple Talk",a proprietary suite of networking protocols developed by Apple Inc. in 1985,AppleTalk was a proprietary suite of networking protocols developed by Apple Inc. in 1985 for Apple Macintosh computers.,1,
 HL046,triviaqa,"Answer the following question with the shortest correct answer.
 
-Which is the fourth largest of the Balearic Islands?",FORMENTERA,Menorca,,
+Which is the fourth largest of the Balearic Islands?",FORMENTERA,Menorca,0,
 HL001,gsm8k,"Solve this problem. Show your reasoning, then give the final numeric
 answer on its own last line.
 
@@ -44,41 +44,41 @@ Sandra must have ordered 160 red roses.
 **Answer:**
 The number of red roses Fred must deliver is 160.
 
-160",,
+160",1,
 HL056,banking77,"Classify this customer message into exactly one of the intent labels
 listed. Reply with the label only, copied exactly as written.
 
 
-Message: how much can i top up?",top_up_limits,top_up_limits,,
+Message: how much can i top up?",top_up_limits,top_up_limits,1,
 HL075,banking77,"Classify this customer message into exactly one of the intent labels
 listed. Reply with the label only, copied exactly as written.
 
 
-Message: What kind of currency can I hold money in?",fiat_currency_support,fiat_currency_support,,
+Message: What kind of currency can I hold money in?",fiat_currency_support,fiat_currency_support,1,
 HL076,squad2,"Answer the question using only the passage below. If the passage does not
 contain the answer, reply exactly: unanswerable
 
 Passage: Most early Greeks did not even consider 1 to be a number, so they could not consider it to be a prime. By the Middle Ages and Renaissance many mathematicians included 1 as the first prime number. In the mid-18th century Christian Goldbach listed 1 as the first prime in his famous correspondence with Leonhard Euler -- who did not agree. In the 19th century many mathematicians still considered the number 1 to be a prime. For example, Derrick Norman Lehmer's list of primes up to 10,006,721, reprinted as late as 1956, started with 1 as its first prime. Henri Lebesgue is said to be the last professional mathematician to call 1 prime. By the early 20th century, mathematicians began to accept that 1 is not a prime number, but rather forms its own special category as a ""unit"".
 
-Question: What number did Henri Lebesgue not regard as a true number?",unanswerable,unanswerable,,
+Question: What number did Henri Lebesgue not regard as a true number?",unanswerable,unanswerable,1,
 HL067,triviaqa,"Answer the following question with the shortest correct answer.
 
-Three of the contiguous states of the USA have Pacific coastlines. Washington and California are two. Which is the third?",Oregon,Oregon,,
+Three of the contiguous states of the USA have Pacific coastlines. Washington and California are two. Which is the third?",Oregon,Oregon,1,
 HL049,squad2,"Answer the question using only the passage below. If the passage does not
 contain the answer, reply exactly: unanswerable
 
 Passage: Other evidence of the Walloons and Huguenots in Canterbury includes a block of houses in Turnagain Lane, where weavers' windows survive on the top floor, as many Huguenots worked as weavers. The Weavers, a half-timbered house by the river, was the site of a weaving school from the late 16th century to about 1830. (It has been adapted as a restaurant—see illustration above. The house derives its name from a weaving school which was moved there in the last years of the 19th century, reviving an earlier use.) Others refugees practised the variety of occupations necessary to sustain the community as distinct from the indigenous population. Such economic separation was the condition of the refugees' initial acceptance in the City. They also settled elsewhere in Kent, particularly Sandwich, Faversham and Maidstone—towns in which there used to be refugee churches.
 
-Question: In which English town did the most Walloons live?",unanswerable,unanswerable,,
+Question: In which English town did the most Walloons live?",unanswerable,unanswerable,1,
 HL054,triviaqa,"Answer the following question with the shortest correct answer.
 
-In the middle ages, what were built in Canterbury, York, Lincoln, Salisbury, Lichfield and Winchester?",Cathedrals,Cathedrals,,
+In the middle ages, what were built in Canterbury, York, Lincoln, Salisbury, Lichfield and Winchester?",Cathedrals,Cathedrals,1,
 HL004,squad2,"Answer the question using only the passage below. If the passage does not
 contain the answer, reply exactly: unanswerable
 
 Passage: The crisis had a major impact on international relations and created a rift within NATO. Some European nations and Japan sought to disassociate themselves from United States foreign policy in the Middle East to avoid being targeted by the boycott. Arab oil producers linked any future policy changes to peace between the belligerents. To address this, the Nixon Administration began multilateral negotiations with the combatants. They arranged for Israel to pull back from the Sinai Peninsula and the Golan Heights. By January 18, 1974, US Secretary of State Henry Kissinger had negotiated an Israeli troop withdrawal from parts of the Sinai Peninsula. The promise of a negotiated settlement between Israel and Syria was enough to convince Arab oil producers to lift the embargo in March 1974.
 
-Question: What did Israel and Syria do to avoid being targeted by the boycott?",unanswerable,Israel and Syria linked any future policy changes to peace between the belligerents.,,
+Question: What did Israel and Syria do to avoid being targeted by the boycott?",unanswerable,Israel and Syria linked any future policy changes to peace between the belligerents.,0,
 HL045,gsm8k,"Solve this problem. Show your reasoning, then give the final numeric
 answer on its own last line.
 
@@ -106,13 +106,13 @@ Let's interpret ""weekly minutes"" as the total time spent in the mandatory extr
 
 **3. Calculate the total weekly learning time in minutes:**
 *   Total weekly learning time = Time in extra classes + Extra learning time on weekends
-*   ",,
+*   ",0,
 HL079,squad2,"Answer the question using only the passage below. If the passage does not
 contain the answer, reply exactly: unanswerable
 
 Passage: In November 2006, the Victorian Legislative Council elections were held under a new multi-member proportional representation system. The State of Victoria was divided into eight electorates with each electorate represented by five representatives elected by Single Transferable Vote. The total number of upper house members was reduced from 44 to 40 and their term of office is now the same as the lower house members—four years. Elections for the Victorian Parliament are now fixed and occur in November every four years. Prior to the 2006 election, the Legislative Council consisted of 44 members elected to eight-year terms from 22 two-member electorates.
 
-Question: What is the term of office for each house member?",four years,four years,,
+Question: What is the term of office for each house member?",four years,four years,1,
 HL072,gsm8k,"Solve this problem. Show your reasoning, then give the final numeric
 answer on its own last line.
 
@@ -139,7 +139,7 @@ Bill bakes 300 rolls, 120 chocolate croissants, and 60 baguettes every day. Each
 *   Total length = 100 feet (rolls) + 60 feet (croissants) + 120 feet (baguettes)
 *   Total length = 280 feet
 
-280",,
+280",1,
 HL040,gsm8k,"Solve this problem. Show your reasoning, then give the final numeric
 answer on its own last line.
 
@@ -177,7 +177,7 @@ The amount to be paid in the twelfth month is the total amount owed minus the am
 **Answer:**
 The amount Stephen will pay in the twelfth month is $\$31$.
 
-31",,
+31",1,
 HL073,gsm8k,"Solve this problem. Show your reasoning, then give the final numeric
 answer on its own last line.
 
@@ -206,7 +206,7 @@ Total lack per month = Deficit per week $\times$ Number of weeks in a month
 Total lack per month = $25 \text{ roses/week} \times 4 \text{ weeks/month} = 100$ roses.
 
 **Answer:**
-100",,
+100",1,
 HL071,gsm8k,"Solve this problem. Show your reasoning, then give the final numeric
 answer on its own last line.
 
@@ -220,7 +220,7 @@ Jade bought a new cell phone with an incredible camera, so she spent all week ta
     Jade has a total of 210 photos. To find the number of days, divide the total number of photos by the number of photos uploaded per day.
     $210 \text{ total photos} \div 42 \text{ photos/day} = 5 \text{ days}$
 
-5",,
+5",1,
 HL053,gsm8k,"Solve this problem. Show your reasoning, then give the final numeric
 answer on its own last line.
 
@@ -256,25 +256,25 @@ Snowballs melted = $8 \text{ snowballs/hour} \times 5 \text{ hours} = 40$ snowba
 Total snowballs = $100 - 40 = 60$ snowballs. This confirms the result.
 
 Final numeric answer:
-5",,
+5",1,
 HL068,triviaqa,"Answer the following question with the shortest correct answer.
 
-Which is the largest city in the USA?",New York,New York City,,
+Which is the largest city in the USA?",New York,New York City,1,
 HL003,squad2,"Answer the question using only the passage below. If the passage does not
 contain the answer, reply exactly: unanswerable
 
 Passage: Frederick William, Elector of Brandenburg, invited Huguenots to settle in his realms, and a number of their descendants rose to positions of prominence in Prussia. Several prominent German military, cultural, and political figures were ethnic Huguenot, including poet Theodor Fontane, General Hermann von François, the hero of the First World War Battle of Tannenberg, Luftwaffe General and fighter ace Adolf Galland, Luftwaffe flying ace Hans-Joachim Marseille, and famed U-boat captain Lothar von Arnauld de la Perière. The last Prime Minister of the (East) German Democratic Republic, Lothar de Maizière, is also a descendant of a Huguenot family, as is the German Federal Minister of the Interior, Thomas de Maizière.
 
-Question: Thomas de Maiziere serves what role in the German cabinet?",Federal Minister of the Interior,German Federal Minister of the Interior,,
+Question: Thomas de Maiziere serves what role in the German cabinet?",Federal Minister of the Interior,German Federal Minister of the Interior,1,
 HL005,triviaqa,"Answer the following question with the shortest correct answer.
 
-What main three countries constituted the Axis Powers?","Germany, Japan, Italy","Germany, Italy, and Japan.",,
+What main three countries constituted the Axis Powers?","Germany, Japan, Italy","Germany, Italy, and Japan.",1,
 HL069,squad2,"Answer the question using only the passage below. If the passage does not
 contain the answer, reply exactly: unanswerable
 
 Passage: The next major step occurred when James Watt developed (1763–1775) an improved version of Newcomen's engine, with a separate condenser. Boulton and Watt's early engines used half as much coal as John Smeaton's improved version of Newcomen's. Newcomen's and Watt's early engines were ""atmospheric"". They were powered by air pressure pushing a piston into the partial vacuum generated by condensing steam, instead of the pressure of expanding steam. The engine cylinders had to be large because the only usable force acting on them was due to atmospheric pressure.
 
-Question: In addition to Watt, Boulton, and Smeaton, whose engine was a partial condenser design?",unanswerable,Boulton and Watt's early engines used half as much coal as John Smeaton's improved version of Newcomen's.,,
+Question: In addition to Watt, Boulton, and Smeaton, whose engine was a partial condenser design?",unanswerable,Boulton and Watt's early engines used half as much coal as John Smeaton's improved version of Newcomen's.,0,
 HL057,gsm8k,"Solve this problem. Show your reasoning, then give the final numeric
 answer on its own last line.
 
@@ -302,61 +302,61 @@ Anthony is sending out coupons for his pizza parlor through the mail. He wants t
     Since there are 100 cents in a dollar:
     $24,500 / 100 = \$245$.
 
-245",,
+245",1,
 HL060,banking77,"Classify this customer message into exactly one of the intent labels
 listed. Reply with the label only, copied exactly as written.
 
 
-Message: What do I need to do to transfer my paycheck to my account?",receiving_money,transfer_into_account,,
+Message: What do I need to do to transfer my paycheck to my account?",receiving_money,transfer_into_account,0,
 HL066,triviaqa,"Answer the following question with the shortest correct answer.
 
-What is the capital of the U S state of Pennsylvania?",Harrisburg,Harrisburg,,
+What is the capital of the U S state of Pennsylvania?",Harrisburg,Harrisburg,1,
 HL061,triviaqa,"Answer the following question with the shortest correct answer.
 
-In which film does Andie MacDowell try to fiddle a US stay for Gerard Depardieu?",Green Card,Green Card,,
+In which film does Andie MacDowell try to fiddle a US stay for Gerard Depardieu?",Green Card,Green Card,1,
 HL007,banking77,"Classify this customer message into exactly one of the intent labels
 listed. Reply with the label only, copied exactly as written.
 
 
-Message: What are the fees for a physical card?",order_physical_card,order_physical_card,,
+Message: What are the fees for a physical card?",order_physical_card,order_physical_card,1,
 HL042,triviaqa,"Answer the following question with the shortest correct answer.
 
-What was the nickname given to premiership footballer Neil Ruddock?",Razor,The Lion.,,
+What was the nickname given to premiership footballer Neil Ruddock?",Razor,The Lion.,0,
 HL048,banking77,"Classify this customer message into exactly one of the intent labels
 listed. Reply with the label only, copied exactly as written.
 
 
-Message: My transfer to beneficiary didn't go through",beneficiary_not_allowed,failed_transfer,,
+Message: My transfer to beneficiary didn't go through",beneficiary_not_allowed,failed_transfer,0,
 HL006,triviaqa,"Answer the following question with the shortest correct answer.
 
-In the 1999 film Stuart Little, who plays the part of Mrs Eleanor Little?",Geena Davis,Julie Andrews,,
+In the 1999 film Stuart Little, who plays the part of Mrs Eleanor Little?",Geena Davis,Julie Andrews,0,
 HL077,squad2,"Answer the question using only the passage below. If the passage does not
 contain the answer, reply exactly: unanswerable
 
 Passage: It is a logical extension of the compound engine (described above) to split the expansion into yet more stages to increase efficiency. The result is the multiple expansion engine. Such engines use either three or four expansion stages and are known as triple and quadruple expansion engines respectively. These engines use a series of cylinders of progressively increasing diameter. These cylinders are designed to divide the work into equal shares for each expansion stage. As with the double expansion engine, if space is at a premium, then two smaller cylinders may be used for the low-pressure stage. Multiple expansion engines typically had the cylinders arranged inline, but various other formations were used. In the late 19th century, the Yarrow-Schlick-Tweedy balancing 'system' was used on some marine triple expansion engines. Y-S-T engines divided the low-pressure expansion stages between two cylinders, one at each end of the engine. This allowed the crankshaft to be better balanced, resulting in a smoother, faster-responding engine which ran with less vibration. This made the 4-cylinder triple-expansion engine popular with large passenger liners (such as the Olympic class), but this was ultimately replaced by the virtually vibration-free turbine engine.[citation needed]
 
-Question: What are engines using four expansion cylinders known as?",unanswerable,quadruple expansion engines,,
+Question: What are engines using four expansion cylinders known as?",unanswerable,quadruple expansion engines,0,
 HL009,banking77,"Classify this customer message into exactly one of the intent labels
 listed. Reply with the label only, copied exactly as written.
 
 
-Message: How can I tell what the limit is to top-ups?",top_up_limits,top_up_limits,,
+Message: How can I tell what the limit is to top-ups?",top_up_limits,top_up_limits,1,
 HL055,squad2,"Answer the question using only the passage below. If the passage does not
 contain the answer, reply exactly: unanswerable
 
 Passage: During 2003–04, the gross value of Victorian agricultural production increased by 17% to $8.7 billion. This represented 24% of national agricultural production total gross value. As of 2004, an estimated 32,463 farms occupied around 136,000 square kilometres (52,500 sq mi) of Victorian land. This comprises more than 60% of the state's total land surface. Victorian farms range from small horticultural outfits to large-scale livestock and grain productions. A quarter of farmland is used to grow consumable crops.
 
-Question: How many farms are there in Victoria?","32,463","An estimated 32,463 farms occupied around 136,000 square kilometres (52,500 sq mi) of Victorian land as of 2004.",,
+Question: How many farms are there in Victoria?","32,463","An estimated 32,463 farms occupied around 136,000 square kilometres (52,500 sq mi) of Victorian land as of 2004.",1,
 HL058,banking77,"Classify this customer message into exactly one of the intent labels
 listed. Reply with the label only, copied exactly as written.
 
 
-Message: How many disposable virtual cards can I have?",disposable_card_limits,disposable_card_limits,,
+Message: How many disposable virtual cards can I have?",disposable_card_limits,disposable_card_limits,1,
 HL059,banking77,"Classify this customer message into exactly one of the intent labels
 listed. Reply with the label only, copied exactly as written.
 
 
-Message: What do I do if the ATM ate my card?",card_swallowed,card_swallowed,,
+Message: What do I do if the ATM ate my card?",card_swallowed,card_swallowed,1,
 HL002,gsm8k,"Solve this problem. Show your reasoning, then give the final numeric
 answer on its own last line.
 
@@ -375,47 +375,47 @@ $$\text{Car distance} = 30 \text{ mph} \times 8 \text{ hours} = 240 \text{ miles
 To find how much farther the bus went, subtract the car's distance from the bus's distance.
 $$\text{Difference} = 300 \text{ miles} - 240 \text{ miles} = 60 \text{ miles}$$
 
-60",,
+60",1,
 HL050,triviaqa,"Answer the following question with the shortest correct answer.
 
-How many double word score spaces are there on a Scrabble board",Seventeen,6,,
+How many double word score spaces are there on a Scrabble board",Seventeen,6,0,
 HL043,squad2,"Answer the question using only the passage below. If the passage does not
 contain the answer, reply exactly: unanswerable
 
 Passage: Dendritic cells (DC) are phagocytes in tissues that are in contact with the external environment; therefore, they are located mainly in the skin, nose, lungs, stomach, and intestines. They are named for their resemblance to neuronal dendrites, as both have many spine-like projections, but dendritic cells are in no way connected to the nervous system. Dendritic cells serve as a link between the bodily tissues and the innate and adaptive immune systems, as they present antigens to T cells, one of the key cell types of the adaptive immune system.
 
-Question: Dendritic cells are named that because they resemble what?",neuronal dendrites,Dendritic cells are named for their resemblance to neuronal dendrites.,,
+Question: Dendritic cells are named that because they resemble what?",neuronal dendrites,Dendritic cells are named for their resemblance to neuronal dendrites.,1,
 HL008,triviaqa,"Answer the following question with the shortest correct answer.
 
-Who declared the 1936 summer Olympic Games open? (Both names required.)",ADOLF HITLER,Stanley Steins and Avery Brundage,,
+Who declared the 1936 summer Olympic Games open? (Both names required.)",ADOLF HITLER,Stanley Steins and Avery Brundage,0,
 HL065,banking77,"Classify this customer message into exactly one of the intent labels
 listed. Reply with the label only, copied exactly as written.
 
 
-Message: I have a duplicate payment showing",transaction_charged_twice,transaction_charged_twice,,
+Message: I have a duplicate payment showing",transaction_charged_twice,transaction_charged_twice,1,
 HL078,banking77,"Classify this customer message into exactly one of the intent labels
 listed. Reply with the label only, copied exactly as written.
 
 
-Message: Why was my card payment declined?",declined_card_payment,declined_card_payment,,
+Message: Why was my card payment declined?",declined_card_payment,declined_card_payment,1,
 HL052,triviaqa,"Answer the following question with the shortest correct answer.
 
-What Gaelic word which means 'bad ale' is given to an unlicensed Irish drinking house?",Shebeen,Poteen,,
+What Gaelic word which means 'bad ale' is given to an unlicensed Irish drinking house?",Shebeen,Poteen,0,
 HL063,squad2,"Answer the question using only the passage below. If the passage does not
 contain the answer, reply exactly: unanswerable
 
 Passage: In the coming decades, pharmacists are expected to become more integral within the health care system. Rather than simply dispensing medication, pharmacists are increasingly expected to be compensated for their patient care skills. In particular, Medication Therapy Management (MTM) includes the clinical services that pharmacists can provide for their patients. Such services include the thorough analysis of all medication (prescription, non-prescription, and herbals) currently being taken by an individual. The result is a reconciliation of medication and patient education resulting in increased patient health outcomes and decreased costs to the health care system.
 
-Question: What are outcomes expected with Medication Therapy Management?",a reconciliation of medication and patient education resulting in increased patient health outcomes and decreased costs to the health care system,The result is a reconciliation of medication and patient education resulting in increased patient health outcomes and decreased costs to the health care system.,,
+Question: What are outcomes expected with Medication Therapy Management?",a reconciliation of medication and patient education resulting in increased patient health outcomes and decreased costs to the health care system,The result is a reconciliation of medication and patient education resulting in increased patient health outcomes and decreased costs to the health care system.,1,
 HL044,squad2,"Answer the question using only the passage below. If the passage does not
 contain the answer, reply exactly: unanswerable
 
 Passage: Gamma delta T cells (γδ T cells) possess an alternative T cell receptor (TCR) as opposed to CD4+ and CD8+ (αβ) T cells and share the characteristics of helper T cells, cytotoxic T cells and NK cells. The conditions that produce responses from γδ T cells are not fully understood. Like other 'unconventional' T cell subsets bearing invariant TCRs, such as CD1d-restricted Natural Killer T cells, γδ T cells straddle the border between innate and adaptive immunity. On one hand, γδ T cells are a component of adaptive immunity as they rearrange TCR genes to produce receptor diversity and can also develop a memory phenotype. On the other hand, the various subsets are also part of the innate immune system, as restricted TCR or NK receptors may be used as pattern recognition receptors. For example, large numbers of human Vγ9/Vδ2 T cells respond within hours to common molecules produced by microbes, and highly restricted Vδ1+ T cells in epithelia respond to stressed epithelial cells.
 
-Question: What responds in small numbers to common molecules produced by microbes?",unanswerable,unanswerable,,
+Question: What responds in small numbers to common molecules produced by microbes?",unanswerable,unanswerable,1,
 HL062,triviaqa,"Answer the following question with the shortest correct answer.
 
-In the Bible, name the son of Saul who was a friend of David?",Jonathan,Jonathan,,
+In the Bible, name the son of Saul who was a friend of David?",Jonathan,Jonathan,1,
 HL070,gsm8k,"Solve this problem. Show your reasoning, then give the final numeric
 answer on its own last line.
 
@@ -431,13 +431,13 @@ Elliott is trying to walk 10,000 steps a day. He finished half of his steps on h
 5.  **Calculate the steps from the jog:** To find the number of steps in the jog, subtract the steps he had taken before the jog from the total steps he had taken after the jog.
     $8,000 - 6,000 = 2,000$ steps.
 
-2000",,
+2000",1,
 HL051,triviaqa,"Answer the following question with the shortest correct answer.
 
-Which of the actors who portrayed Dr Who, famous from the UK TV series of the same name, appeared almost exclusively on radio, film, written works, and comic strips?",Paul McGann,Jon Pertwee,,
+Which of the actors who portrayed Dr Who, famous from the UK TV series of the same name, appeared almost exclusively on radio, film, written works, and comic strips?",Paul McGann,Jon Pertwee,0,
 HL000,triviaqa,"Answer the following question with the shortest correct answer.
 
-Astrakhan is the curly hair of which young animal?",Lamb,Lamb,,
+Astrakhan is the curly hair of which young animal?",Lamb,Lamb,1,
 HL064,gsm8k,"Solve this problem. Show your reasoning, then give the final numeric
 answer on its own last line.
 
@@ -470,12 +470,12 @@ As Sally walked to school, she was holding the strings to 25 red balloons, 7 gre
 *   Blue balloons added: 6
 *   Total balloons: $15 + 7 + 6 + 6 = 34$.
 
-34",,
+34",1,
 HL041,banking77,"Classify this customer message into exactly one of the intent labels
 listed. Reply with the label only, copied exactly as written.
 
 
-Message: Do you support any currency?",fiat_currency_support,supported_cards_and_currencies,,
+Message: Do you support any currency?",fiat_currency_support,supported_cards_and_currencies,0,
 HL074,gsm8k,"Solve this problem. Show your reasoning, then give the final numeric
 answer on its own last line.
 
@@ -497,4 +497,4 @@ Last night Rick killed ten wolves and 15 cougars while hunting. Today Rick kille
 *   Total = (Last night's total) + (Today's total)
 *   Total = 25 + 48 = 73
 
-73",,
+73",1,
