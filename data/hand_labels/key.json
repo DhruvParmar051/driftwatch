@@ -1,0 +1,1322 @@
+{
+ "HL000": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "dhruv",
+  "query_id": "triviaqa_00658",
+  "second": "pronnati",
+  "slice": "triviaqa"
+ },
+ "HL001": {
+  "checker": 1,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "dhruv",
+  "query_id": "gsm8k_00416",
+  "second": "pronnati",
+  "slice": "gsm8k"
+ },
+ "HL002": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "dhruv",
+  "query_id": "gsm8k_00189",
+  "second": "pronnati",
+  "slice": "gsm8k"
+ },
+ "HL003": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "dhruv",
+  "query_id": "squad2_00246",
+  "second": "pronnati",
+  "slice": "squad2"
+ },
+ "HL004": {
+  "checker": 0,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "dhruv",
+  "query_id": "squad2_00376",
+  "second": "pronnati",
+  "slice": "squad2"
+ },
+ "HL005": {
+  "checker": 0,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "dhruv",
+  "query_id": "triviaqa_00181",
+  "second": "pronnati",
+  "slice": "triviaqa"
+ },
+ "HL006": {
+  "checker": 0,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "dhruv",
+  "query_id": "triviaqa_00684",
+  "second": "pronnati",
+  "slice": "triviaqa"
+ },
+ "HL007": {
+  "checker": 1,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "dhruv",
+  "query_id": "banking77_00201",
+  "second": "pronnati",
+  "slice": "banking77"
+ },
+ "HL008": {
+  "checker": 0,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "dhruv",
+  "query_id": "triviaqa_00574",
+  "second": "pronnati",
+  "slice": "triviaqa"
+ },
+ "HL009": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "dhruv",
+  "query_id": "banking77_00253",
+  "second": "pronnati",
+  "slice": "banking77"
+ },
+ "HL010": {
+  "checker": 1,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "dhruv",
+  "query_id": "gsm8k_00081",
+  "slice": "gsm8k"
+ },
+ "HL011": {
+  "checker": 1,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "dhruv",
+  "query_id": "triviaqa_00603",
+  "slice": "triviaqa"
+ },
+ "HL012": {
+  "checker": 0,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "dhruv",
+  "query_id": "squad2_00407",
+  "slice": "squad2"
+ },
+ "HL013": {
+  "checker": 0,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "dhruv",
+  "query_id": "banking77_00378",
+  "slice": "banking77"
+ },
+ "HL014": {
+  "checker": 1,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "dhruv",
+  "query_id": "squad2_00674",
+  "slice": "squad2"
+ },
+ "HL015": {
+  "checker": 0,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "dhruv",
+  "query_id": "banking77_00470",
+  "slice": "banking77"
+ },
+ "HL016": {
+  "checker": 1,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "dhruv",
+  "query_id": "banking77_00103",
+  "slice": "banking77"
+ },
+ "HL017": {
+  "checker": 0,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "dhruv",
+  "query_id": "gsm8k_00545",
+  "slice": "gsm8k"
+ },
+ "HL018": {
+  "checker": 1,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "dhruv",
+  "query_id": "triviaqa_00525",
+  "slice": "triviaqa"
+ },
+ "HL019": {
+  "checker": 1,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "dhruv",
+  "query_id": "triviaqa_00623",
+  "slice": "triviaqa"
+ },
+ "HL020": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "dhruv",
+  "query_id": "triviaqa_00336",
+  "slice": "triviaqa"
+ },
+ "HL021": {
+  "checker": 1,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "dhruv",
+  "query_id": "triviaqa_00336",
+  "slice": "triviaqa"
+ },
+ "HL022": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "dhruv",
+  "query_id": "banking77_00039",
+  "slice": "banking77"
+ },
+ "HL023": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "dhruv",
+  "query_id": "banking77_00166",
+  "slice": "banking77"
+ },
+ "HL024": {
+  "checker": 0,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "dhruv",
+  "query_id": "squad2_00440",
+  "slice": "squad2"
+ },
+ "HL025": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "dhruv",
+  "query_id": "banking77_00363",
+  "slice": "banking77"
+ },
+ "HL026": {
+  "checker": 1,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "dhruv",
+  "query_id": "triviaqa_00037",
+  "slice": "triviaqa"
+ },
+ "HL027": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "dhruv",
+  "query_id": "squad2_00565",
+  "slice": "squad2"
+ },
+ "HL028": {
+  "checker": 0,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "dhruv",
+  "query_id": "banking77_00145",
+  "slice": "banking77"
+ },
+ "HL029": {
+  "checker": 1,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "dhruv",
+  "query_id": "squad2_00529",
+  "slice": "squad2"
+ },
+ "HL030": {
+  "checker": 1,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "dhruv",
+  "query_id": "triviaqa_00436",
+  "slice": "triviaqa"
+ },
+ "HL031": {
+  "checker": 1,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "dhruv",
+  "query_id": "banking77_00042",
+  "slice": "banking77"
+ },
+ "HL032": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "dhruv",
+  "query_id": "gsm8k_00273",
+  "slice": "gsm8k"
+ },
+ "HL033": {
+  "checker": 1,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "dhruv",
+  "query_id": "squad2_00246",
+  "slice": "squad2"
+ },
+ "HL034": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "dhruv",
+  "query_id": "squad2_00296",
+  "slice": "squad2"
+ },
+ "HL035": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "dhruv",
+  "query_id": "squad2_00009",
+  "slice": "squad2"
+ },
+ "HL036": {
+  "checker": 0,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "dhruv",
+  "query_id": "triviaqa_00646",
+  "slice": "triviaqa"
+ },
+ "HL037": {
+  "checker": 1,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "dhruv",
+  "query_id": "gsm8k_00213",
+  "slice": "gsm8k"
+ },
+ "HL038": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "dhruv",
+  "query_id": "squad2_00245",
+  "slice": "squad2"
+ },
+ "HL039": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "dhruv",
+  "query_id": "triviaqa_00243",
+  "slice": "triviaqa"
+ },
+ "HL040": {
+  "checker": 1,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "pronnati",
+  "query_id": "gsm8k_00345",
+  "second": "mahak",
+  "slice": "gsm8k"
+ },
+ "HL041": {
+  "checker": 0,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "pronnati",
+  "query_id": "banking77_00284",
+  "second": "mahak",
+  "slice": "banking77"
+ },
+ "HL042": {
+  "checker": 0,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "pronnati",
+  "query_id": "triviaqa_00646",
+  "second": "mahak",
+  "slice": "triviaqa"
+ },
+ "HL043": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "pronnati",
+  "query_id": "squad2_00273",
+  "second": "mahak",
+  "slice": "squad2"
+ },
+ "HL044": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "pronnati",
+  "query_id": "squad2_00441",
+  "second": "mahak",
+  "slice": "squad2"
+ },
+ "HL045": {
+  "checker": 0,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "pronnati",
+  "query_id": "gsm8k_00069",
+  "second": "mahak",
+  "slice": "gsm8k"
+ },
+ "HL046": {
+  "checker": 0,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "pronnati",
+  "query_id": "triviaqa_00408",
+  "second": "mahak",
+  "slice": "triviaqa"
+ },
+ "HL047": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "pronnati",
+  "query_id": "squad2_00106",
+  "second": "mahak",
+  "slice": "squad2"
+ },
+ "HL048": {
+  "checker": 0,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "pronnati",
+  "query_id": "banking77_00200",
+  "second": "mahak",
+  "slice": "banking77"
+ },
+ "HL049": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "pronnati",
+  "query_id": "squad2_00587",
+  "second": "mahak",
+  "slice": "squad2"
+ },
+ "HL050": {
+  "checker": 0,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "pronnati",
+  "query_id": "triviaqa_00334",
+  "slice": "triviaqa"
+ },
+ "HL051": {
+  "checker": 0,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "pronnati",
+  "query_id": "triviaqa_00263",
+  "slice": "triviaqa"
+ },
+ "HL052": {
+  "checker": 0,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "pronnati",
+  "query_id": "triviaqa_00397",
+  "slice": "triviaqa"
+ },
+ "HL053": {
+  "checker": 1,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "pronnati",
+  "query_id": "gsm8k_00168",
+  "slice": "gsm8k"
+ },
+ "HL054": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "pronnati",
+  "query_id": "triviaqa_00015",
+  "slice": "triviaqa"
+ },
+ "HL055": {
+  "checker": 1,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "pronnati",
+  "query_id": "squad2_00449",
+  "slice": "squad2"
+ },
+ "HL056": {
+  "checker": 1,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "pronnati",
+  "query_id": "banking77_00025",
+  "slice": "banking77"
+ },
+ "HL057": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "pronnati",
+  "query_id": "gsm8k_00205",
+  "slice": "gsm8k"
+ },
+ "HL058": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "pronnati",
+  "query_id": "banking77_00071",
+  "slice": "banking77"
+ },
+ "HL059": {
+  "checker": 1,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "pronnati",
+  "query_id": "banking77_00270",
+  "slice": "banking77"
+ },
+ "HL060": {
+  "checker": 0,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "pronnati",
+  "query_id": "banking77_00293",
+  "slice": "banking77"
+ },
+ "HL061": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "pronnati",
+  "query_id": "triviaqa_00547",
+  "slice": "triviaqa"
+ },
+ "HL062": {
+  "checker": 1,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "pronnati",
+  "query_id": "triviaqa_00241",
+  "slice": "triviaqa"
+ },
+ "HL063": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "pronnati",
+  "query_id": "squad2_00350",
+  "slice": "squad2"
+ },
+ "HL064": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "pronnati",
+  "query_id": "gsm8k_00560",
+  "slice": "gsm8k"
+ },
+ "HL065": {
+  "checker": 1,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "pronnati",
+  "query_id": "banking77_00481",
+  "slice": "banking77"
+ },
+ "HL066": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "pronnati",
+  "query_id": "triviaqa_00450",
+  "slice": "triviaqa"
+ },
+ "HL067": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "pronnati",
+  "query_id": "triviaqa_00089",
+  "slice": "triviaqa"
+ },
+ "HL068": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "pronnati",
+  "query_id": "triviaqa_00326",
+  "slice": "triviaqa"
+ },
+ "HL069": {
+  "checker": 0,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "pronnati",
+  "query_id": "squad2_00431",
+  "slice": "squad2"
+ },
+ "HL070": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "pronnati",
+  "query_id": "gsm8k_00120",
+  "slice": "gsm8k"
+ },
+ "HL071": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "pronnati",
+  "query_id": "gsm8k_00621",
+  "slice": "gsm8k"
+ },
+ "HL072": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "pronnati",
+  "query_id": "gsm8k_00545",
+  "slice": "gsm8k"
+ },
+ "HL073": {
+  "checker": 1,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "pronnati",
+  "query_id": "gsm8k_00167",
+  "slice": "gsm8k"
+ },
+ "HL074": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "pronnati",
+  "query_id": "gsm8k_00071",
+  "slice": "gsm8k"
+ },
+ "HL075": {
+  "checker": 1,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "pronnati",
+  "query_id": "banking77_00486",
+  "slice": "banking77"
+ },
+ "HL076": {
+  "checker": 1,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "pronnati",
+  "query_id": "squad2_00324",
+  "slice": "squad2"
+ },
+ "HL077": {
+  "checker": 0,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "pronnati",
+  "query_id": "squad2_00164",
+  "slice": "squad2"
+ },
+ "HL078": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "pronnati",
+  "query_id": "banking77_00283",
+  "slice": "banking77"
+ },
+ "HL079": {
+  "checker": 1,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "pronnati",
+  "query_id": "squad2_00434",
+  "slice": "squad2"
+ },
+ "HL080": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "mahak",
+  "query_id": "banking77_00152",
+  "second": "aditya",
+  "slice": "banking77"
+ },
+ "HL081": {
+  "checker": 1,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "mahak",
+  "query_id": "triviaqa_00307",
+  "second": "aditya",
+  "slice": "triviaqa"
+ },
+ "HL082": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "mahak",
+  "query_id": "gsm8k_00209",
+  "second": "aditya",
+  "slice": "gsm8k"
+ },
+ "HL083": {
+  "checker": 0,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "mahak",
+  "query_id": "triviaqa_00263",
+  "second": "aditya",
+  "slice": "triviaqa"
+ },
+ "HL084": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "mahak",
+  "query_id": "gsm8k_00583",
+  "second": "aditya",
+  "slice": "gsm8k"
+ },
+ "HL085": {
+  "checker": 0,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "mahak",
+  "query_id": "triviaqa_00571",
+  "second": "aditya",
+  "slice": "triviaqa"
+ },
+ "HL086": {
+  "checker": 0,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "mahak",
+  "query_id": "gsm8k_00200",
+  "second": "aditya",
+  "slice": "gsm8k"
+ },
+ "HL087": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "mahak",
+  "query_id": "triviaqa_00583",
+  "second": "aditya",
+  "slice": "triviaqa"
+ },
+ "HL088": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "mahak",
+  "query_id": "gsm8k_00362",
+  "second": "aditya",
+  "slice": "gsm8k"
+ },
+ "HL089": {
+  "checker": 1,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "mahak",
+  "query_id": "gsm8k_00099",
+  "second": "aditya",
+  "slice": "gsm8k"
+ },
+ "HL090": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "mahak",
+  "query_id": "triviaqa_00109",
+  "slice": "triviaqa"
+ },
+ "HL091": {
+  "checker": 1,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "mahak",
+  "query_id": "gsm8k_00279",
+  "slice": "gsm8k"
+ },
+ "HL092": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "mahak",
+  "query_id": "squad2_00426",
+  "slice": "squad2"
+ },
+ "HL093": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "mahak",
+  "query_id": "banking77_00025",
+  "slice": "banking77"
+ },
+ "HL094": {
+  "checker": 0,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "mahak",
+  "query_id": "squad2_00148",
+  "slice": "squad2"
+ },
+ "HL095": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "mahak",
+  "query_id": "banking77_00064",
+  "slice": "banking77"
+ },
+ "HL096": {
+  "checker": 1,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "mahak",
+  "query_id": "banking77_00498",
+  "slice": "banking77"
+ },
+ "HL097": {
+  "checker": 0,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "mahak",
+  "query_id": "squad2_00392",
+  "slice": "squad2"
+ },
+ "HL098": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "mahak",
+  "query_id": "squad2_00399",
+  "slice": "squad2"
+ },
+ "HL099": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "mahak",
+  "query_id": "gsm8k_00593",
+  "slice": "gsm8k"
+ },
+ "HL100": {
+  "checker": 0,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "mahak",
+  "query_id": "squad2_00314",
+  "slice": "squad2"
+ },
+ "HL101": {
+  "checker": 0,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "mahak",
+  "query_id": "triviaqa_00104",
+  "slice": "triviaqa"
+ },
+ "HL102": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "mahak",
+  "query_id": "banking77_00491",
+  "slice": "banking77"
+ },
+ "HL103": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "mahak",
+  "query_id": "gsm8k_00449",
+  "slice": "gsm8k"
+ },
+ "HL104": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "mahak",
+  "query_id": "banking77_00041",
+  "slice": "banking77"
+ },
+ "HL105": {
+  "checker": 0,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "mahak",
+  "query_id": "squad2_00230",
+  "slice": "squad2"
+ },
+ "HL106": {
+  "checker": 0,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "mahak",
+  "query_id": "gsm8k_00157",
+  "slice": "gsm8k"
+ },
+ "HL107": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "mahak",
+  "query_id": "banking77_00009",
+  "slice": "banking77"
+ },
+ "HL108": {
+  "checker": 1,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "mahak",
+  "query_id": "banking77_00001",
+  "slice": "banking77"
+ },
+ "HL109": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "mahak",
+  "query_id": "squad2_00662",
+  "slice": "squad2"
+ },
+ "HL110": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "mahak",
+  "query_id": "gsm8k_00215",
+  "slice": "gsm8k"
+ },
+ "HL111": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "mahak",
+  "query_id": "banking77_00427",
+  "slice": "banking77"
+ },
+ "HL112": {
+  "checker": 1,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "mahak",
+  "query_id": "banking77_00191",
+  "slice": "banking77"
+ },
+ "HL113": {
+  "checker": 0,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "mahak",
+  "query_id": "triviaqa_00556",
+  "slice": "triviaqa"
+ },
+ "HL114": {
+  "checker": 1,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "mahak",
+  "query_id": "squad2_00214",
+  "slice": "squad2"
+ },
+ "HL115": {
+  "checker": 1,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "mahak",
+  "query_id": "gsm8k_00431",
+  "slice": "gsm8k"
+ },
+ "HL116": {
+  "checker": 0,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "mahak",
+  "query_id": "squad2_00393",
+  "slice": "squad2"
+ },
+ "HL117": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "mahak",
+  "query_id": "gsm8k_00594",
+  "slice": "gsm8k"
+ },
+ "HL118": {
+  "checker": 1,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "mahak",
+  "query_id": "squad2_00131",
+  "slice": "squad2"
+ },
+ "HL119": {
+  "checker": 0,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "mahak",
+  "query_id": "banking77_00209",
+  "slice": "banking77"
+ },
+ "HL120": {
+  "checker": 1,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "aditya",
+  "query_id": "gsm8k_00494",
+  "second": "dhruv",
+  "slice": "gsm8k"
+ },
+ "HL121": {
+  "checker": 0,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "aditya",
+  "query_id": "banking77_00310",
+  "second": "dhruv",
+  "slice": "banking77"
+ },
+ "HL122": {
+  "checker": 1,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "aditya",
+  "query_id": "banking77_00249",
+  "second": "dhruv",
+  "slice": "banking77"
+ },
+ "HL123": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "aditya",
+  "query_id": "squad2_00508",
+  "second": "dhruv",
+  "slice": "squad2"
+ },
+ "HL124": {
+  "checker": 1,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "aditya",
+  "query_id": "gsm8k_00204",
+  "second": "dhruv",
+  "slice": "gsm8k"
+ },
+ "HL125": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "aditya",
+  "query_id": "squad2_00453",
+  "second": "dhruv",
+  "slice": "squad2"
+ },
+ "HL126": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "aditya",
+  "query_id": "squad2_00655",
+  "second": "dhruv",
+  "slice": "squad2"
+ },
+ "HL127": {
+  "checker": 1,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "aditya",
+  "query_id": "triviaqa_00271",
+  "second": "dhruv",
+  "slice": "triviaqa"
+ },
+ "HL128": {
+  "checker": 0,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "aditya",
+  "query_id": "triviaqa_00353",
+  "second": "dhruv",
+  "slice": "triviaqa"
+ },
+ "HL129": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "aditya",
+  "query_id": "triviaqa_00108",
+  "second": "dhruv",
+  "slice": "triviaqa"
+ },
+ "HL130": {
+  "checker": 1,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "aditya",
+  "query_id": "gsm8k_00302",
+  "slice": "gsm8k"
+ },
+ "HL131": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "aditya",
+  "query_id": "gsm8k_00331",
+  "slice": "gsm8k"
+ },
+ "HL132": {
+  "checker": 0,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "aditya",
+  "query_id": "banking77_00295",
+  "slice": "banking77"
+ },
+ "HL133": {
+  "checker": 0,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "aditya",
+  "query_id": "triviaqa_00144",
+  "slice": "triviaqa"
+ },
+ "HL134": {
+  "checker": 1,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "aditya",
+  "query_id": "gsm8k_00077",
+  "slice": "gsm8k"
+ },
+ "HL135": {
+  "checker": 0,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "aditya",
+  "query_id": "squad2_00471",
+  "slice": "squad2"
+ },
+ "HL136": {
+  "checker": 1,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "aditya",
+  "query_id": "squad2_00253",
+  "slice": "squad2"
+ },
+ "HL137": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "aditya",
+  "query_id": "gsm8k_00669",
+  "slice": "gsm8k"
+ },
+ "HL138": {
+  "checker": 1,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "aditya",
+  "query_id": "gsm8k_00414",
+  "slice": "gsm8k"
+ },
+ "HL139": {
+  "checker": 1,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "aditya",
+  "query_id": "gsm8k_00660",
+  "slice": "gsm8k"
+ },
+ "HL140": {
+  "checker": 0,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "aditya",
+  "query_id": "triviaqa_00362",
+  "slice": "triviaqa"
+ },
+ "HL141": {
+  "checker": 1,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "aditya",
+  "query_id": "banking77_00324",
+  "slice": "banking77"
+ },
+ "HL142": {
+  "checker": 0,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "aditya",
+  "query_id": "banking77_00130",
+  "slice": "banking77"
+ },
+ "HL143": {
+  "checker": 0,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "aditya",
+  "query_id": "squad2_00596",
+  "slice": "squad2"
+ },
+ "HL144": {
+  "checker": 1,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "aditya",
+  "query_id": "gsm8k_00250",
+  "slice": "gsm8k"
+ },
+ "HL145": {
+  "checker": 1,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "aditya",
+  "query_id": "banking77_00482",
+  "slice": "banking77"
+ },
+ "HL146": {
+  "checker": 1,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "aditya",
+  "query_id": "squad2_00639",
+  "slice": "squad2"
+ },
+ "HL147": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "aditya",
+  "query_id": "triviaqa_00152",
+  "slice": "triviaqa"
+ },
+ "HL148": {
+  "checker": 0,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "aditya",
+  "query_id": "banking77_00000",
+  "slice": "banking77"
+ },
+ "HL149": {
+  "checker": 1,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "aditya",
+  "query_id": "banking77_00250",
+  "slice": "banking77"
+ },
+ "HL150": {
+  "checker": 0,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "aditya",
+  "query_id": "triviaqa_00411",
+  "slice": "triviaqa"
+ },
+ "HL151": {
+  "checker": 0,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "aditya",
+  "query_id": "squad2_00686",
+  "slice": "squad2"
+ },
+ "HL152": {
+  "checker": 1,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "aditya",
+  "query_id": "banking77_00428",
+  "slice": "banking77"
+ },
+ "HL153": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "aditya",
+  "query_id": "gsm8k_00347",
+  "slice": "gsm8k"
+ },
+ "HL154": {
+  "checker": 0,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "aditya",
+  "query_id": "triviaqa_00533",
+  "slice": "triviaqa"
+ },
+ "HL155": {
+  "checker": 1,
+  "condition": "healthy",
+  "model_id": "gemma4:26b-a4b-it-q4_K_M",
+  "primary": "aditya",
+  "query_id": "gsm8k_00194",
+  "slice": "gsm8k"
+ },
+ "HL156": {
+  "checker": 1,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "aditya",
+  "query_id": "squad2_00624",
+  "slice": "squad2"
+ },
+ "HL157": {
+  "checker": 0,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "aditya",
+  "query_id": "triviaqa_00383",
+  "slice": "triviaqa"
+ },
+ "HL158": {
+  "checker": 1,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "aditya",
+  "query_id": "banking77_00274",
+  "slice": "banking77"
+ },
+ "HL159": {
+  "checker": 1,
+  "condition": "F1",
+  "model_id": "gemma4:e2b-it-q4_K_M",
+  "primary": "aditya",
+  "query_id": "gsm8k_00111",
+  "slice": "gsm8k"
+ }
+}
