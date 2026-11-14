@@ -270,7 +270,10 @@ explanations; Appendix~\ref{app:fixed}), split into calibration (2{,}500), held-
 \texttt{gemma4:26b-a4b}. Four faults swap in a smaller sibling (two sizes), an
 older generation (\texttt{gemma3:12b}), or add two lines to the system prompt. A
 same-model ladder serves the healthy weights at 8-bit or samples them at
-temperature 1.0, 1.3 and 1.6.
+temperature 1.0, 1.3 and 1.6. Accuracy is scored automatically against each
+dataset's answers; on 160 answers labelled by hand it agreed with a person 96.2\%
+of the time and measured the healthy-minus-F1 gap exactly as people did
+(Appendix~\ref{app:hand}).
 
 \paragraph{Real updates} Two hosted models, each with its old and new version
 still served by one host: DeepSeek V4 Flash (0731 to 1017) and
@@ -683,8 +686,9 @@ first user turns of public chatbot logs released for research (WildChat-1M,
 ODC-BY): we kept only turns that no flag marks toxic, redacted (personal
 information) or moderated, read only their text, and drop every other field,
 including location and IP hashes. We collected no personal information, and no
-human annotators or participants were involved; correctness is scored
-automatically against the datasets' own answers. Appendix~\ref{app:data} lists each source's licence; three declare none, so we use them for non-commercial research only and redistribute no source text.
+participants were involved; correctness is scored automatically against the
+datasets' own answers, and the four authors hand-labelled 160 of those answers to
+check the scoring (Appendix~\ref{app:hand}). Appendix~\ref{app:data} lists each source's licence; three declare none, so we use them for non-commercial research only and redistribute no source text.
 
 \paragraph{Models and services} All local models are openly released and were run
 on one laptop. The hosted study used a commercial model router through its public
@@ -773,6 +777,10 @@ it existed; every later change is an amendment with its date and reason.
   scoring: the server software had updated itself, so the first C4 answers were set
   aside unscored and C4 and C5 were generated whole under one version
   (Appendix~\ref{app:server}).
+  \item[Hand-label check.] Sample, labelling rules and both criteria fixed on
+  29 Oct 2026, before any answer was labelled; the key holding each item's
+  condition and checker verdict was checksummed and opened only after all four
+  sheets were complete. No amendment.
 \end{description}
 
 \section{The paired and served monitors in full}
@@ -2074,7 +2082,8 @@ every dependency.
 \end{table*}
 
 \clearpage
-\section{Judge grades per slice}
+\section{Checking the accuracy measures}
+\subsection{Judge grades per slice}
 \label{app:judge}
 \begin{table*}[h]
   \centering\small
@@ -2098,5 +2107,68 @@ every dependency.
     \bottomrule
   \end{tabular}
 \end{table*}
+
+\subsection{Checking the automatic scoring by hand}
+\label{app:hand}
+
+Every accuracy figure in this paper, from the fault sizes to ``no rung was
+harmful'', comes from an automatic checker that compares each answer with the
+dataset's own (final number for \textsf{gsm8k}, alias match for \textsf{triviaqa},
+answer match for \textsf{squad2}, label for \textsf{banking77}). What matters most
+is not its error rate but whether it errs differently on a strong and a weak model,
+since that would bias every accuracy \emph{difference}.
+
+\paragraph{Design} Fixed before any labelling. 160 answers to fault questions:
+20 per slice from the healthy model and 20 from F1, the largest fault, drawn with
+a fixed seed. Each of the four authors labelled 40 items as primary labeller and
+10 of another's, so 40 items were labelled twice. A sheet showed only the
+question, the reference answer and the model's answer; condition, model and the
+checker's verdict were in a key that was checksummed before labelling and opened
+only after all four sheets were complete. Labels: correct, wrong, or cannot tell,
+judging meaning rather than format. Criteria: (HL1) checker and person agree on at
+least 90\% of answers; (HL2) the paired bootstrap 95\% interval (10{,}000
+resamples within condition) of the checker's healthy-minus-F1 gap minus the
+people's contains zero.
+
+\paragraph{Results} Both criteria hold (Table~\ref{tab:hand}). The two labellers
+agreed on all 39 doubly labelled items both marked. The checker never passed an
+answer a person failed; all six disagreements are answers it failed and a person
+passed, three healthy and three F1, so the gap is identical: $+8.9$ points by the
+checker and by people. Two were lists in a different order from the reference,
+one embedded the answer in a compound word, and three were long \textsf{gsm8k}
+answers cut off by the length limit after working towards the reference number,
+where the checker reads the last number written. In one of these the reference
+number never appears; by the pre-registered rule the primary label stands, and
+counting it as wrong would raise agreement to 96.8\% and move the gap difference to
+$+1.3$ points, still inside its interval. Two items were marked ``cannot tell'',
+both \textsf{banking77} answers whose reference label the labeller judged wrong.
+The checker is slightly strict, equally so on both models, so accuracy levels
+are, if anything, a little low and accuracy differences are unaffected.
+
+\begin{table}[h]
+  \centering\small
+  \caption{Checker against hand labels, with Wilson 95\% intervals.}
+  \label{tab:hand}
+  \begin{tabular}{lrr}
+    \toprule
+    & agreement & 95\% interval \\
+    \midrule
+    all (152/158) & 96.2\% & 92.0--98.2 \\
+    \textsf{gsm8k} (37/40) & 92.5\% & 80.1--97.4 \\
+    \textsf{triviaqa} (38/40) & 95.0\% & 83.5--98.6 \\
+    \textsf{squad2} (39/40) & 97.5\% & 87.1--99.6 \\
+    \textsf{banking77} (38/38) & 100.0\% & 90.8--100.0 \\
+    healthy (76/79) & 96.2\% & 89.4--98.7 \\
+    F1 (76/79) & 96.2\% & 89.4--98.7 \\
+    \midrule
+    false passes (0/158) & 0.0\% & 0.0--2.4 \\
+    false fails (6/158) & 3.8\% & 1.8--8.0 \\
+    person vs person (39/39) & 100.0\% & 91.0--100.0 \\
+    \midrule
+    \multicolumn{3}{l}{Cohen's $\kappa$: checker vs person 0.90, person vs person 1.00} \\
+    \multicolumn{3}{l}{gap difference $+0.0$ points, 95\% interval $-6.3$ to $+6.3$} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
 
 \end{document}
