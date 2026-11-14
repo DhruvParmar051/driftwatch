@@ -285,6 +285,15 @@ After detection is fixed, the oracle grades answers against ground truth:
 Summaries (XSum) and explanations (ELI5) are not graded. The oracle only answers
 "how much did this change really cost?".
 
+**Is the oracle itself right?** We checked it by hand. The four of us labelled
+160 answers (healthy model and the largest fault, four slices) without seeing the
+oracle's verdict or which model wrote each answer; the rules and pass marks were
+committed first. The oracle agreed with a person on 96.2% of answers (kappa 0.90),
+never passed a wrong answer, and erred equally on both models, so it measured the
+healthy-minus-F1 gap at +8.9 points, exactly as people did. Its six misses were
+correct answers it failed (lists in another order, answers cut off after reaching
+the right number). Scores: `data/hand_labels/results.md`.
+
 ---
 
 # PART III: THE EXPERIMENTS
