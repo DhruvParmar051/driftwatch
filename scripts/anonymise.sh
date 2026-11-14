@@ -19,13 +19,15 @@ git archive --format=tar --prefix=driftwatch/ HEAD | tar -x -C $TMP
 for p in $EXCLUDE; do rm -rf $TMP/driftwatch/$p; done
 
 # The hand-label sheets are named after the labellers: labeller_a-d in the
-# archive, in the config's list and in the sheet file names alike.
+# archive, in the config's list, the sheet file names and the key alike.
 CFG=$TMP/driftwatch/src/config/hand_label_study.yaml
 LABELLERS=(${(s:, :)$(sed -n 's/^labellers: \[\(.*\)\]$/\1/p' $CFG)})
 i=0
 for name in $LABELLERS; do
   anon=labeller_$(printf "\\x$(printf %x $((97 + i)))")
   mv $TMP/driftwatch/data/hand_labels/sheet_$name.csv $TMP/driftwatch/data/hand_labels/sheet_$anon.csv
+  # The key names each item's primary and second labeller.
+  sed -i '' "s/\": \"$name\"/\": \"$anon\"/" $TMP/driftwatch/data/hand_labels/key.json
   i=$((i + 1))
 done
 sed -i '' 's/^labellers: \[.*\]$/labellers: [labeller_a, labeller_b, labeller_c, labeller_d]/' $CFG
