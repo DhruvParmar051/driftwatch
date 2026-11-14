@@ -206,8 +206,25 @@ Yes. Appendix V:
 
 ## D. Did you use human annotators or research with human participants?
 
-No. Correctness is scored automatically against each dataset's own answers. No
-annotators or participants were recruited, so D1–D5 do not apply.
+Yes, the four authors only. Correctness is scored automatically against each
+dataset's own answers; to check that scoring, the authors hand-labelled 160 model
+answers (Appendix *Checking the automatic scoring by hand*). No one else was
+recruited.
+
+**D1. Instructions given to annotators?** Yes: the labelling rules are in
+`src/config/hand_label_study.yaml` and `data/hand_labels/README.md`, both in the
+supplementary material.
+
+**D2. Recruitment and payment?** Not applicable: the authors labelled their own
+study's answers, unpaid.
+
+**D3. Consent for the data?** Not applicable: the items are benchmark questions,
+reference answers and model outputs; no personal data.
+
+**D4. Ethics review?** Not applicable: no participants, no personal data.
+
+**D5. Annotator demographics?** Not reported: four authors, and the task is
+checking answers against a given reference.
 
 ## E. Did you use AI assistants in your research, coding, or writing?
 
