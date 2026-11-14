@@ -38,5 +38,3 @@ data/confirm/*
 !docs/PROJECT_BRIEF.pdf
 dist/
 
-# hand-label key: committed only after every sheet is labelled (config/hand_label_study.yaml)
-data/hand_labels/key.json
