@@ -8,7 +8,11 @@ item) sha256, recorded before any labelling:
 
     85c898ec399ade26b3508b21fa9803f9ad8616c59ec213c1abcf5af3dac17492
 
-The key stays out of git, and nobody opens it, until all four sheets are filled.
+The key stayed out of git, and nobody opened it, until all four sheets were filled.
+They were complete on 13 Nov 2026; the committed key has the checksum above, and
+the scores are in `results.md` (`uv run python scripts/hand_labels.py score`).
+Both pre-registered criteria are met: the checker agrees with a person on 96.2%
+of answers, and it measures the healthy-minus-F1 accuracy gap exactly as people do.
 
 ## How to label your sheet
 
