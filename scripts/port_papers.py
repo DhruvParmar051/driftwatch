@@ -1,6 +1,6 @@
 """Usage: python3 scripts/port_papers.py.
 
-The ACL version is the source; the ICML and NeurIPS versions are built from it.
+The ACL version is the source; the ICML, NeurIPS and TMLR versions are built from it.
 Each keeps its own preamble (style file, title block, authors) and takes the ACL
 text from the abstract to the end, with the few venue changes below. Run after
 every edit to paper/acl/driftwatch_acl.tex, then build all three.
@@ -22,6 +22,11 @@ def wrap(text: str, marker: str, width: str) -> str:
     return text[:i] + "\\resizebox{" + width + "}{!}{%\n" + text[i:j] + "}" + text[j:]
 
 
+def unscale(text: str) -> str:
+    """One column: tables scaled to the column width would fill the page; keep them natural."""
+    return text.replace("\\resizebox{\\columnwidth}{!}{%", "{%")
+
+
 # ICML: the ethics section is an Impact Statement, its AI paragraph becomes the
 # required AI Use Statement of its own; icml2027 bibliography style.
 icml_path = PAPER / "icml" / "driftwatch_icml.tex"
@@ -41,9 +46,24 @@ pre = neurips[: neurips.index("\\maketitle") + len("\\maketitle")]
 b = body.replace(
     "\\bibliography{../references}", "\\bibliographystyle{abbrvnat}\n\\bibliography{references}"
 )
-b = wrap(b, "\\begin{tabular}{l|ccc|ccc|ccc}", "\\textwidth")
+b = wrap(unscale(b), "\\begin{tabular}{l|ccc|ccc|ccc}", "\\textwidth")
 b = wrap(
     b, "\\begin{tabular}{lrrrrrrrr}\n    \\toprule\n    setting & threshold change", "\\textwidth"
 )
 neurips_path.write_text(pre + "\n\n" + b)
-print("ported: icml/driftwatch_icml.tex, driftwatch.tex")  # noqa: T201
+
+# TMLR: one column like NeurIPS, so the same tables are scaled; the ethics section
+# is a Broader Impact Statement; tmlr bibliography style.
+tmlr_path = PAPER / "tmlr" / "driftwatch_tmlr.tex"
+tmlr = tmlr_path.read_text()
+pre = tmlr[: tmlr.index("\\maketitle") + len("\\maketitle")]
+b = body.replace("\\section*{Ethics Statement}", "\\section*{Broader Impact Statement}")
+b = b.replace(
+    "\\bibliography{../references}", "\\bibliography{../references}\n\\bibliographystyle{tmlr}"
+)
+b = wrap(unscale(b), "\\begin{tabular}{l|ccc|ccc|ccc}", "\\textwidth")
+b = wrap(
+    b, "\\begin{tabular}{lrrrrrrrr}\n    \\toprule\n    setting & threshold change", "\\textwidth"
+)
+tmlr_path.write_text(pre + "\n\n" + b)
+print("ported: icml/driftwatch_icml.tex, driftwatch.tex, tmlr/driftwatch_tmlr.tex")  # noqa: T201
