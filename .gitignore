@@ -33,8 +33,10 @@ data/confirm/*
 
 .env
 
-# PDFs are generated exports, never tracked, except the project brief
+# PDFs are generated exports, never tracked
 *.pdf
-!docs/PROJECT_BRIEF.pdf
 dist/
 
+# The papers and the write-ups are kept off the repository
+paper/
+docs/
