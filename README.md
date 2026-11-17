@@ -221,7 +221,6 @@ src/synthetic/    offline completion generator
 scripts/          generate_all.sh, analyse_all.sh - the whole run, resumable
 src/parallel.py   CPU worker resolution (no GPU — see below)
 tests/            62 gate tests + 217 specification tests
-docs/             WORKSTREAMS.md — who owns which file
 ```
 
 Import with the top-level name: `from corpus.schemas import Query`.
