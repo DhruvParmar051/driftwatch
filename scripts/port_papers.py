@@ -22,13 +22,15 @@ def wrap(text: str, marker: str, width: str) -> str:
     return text[:i] + "\\resizebox{" + width + "}{!}{%\n" + text[i:j] + "}" + text[j:]
 
 
-# ICML: the ethics section is an Impact Statement; icml2026 bibliography style.
+# ICML: the ethics section is an Impact Statement, its AI paragraph becomes the
+# required AI Use Statement of its own; icml2027 bibliography style.
 icml_path = PAPER / "icml" / "driftwatch_icml.tex"
 icml = icml_path.read_text()
 pre = icml[: icml.index("\\printAffiliationsAndNotice{}") + len("\\printAffiliationsAndNotice{}")]
 b = body.replace("\\section*{Ethics Statement}", "\\section*{Impact Statement}")
+b = b.replace("\\paragraph{AI assistance} ", "\\section*{AI Use Statement}\n")
 b = b.replace(
-    "\\bibliography{../references}", "\\bibliography{../references}\n\\bibliographystyle{icml2026}"
+    "\\bibliography{../references}", "\\bibliography{../references}\n\\bibliographystyle{icml2027}"
 )
 icml_path.write_text(pre + "\n\n" + b)
 
